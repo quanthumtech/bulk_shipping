@@ -26,12 +26,24 @@ class UsersForm extends Form
     #[validate('string', 'required')]
     public $password;
 
+    public $chatwoot_accoumts;
+
+    public $active;
+
+    public $type_user;
+
+    public $token_acess;
+
     public function setUsers(User $users)
     {
-        $this->users      = $users;
-        $this->name       = $users->name;
-        $this->email      = $users->email;
-        $this->password   = '';
+        $this->users             = $users;
+        $this->name              = $users->name;
+        $this->email             = $users->email;
+        $this->chatwoot_accoumts = $users->chatwoot_accoumts;
+        $this->active            = (bool) $users->active;
+        $this->type_user         = $users->type_user;
+        $this->token_acess       = $users->token_acess;
+        $this->password          = '';
     }
 
     public function store()
@@ -40,9 +52,13 @@ class UsersForm extends Form
         $this->validate();
 
         User::create([
-            'name'      => $this->name,
-            'email'     => $this->email,
-            'password'  => Hash::make($this->password),
+            'name'              => $this->name,
+            'email'             => $this->email,
+            'chatwoot_accoumts' => $this->chatwoot_accoumts,
+            'active'            => $this->active,
+            'type_user'         => $this->type_user,
+            'token_acess'       => $this->token_acess,
+            'password'          => Hash::make($this->password),
         ]);
 
         $this->reset();
@@ -54,8 +70,12 @@ class UsersForm extends Form
         $this->validate();
 
         $data = [
-            'name'      => $this->name,
-            'email'     => $this->email,
+            'name'              => $this->name,
+            'email'             => $this->email,
+            'chatwoot_accoumts' => $this->chatwoot_accoumts,
+            'active'            => $this->active,
+            'type_user'         => $this->type_user,
+            'token_acess'       => $this->token_acess,
         ];
 
         if (!empty($this->password)) {

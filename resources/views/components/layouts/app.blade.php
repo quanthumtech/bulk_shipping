@@ -58,18 +58,23 @@
             {{-- User --}}
             @if($user = auth()->user())
                 <x-mary-list-item :item="auth()->user()" value="name" sub-value="email" no-separator no-hover class="pt-2">
-                        <x-slot:actions>
-                            <x-mary-dropdown>
-                                <x-slot:trigger>
-                                    <x-mary-button icon="o-cog-8-tooth" class="btn-circle" />
-                                </x-slot:trigger>
+                    {{-- Avatar --}}
+                    <x-slot:avatar>
+                        <x-mary-avatar :image="Storage::url($user->photo)" class="!w-12" />
+                    </x-slot:avatar>
+                    {{-- Subtitle --}}
+                    <x-slot:actions>
+                        <x-mary-dropdown>
+                            <x-slot:trigger>
+                                <x-mary-button icon="o-cog-8-tooth" class="btn-circle" />
+                            </x-slot:trigger>
 
-                                <x-mary-menu-item title="logout" icon="o-power" link="/logout"/>
-                                <x-mary-menu-item title="Perfil" icon="o-user" link="/perfil" :link="route('perfil.index', ['id' => auth()->user()->id])"/>
-                            {{-- <x-mary-menu-item title="Theme" icon="o-swatch" @click="$dispatch('mary-toggle-theme')" /> --}}
-                            </x-dropdown>
-                        </x-slot:actions>
-                    </x-mary-list-item>
+                            <x-mary-menu-item title="logout" icon="o-power" link="/logout"/>
+                            <x-mary-menu-item title="Perfil" icon="o-user" link="/perfil" :link="route('perfil.index', ['id' => auth()->user()->id])"/>
+                        {{-- <x-mary-menu-item title="Theme" icon="o-swatch" @click="$dispatch('mary-toggle-theme')" /> --}}
+                        </x-dropdown>
+                    </x-slot:actions>
+                </x-mary-list-item>
 
 
                 <x-mary-menu-separator />
@@ -79,7 +84,7 @@
             <x-mary-menu activate-by-route>
                 <x-mary-menu-item title="Home" icon="o-home" link="/dashboard" />
                 <x-mary-menu-sub title="Messages" icon="o-envelope">
-                    <x-mary-menu-item title="Enviar" icon="o-paper-airplane" link="/send" />
+                    <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Histórico" icon="o-clipboard-document-check" link="###" />
                 </x-mary-menu-sub>
                 <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">

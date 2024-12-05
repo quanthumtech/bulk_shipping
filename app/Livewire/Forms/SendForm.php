@@ -14,14 +14,30 @@ class SendForm extends Form
 
     public ?Send $sends = null;
 
-    public $contato;
+    protected $rules = [
+        'phone_number' => 'required|array',
+        'menssage_content' => 'required|string',
+        'sent_at' => 'nullable|date',
+        'active' => 'nullable|boolean',
+        'status' => 'nullable|string',
+        'file' => 'nullable|array',
+        'file.*' => 'mimes:jpg,jpeg,png,pdf,docx|max:2048',
+    ];
 
-    public $file;
+    public $contato, $file, $phone_number, $sent_at, $active, $status, $contact_name, $menssage_content, $group_id, $user_id;
 
     public function setSend(Send $sends)
     {
-        $this->sends        = $sends;
-        $this->file         = $sends->file ? asset('send/' . $sends->file) : null;
+        $this->sends               = $sends;
+        $this->contact_name        = $sends->contact_name;
+        $this->phone_number        = $sends->phone_number ? json_decode($sends->phone_number, true) : [];
+        $this->menssage_content    = $sends->menssage_content;
+        $this->sent_at             = $sends->sent_at;
+        $this->active              = (bool) $sends->active;
+        $this->status              = $sends->status;
+        $this->group_id            = $sends->group_id;
+        $this->user_id             = $sends->user_id;
+        $this->file                = $sends->file ? asset('send/' . $sends->file) : null;
 
     }
 
@@ -30,7 +46,14 @@ class SendForm extends Form
         $this->validate();
 
         $data = [
-            'contato'          => $this->contato,
+            'contact_name'   => $this->contato,
+            'phone_number'   => json_encode($this->phone_number),
+            'message_content'=> $this->menssage_content,
+            'sent_at'        => $this->sent_at,
+            'active'         => $this->active,
+            'status'         => $this->status,
+            'user_id'        => auth()->id(),
+            'group_id'       => $this->sends->group_id ?? $this->group_id,
         ];
 
         if ($this->file && is_array($this->file)) {
@@ -44,25 +67,6 @@ class SendForm extends Form
         }
 
         Send::create($data);
-
-        $this->reset();
-    }
-
-    public function update()
-    {
-        $this->validate();
-
-        $data = [
-            'contato'          => $this->contato,
-        ];
-
-        if ($this->file && $this->file instanceof \Illuminate\Http\UploadedFile) {
-            $data['file'] = $this->file->store('send', 'public');
-        } else {
-            $data['file'] = $this->sends->file;
-        }
-
-        $this->sends->update($data);
 
         $this->reset();
     }

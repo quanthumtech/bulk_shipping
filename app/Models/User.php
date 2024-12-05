@@ -21,7 +21,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'photo'
+        'photo',
+        'chatwoot_accoumts',
+        'active',
+        'type_user',
+        'token_acess'
     ];
 
     /**

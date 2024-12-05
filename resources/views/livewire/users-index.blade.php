@@ -39,6 +39,20 @@
             </h3>
         @endscope
 
+        {{-- Overrides `active` header --}}
+        @scope('header_active_name', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
+        {{-- Overrides `account chatwoot` header --}}
+        @scope('header_chatwoot_accoumts', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
         {{-- Overrides `created_at` header --}}
         @scope('header_formatted_created_at', $header)
             <h3 class="text-xl font-bold text-black">
@@ -47,9 +61,11 @@
         @endscope
 
         {{-- Special `actions` slot --}}
-        @scope('actions', $users)
-            <x-mary-button icon="o-trash" wire:click="delete({{ $users->id }})" spinner class="btn-sm btn-error" />
-        @endscope
+        @if(Auth::user()->type_user === '1')
+            @scope('actions', $users)
+                <x-mary-button icon="o-trash" wire:click="delete({{ $users->id }})" spinner class="btn-sm btn-error" />
+            @endscope
+        @endif
     </x-mary-table>
 
     {{-- INFO: Modal users --}}
@@ -60,6 +76,23 @@
             <x-mary-input label="Name" wire:model="form.name" />
             <x-mary-input label="E-mail" wire:model="form.email" />
             <x-mary-password label="Password" hint="It toggles visibility" wire:model="form.password" clearable />
+
+            <hr>
+
+            <x-mary-input
+                label="ID Conta Chatwoot"
+                placeholder="Exemplo: 1"
+                hint="Informe o token de acesso necessário para vincular sua conta ao Chatwoot. Apenas número por favor."
+                wire:model="form.chatwoot_accoumts"
+            />
+            <x-mary-input
+                label="Token"
+                placeholder="Exemplo: adfxwj34...."
+                wire:model="form.token_acess"
+            />
+
+            <x-mary-select label="Tipo de Usuário" :options="$options" wire:model="form.type_user" />
+            <x-mary-toggle label="Ativo" wire:model="form.active" />
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.userModal = false" />

@@ -88,6 +88,8 @@ class UsersIndex extends Component
             ['key' => 'name', 'label' => 'Name'],
             ['key' => 'email', 'label' => 'Email'],
             ['key' => 'type_user_name', 'label' => 'Tipo usuário'],
+            ['key' => 'active_name', 'label' => 'Ativo'],
+            ['key' => 'chatwoot_accoumts', 'label' => 'id Chatwoot'],
             ['key' => 'formatted_created_at', 'label' => 'Criado']
         ];
 
@@ -96,7 +98,6 @@ class UsersIndex extends Component
             ['id' => 1, 'name' => 'SuperAdmin'],
             ['id' => 2, 'name' => 'Admin'],
             ['id' => 3, 'name' => 'User'],
-            ['id' => 4, 'name' => 'Developer'],
         ];
 
         return view('livewire.users-index', [

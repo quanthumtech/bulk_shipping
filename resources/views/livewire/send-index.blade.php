@@ -4,18 +4,62 @@
             <x-mary-input icon="o-bolt" wire:model.live="search" placeholder="Search..." />
         </x-slot:middle>
         <x-slot:actions>
+            <x-mary-button label="Grupos" icon="o-arrow-uturn-left" @click="window.location.href = '{{ route('group-send.index') }}'" />
             <x-mary-button icon="o-plus" class="btn-primary" @click="$wire.showModal()" />
         </x-slot:actions>
     </x-mary-header>
 
     {{-- INFO: Aviso sobre como criar demandas --}}
     <x-mary-alert
-        title="Dica: Como envar emnsagens em massa ou por cadência."
+        title="Dica: Envie mensagens em massa e crie cadências personalizadas."
         icon="o-light-bulb"
         description="{!! $descriptionCard !!}"
         class="bg-yellow-50 text-yellow-900 border-yellow-200 mb-4"
         dismissible
     />
+
+    {{-- INFO: table --}}
+    <x-mary-table
+        :headers="$headers"
+        :rows="$group_table"
+        class="bg-white"
+        with-pagination per-page="perPage"
+        :per-page-values="[3, 5, 10]"
+    >
+
+        {{-- Overrides `phone` header --}}
+        @scope('header_formatted_phone_number', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
+        {{-- Overrides `criado_por` header --}}
+        @scope('header_criado_por', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
+        {{-- Overrides `messagem` header --}}
+        @scope('header_menssage', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
+        {{-- Overrides `formatted_created_at` header --}}
+        @scope('header_formatted_created_at', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
+        {{-- Special `actions` slot --}}
+        @scope('actions', $group_table)
+            <x-mary-button icon="o-trash" wire:click="delete({{ $group_table->id }})" spinner class="btn-sm btn-error" />
+        @endscope
+    </x-mary-table>
 
     {{-- INFO: modal slide --}}
     <x-mary-drawer
@@ -29,9 +73,9 @@
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-choices label="Contatos" wire:model="form.participants_id" :options="$contatos" allow-all />
+            <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$filteredContacts" allow-all />
 
-            <x-mary-markdown wire:model="form.description" label="Mensagem" />
+            <x-mary-markdown wire:model="form.menssage_content" label="Mensagem" />
 
             <hr>
 
@@ -41,7 +85,7 @@
 
             <hr>
 
-            <div class="grid grid-cols-2 gap-4">
+            {{--<div class="grid grid-cols-2 gap-4">
                 <x-mary-datepicker
                     label="Prazo inicial"
                     wire:model="form.date_inicial"
@@ -56,7 +100,7 @@
                     :config="$configDatePicker"
                     hint="Prazo definido pelo responsável com base na análise realizada."
                 />
-            </div>
+            </div>--}}
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />
 

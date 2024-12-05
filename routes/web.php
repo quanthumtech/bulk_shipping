@@ -2,6 +2,7 @@
 
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
+use App\Livewire\GroupSendIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\UsersIndex;
@@ -43,10 +44,15 @@ Route::get('/logout', function () {
     return redirect('/login');
 })->name('logout');
 
-// Users
-Route::get('/send', SendIndex::class)
+// Send
+Route::get('/send/create/group-{groupId}', SendIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('send.index');
+
+// Group
+Route::get('/group-send', GroupSendIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('group-send.index');
 
 // User perfil
 Route::get('/perfil/{id?}', PerfilIndex::class)
