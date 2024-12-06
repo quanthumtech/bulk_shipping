@@ -15,16 +15,22 @@ class SendForm extends Form
     public ?Send $sends = null;
 
     protected $rules = [
-        'phone_number' => 'required|array',
+        'phone_number'     => 'required|array',
         'menssage_content' => 'required|string',
-        'sent_at' => 'nullable|date',
-        'active' => 'nullable|boolean',
-        'status' => 'nullable|string',
-        'file' => 'nullable|array',
-        'file.*' => 'mimes:jpg,jpeg,png,pdf,docx|max:2048',
+        'message_interval' => 'required|string',
+        'sent_at'          => 'nullable|date',
+        'active'           => 'nullable|boolean',
+        'status'           => 'nullable|string',
+        'start_date'       => 'nullable|date|before_or_equal:end_date',
+        'end_date'         => 'nullable|date|after_or_equal:start_date',
+        'interval'         => 'nullable|integer|min:1',
+        'file'             => 'nullable|array',
+        'file.*'           => 'mimes:jpg,jpeg,png,pdf,docx|max:2048',
     ];
 
-    public $contato, $file, $phone_number, $sent_at, $active, $status, $contact_name, $menssage_content, $group_id, $user_id;
+    public $contato, $file, $phone_number, $sent_at, $active,
+            $status, $contact_name, $menssage_content, $message_interval,
+            $group_id, $user_id, $start_date, $end_date, $interval;
 
     public function setSend(Send $sends)
     {
@@ -32,11 +38,15 @@ class SendForm extends Form
         $this->contact_name        = $sends->contact_name;
         $this->phone_number        = $sends->phone_number ? json_decode($sends->phone_number, true) : [];
         $this->menssage_content    = $sends->menssage_content;
+        $this->message_interval    = $sends->message_interval;
         $this->sent_at             = $sends->sent_at;
         $this->active              = (bool) $sends->active;
         $this->status              = $sends->status;
         $this->group_id            = $sends->group_id;
         $this->user_id             = $sends->user_id;
+        $this->start_date          = $sends->start_date;
+        $this->end_date            = $sends->end_date;
+        $this->interval            = $sends->interval;
         $this->file                = $sends->file ? asset('send/' . $sends->file) : null;
 
     }
@@ -46,14 +56,18 @@ class SendForm extends Form
         $this->validate();
 
         $data = [
-            'contact_name'   => $this->contato,
-            'phone_number'   => json_encode($this->phone_number),
-            'message_content'=> $this->menssage_content,
-            'sent_at'        => $this->sent_at,
-            'active'         => $this->active,
-            'status'         => $this->status,
-            'user_id'        => auth()->id(),
-            'group_id'       => $this->sends->group_id ?? $this->group_id,
+            'contact_name'    => $this->contato,
+            'phone_number'    => json_encode($this->phone_number),
+            'message_content' => $this->menssage_content,
+            'message_interval'=> $this->message_interval,
+            'sent_at'         => $this->sent_at,
+            'active'          => $this->active,
+            'status'          => $this->status,
+            'user_id'         => auth()->id(),
+            'group_id'        => $this->sends->group_id ?? $this->group_id,
+            'start_date'      => $this->start_date,
+            'end_date'        => $this->end_date,
+            'interval'        => $this->interval,
         ];
 
         if ($this->file && is_array($this->file)) {

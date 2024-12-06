@@ -63,6 +63,11 @@ class ChatwootService
         $phoneNumber = (string) $phoneNumber;
         $messageContent = (string) $messageContent;
 
+        //dados da api post
+        $user = Auth::user();
+        $apikey = $user->apikey;
+        $api_post = $user->api_post;
+
         $payload = [
             "number" => $phoneNumber,
             "options" => [
@@ -77,8 +82,8 @@ class ChatwootService
 
         try {
             $response = Http::withHeaders([
-                'apikey' => 'jqcin6rn36j5t5va05kve',
-            ])->post('https://evolution.plataformamundo.com.br/message/sendText/GrupoThomasJeferson', $payload);
+                'apikey' => $apikey,
+            ])->post($api_post, $payload);
 
             if ($response->successful()) {
                 Log::info("Mensagem enviada com sucesso para {$phoneNumber}");

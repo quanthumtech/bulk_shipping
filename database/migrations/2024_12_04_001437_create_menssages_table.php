@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('menssages', function (Blueprint $table) {
             $table->id();
-            $table->string('contact_name');
-            $table->string('phone_number');
-            $table->text('message_content');
+            $table->string('contact_name')->nullable();
+            $table->string('phone_number')->nullable();
+            $table->text('message_content')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->string('file')->nullable();
             $table->boolean('active')->default(0)->nullable();

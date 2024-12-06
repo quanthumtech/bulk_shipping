@@ -75,7 +75,13 @@
     {{-- INFO: cards grupos --}}
     <div class="grid lg:grid-cols-3 gap-5">
         @foreach ($groups as $group)
-            <x-mary-card title="{{ $group->title }}" class="bg-gray-50 shadow-lg" subtitle="{{ $group->sub_title }}" separator progress-indicator>
+            <x-mary-card
+                title="{{ $group->title }}"
+                class="bg-gray-50 shadow-lg"
+                subtitle="{{ $group->sub_title }}"
+                separator
+                progress-indicator
+                >
                 <x-slot:figure>
                     <img src="{{ Storage::url($group->image) }}" class="h-28 w-full object-cover" />
                 </x-slot:figure>

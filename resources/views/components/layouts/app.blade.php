@@ -85,11 +85,15 @@
                 <x-mary-menu-item title="Home" icon="o-home" link="/dashboard" />
                 <x-mary-menu-sub title="Messages" icon="o-envelope">
                     <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
-                    <x-mary-menu-item title="Histórico" icon="o-clipboard-document-check" link="###" />
+                    <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
                 </x-mary-menu-sub>
-                <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
-                    <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
-                </x-mary-menu-sub>
+                @if(Auth::user()->type_user === '1' || Auth::user()->type_user === '2')
+                    <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
+                        <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
+                    </x-mary-menu-sub>
+                @endif
+                <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="#" />
+                <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="#" />
             </x-mary-menu>
         </x-slot:sidebar>
 

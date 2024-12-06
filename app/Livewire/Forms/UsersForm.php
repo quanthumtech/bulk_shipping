@@ -34,6 +34,10 @@ class UsersForm extends Form
 
     public $token_acess;
 
+    public $apikey;
+
+    public $api_post;
+
     public function setUsers(User $users)
     {
         $this->users             = $users;
@@ -43,6 +47,8 @@ class UsersForm extends Form
         $this->active            = (bool) $users->active;
         $this->type_user         = $users->type_user;
         $this->token_acess       = $users->token_acess;
+        $this->apikey            = $users->apikey;
+        $this->api_post          = $users->api_post;
         $this->password          = '';
     }
 
@@ -58,6 +64,8 @@ class UsersForm extends Form
             'active'            => $this->active,
             'type_user'         => $this->type_user,
             'token_acess'       => $this->token_acess,
+            'apikey'            => $this->apikey,
+            'api_post'          => $this->api_post,
             'password'          => Hash::make($this->password),
         ]);
 
@@ -76,6 +84,8 @@ class UsersForm extends Form
             'active'            => $this->active,
             'type_user'         => $this->type_user,
             'token_acess'       => $this->token_acess,
+            'apikey'            => $this->apikey,
+            'api_post'          => $this->api_post,
         ];
 
         if (!empty($this->password)) {

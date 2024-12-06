@@ -162,7 +162,8 @@ class SendIndex extends Component
 
         $descriptionCard = 'Utilize este recurso para enviar mensagens em massa para os contatos selecionados.
                             Crie cadências personalizadas, programe intervalos entre os envios e alcance seus
-                            contatos de forma eficiente e organizada.';
+                            contatos de forma eficiente e organizada. Obs: Não esqueça de clicar no "X" para
+                            zerar o campo, assim você pode selecionar novos contatos!';
 
         $configDatePicker = ['locale' => 'pt'];
 

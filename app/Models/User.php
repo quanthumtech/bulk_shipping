@@ -25,7 +25,9 @@ class User extends Authenticatable
         'chatwoot_accoumts',
         'active',
         'type_user',
-        'token_acess'
+        'token_acess',
+        'apikey',
+        'api_post'
     ];
 
     /**

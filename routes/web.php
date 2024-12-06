@@ -3,6 +3,7 @@
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\GroupSendIndex;
+use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\UsersIndex;
@@ -58,5 +59,10 @@ Route::get('/group-send', GroupSendIndex::class)
 Route::get('/perfil/{id?}', PerfilIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('perfil.index');
+
+// User perfil
+Route::get('/contatos', ListContatosIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('contatos.index');
 
 require __DIR__.'/auth.php';

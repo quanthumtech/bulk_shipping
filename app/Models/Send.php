@@ -18,7 +18,11 @@ class Send extends Model
         'active',
         'status',
         'group_id',
-        'user_id'
+        'user_id',
+        'start_date',
+        'end_date',
+        'interval',
+        'message_interval'
     ];
 
     /**

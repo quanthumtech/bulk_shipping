@@ -61,11 +61,9 @@
         @endscope
 
         {{-- Special `actions` slot --}}
-        @if(Auth::user()->type_user === '1')
-            @scope('actions', $users)
-                <x-mary-button icon="o-trash" wire:click="delete({{ $users->id }})" spinner class="btn-sm btn-error" />
-            @endscope
-        @endif
+        @scope('actions', $users)
+            <x-mary-button icon="o-trash" wire:click="delete({{ $users->id }})" spinner class="btn-sm btn-error" />
+        @endscope
     </x-mary-table>
 
     {{-- INFO: Modal users --}}
@@ -79,6 +77,8 @@
 
             <hr>
 
+            <p>Configurações para obter os contatos.</p>
+
             <x-mary-input
                 label="ID Conta Chatwoot"
                 placeholder="Exemplo: 1"
@@ -91,8 +91,28 @@
                 wire:model="form.token_acess"
             />
 
+            <hr>
+
+            <p>Configurações da API de envio.</p>
+
+            <x-mary-input
+                label="API key"
+                placeholder="Exemplo: adfxwj34...."
+                hint="Informe o Key da api de envio."
+                wire:model="form.apikey"
+            />
+            <x-mary-input
+                label="API Evolution"
+                hit="Informe a API de envio aqui"
+                placeholder="Exemplo: https://api-exemplo"
+                wire:model="form.api_post"
+            />
+
             <x-mary-select label="Tipo de Usuário" :options="$options" wire:model="form.type_user" />
             <x-mary-toggle label="Ativo" wire:model="form.active" />
+
+
+
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.userModal = false" />

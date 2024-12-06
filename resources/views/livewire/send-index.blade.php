@@ -79,28 +79,62 @@
 
             <hr>
 
-            <x-mary-file wire:model="form.file" multiple />
+            {{--<x-mary-file wire:model="form.file" multiple />--}}
 
-            <h3><strong>Configurar cadência</strong></h3>
+            <x-mary-popover position="top-start" offset="20">
+                <x-slot:trigger>
+                    <x-mary-button label="Configurar cadência (Opicional)" />
+                </x-slot:trigger>
+                <x-slot:content>
+                    Logo vamos aprimorar a cadência,
+                    por enquanto o envio de intervalo
+                    será apenas um.
+                </x-slot:content>
+            </x-marypopover>
 
             <hr>
 
             {{--<div class="grid grid-cols-2 gap-4">
                 <x-mary-datepicker
-                    label="Prazo inicial"
-                    wire:model="form.date_inicial"
+                    label="Data inicial"
+                    wire:model="form.start_date"
                     icon="o-calendar"
                     :config="$configDatePicker"
-                    hint="Prazo definido pelo responsável com base na análise realizada."
+                    hint="Data de início do envio."
                 />
                 <x-mary-datepicker
-                    label="Prazo final"
-                    wire:model="form.date_final"
+                    label="Data final"
+                    wire:model="form.end_date"
                     icon="o-calendar"
                     :config="$configDatePicker"
-                    hint="Prazo definido pelo responsável com base na análise realizada."
+                    hint="Data limite para os envios."
                 />
             </div>--}}
+
+            <x-mary-datepicker
+                label="Data inicial"
+                wire:model="form.start_date"
+                icon="o-calendar"
+                :config="$configDatePicker"
+                hint="Data de início do envio."
+            />
+
+            <x-mary-input
+                label="Intervalo (em dias)"
+                type="number"
+                wire:model="form.interval"
+                hint="Intervalo entre as mensagens (em dias)."
+                min="1"
+            />
+
+            <x-mary-textarea
+                label="Menssagem"
+                wire:model="form.message_interval"
+                placeholder="Digite aqui ..."
+                hint="Max 1000 chars"
+                rows="5"
+                inline />
+
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />
 

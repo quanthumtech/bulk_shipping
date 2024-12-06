@@ -25,6 +25,8 @@ class GroupSendIndex extends Component
 
     public $contatos;
 
+    public $search = '';
+
     public function mount(ChatwootService $chatwootService)
     {
         $this->chatwootService = $chatwootService;
@@ -100,12 +102,20 @@ class GroupSendIndex extends Component
         $userId = auth()->id();
 
         $groups = GroupSend::where('user_id', $userId)
-            ->where('active', 1)
-            ->get();
+                    ->where(function($query) {
+                        $query->where('title', 'like', '%' . $this->search . '%')
+                            ->orWhere('sub_title', 'like', '%' . $this->search . '%')
+                            ->orWhere('description', 'like', '%' . $this->search . '%')
+                            ->orWhere('phone_number', 'like', '%' . $this->search . '%');
+                    })
+                    ->where('active', 1)
+                    ->get();
 
-        $descriptionCard = 'Comece criando um grupo para organizar seus contatos,
-                            assim poderá enviar as mensagns de suas campanhas da melhor
-                            maneira.';
+        $descriptionCard = 'Para começar, crie um grupo onde você
+                            poderá organizar seus contatos. Isso
+                            facilitará o envio de mensagens das suas
+                            campanhas, garantindo que cheguem ao público
+                            certo de forma mais eficiente.';
 
         return view('livewire.group-send-index', [
             'groups'          => $groups,
