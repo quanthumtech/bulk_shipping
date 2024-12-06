@@ -40,17 +40,18 @@
             class="bg-gray-50 shadow-lg"/>
     </div>
 
-    <div class="grid lg:grid-cols-2 gap-10 mt-10">
+    <div class="grid lg:grid-cols-2 gap-10 mt-10 justify-items-center">
         {{-- Gráfico de Contatos Durante o Mês --}}
-        <div class="bg-white p-5 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-5">Contatos Durante o Mês</h3>
-            <x-mary-chart wire:model="contatosChart" />
-        </div>
+        <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center">
+            <h3 class="text-lg font-semibold mb-4 text-center">Contatos Durante o Mês</h3>
+            <x-mary-chart wire:model="contatosChart" class="w-full h-72 mx-auto flex justify-center items-center" />
+            </div>
 
         {{-- Gráfico de Frequência de Mensagens --}}
-        <div class="bg-white p-5 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-5">Frequência de Mensagens</h3>
-            <x-mary-chart wire:model="mensagensChart" />
+        <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center">
+            <h3 class="text-lg font-semibold mb-4 text-center">Frequência de Mensagens</h3>
+            <x-mary-chart wire:model="mensagensChart" class="w-full h-72 mx-auto flex justify-center items-center" /> <!-- Centralizando o gráfico -->
         </div>
     </div>
+
 </div>
