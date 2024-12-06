@@ -21,7 +21,7 @@ class SendForm extends Form
         'sent_at'          => 'nullable|date',
         'active'           => 'nullable|boolean',
         'status'           => 'nullable|string',
-        'start_date'       => 'nullable|date|before_or_equal:end_date',
+        'start_date'       => 'nullable|date',
         'end_date'         => 'nullable|date|after_or_equal:start_date',
         'interval'         => 'nullable|integer|min:1',
         'file'             => 'nullable|array',
