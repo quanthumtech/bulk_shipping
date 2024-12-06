@@ -6,28 +6,26 @@ use App\Livewire\GroupSendIndex;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
+use App\Livewire\StatisticIndex;
 use App\Livewire\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
 
-Route::view('dashboard', 'dashboard')
+// Statistic
+Route::get('/statistic', StatisticIndex::class)
     ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
-Route::view('profile', 'profile')
-    ->middleware(['auth'])
-    ->name('profile');
-
-// Users
-Route::get('/users', UsersIndex::class)
-    ->middleware(['auth', 'verified'])
-    ->name('users.index');
+    ->name('statistic.index');
 
 // Dashboard
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+// Users
+Route::get('/users', UsersIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('users.index');
 
 Route::get('/login', Login::class)
     ->middleware('guest')

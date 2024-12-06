@@ -29,7 +29,7 @@ class Login extends Component
             if ($user->active != 1) {
                 Auth::logout();
                 $this->error("Sua conta está desativada. Por favor, entre em contato com o suporte.", position: 'toast-top');
-                return Redirect::route('login');
+                return Redirect::route('login.bulkship');
             }
 
             request()->session()->regenerate();

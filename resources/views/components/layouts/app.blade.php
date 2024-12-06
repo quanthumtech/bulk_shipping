@@ -25,6 +25,9 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ru.js"></script>
 
+    {{-- Chart.js  --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen font-sans antialiased">
@@ -82,15 +85,17 @@
 
             {{-- Activates the menu item when a route matches the `link` property --}}
             <x-mary-menu activate-by-route>
-                <x-mary-menu-item title="Home" icon="o-home" link="/dashboard" />
+                <x-mary-menu-item title="Home" icon="o-home" link="/statistic" />
                 <x-mary-menu-sub title="Messages" icon="o-envelope">
                     <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
                 </x-mary-menu-sub>
-                @if(Auth::user()->type_user === '1' || Auth::user()->type_user === '2')
-                    <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
-                        <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
-                    </x-mary-menu-sub>
+                @if($user = auth()->user())
+                    @if($user->type_user === '1' || $user->type_user === '2')
+                        <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
+                            <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
+                        </x-mary-menu-sub>
+                    @endif
                 @endif
                 <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="#" />
                 <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="#" />

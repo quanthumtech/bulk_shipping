@@ -17,7 +17,7 @@ class SendForm extends Form
     protected $rules = [
         'phone_number'     => 'required|array',
         'menssage_content' => 'required|string',
-        'message_interval' => 'required|string',
+        'message_interval' => 'nullable|string',
         'sent_at'          => 'nullable|date',
         'active'           => 'nullable|boolean',
         'status'           => 'nullable|string',

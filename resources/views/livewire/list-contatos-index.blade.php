@@ -1,5 +1,8 @@
 <div>
     <x-mary-header title="Lista de contatos" subtitle="Gerencie sua lista de contatos" separator>
+        <x-slot:middle class="!justify-end">
+            <x-mary-input icon="o-bolt" wire:model.live="search" placeholder="Search..." />
+        </x-slot:middle>
         <x-slot:actions>
             <x-mary-button label="Grupos" icon="o-rectangle-group" @click="window.location.href = '{{ route('group-send.index') }}'" />
         </x-slot:actions>

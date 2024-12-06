@@ -88,7 +88,7 @@
                 <x-slot:menu>
                     <x-mary-badge value="#{{ $group->id }}" class="badge-primary" />
                 </x-slot:menu>
-                <x-mary-button label="Menssagens" @click="window.location.href = '{{ route('send.index', ['groupId' => $group->id]) }}'" />
+                <x-mary-button label="Mensagens" @click="window.location.href = '{{ route('send.index', ['groupId' => $group->id]) }}'" />
                 <x-mary-button icon="o-pencil-square" @click="$wire.edit({{ $group->id }})" class="btn-primary" />
                 <x-mary-button icon="o-trash" wire:click="delete({{ $group->id }})" class="btn-error end" />
             </x-mary-card>

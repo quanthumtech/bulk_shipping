@@ -83,7 +83,7 @@
 
             <x-mary-popover position="top-start" offset="20">
                 <x-slot:trigger>
-                    <x-mary-button label="Configurar cadência (Opicional)" />
+                    <x-mary-button label="Configurar cadência (Opcional)" />
                 </x-slot:trigger>
                 <x-slot:content>
                     Logo vamos aprimorar a cadência,
@@ -93,23 +93,6 @@
             </x-marypopover>
 
             <hr>
-
-            {{--<div class="grid grid-cols-2 gap-4">
-                <x-mary-datepicker
-                    label="Data inicial"
-                    wire:model="form.start_date"
-                    icon="o-calendar"
-                    :config="$configDatePicker"
-                    hint="Data de início do envio."
-                />
-                <x-mary-datepicker
-                    label="Data final"
-                    wire:model="form.end_date"
-                    icon="o-calendar"
-                    :config="$configDatePicker"
-                    hint="Data limite para os envios."
-                />
-            </div>--}}
 
             <x-mary-datepicker
                 label="Data inicial"
@@ -128,7 +111,7 @@
             />
 
             <x-mary-textarea
-                label="Menssagem"
+                label="Mensagem"
                 wire:model="form.message_interval"
                 placeholder="Digite aqui ..."
                 hint="Max 1000 chars"

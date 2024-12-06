@@ -46,7 +46,9 @@ class ListContatosIndex extends Component
             ['key' => 'name', 'label' => 'Nome do Contato'],
         ];
 
-        $descriptionCard = 'Essa lista de contatos foi obtida do chatwoot.';
+        $descriptionCard = 'Essa lista de contatos foi obtida do chatwoot.
+                            Em breve você poderá inserir seus contatos aqui e não
+                            só enviar suas campanhas com os contatos do chatwoot.';
 
         return view('livewire.list-contatos-index', [
             'headers'         => $headers,
