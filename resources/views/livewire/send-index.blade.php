@@ -75,7 +75,17 @@
         <x-mary-form wire:submit="save">
             <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$filteredContacts" allow-all />
 
-            <x-mary-markdown wire:model="form.menssage_content" label="Mensagem" />
+            <x-mary-markdown wire:model="form.menssage_content" label="Mensagem">
+                <x-slot:append>
+                    <x-mary-button
+                        icon="o-sparkles"
+                        wire:click="generateSuggestion"
+                        spinner
+                        class="btn-ghost"
+                        tooltip="Sugerir mensagem com AI"
+                    />
+                </x-slot:append>
+            </x-mary-markdown>
 
             <hr>
 

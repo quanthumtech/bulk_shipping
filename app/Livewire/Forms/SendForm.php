@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Models\Send;
+use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
 use Livewire\WithFileUploads;
@@ -83,5 +84,30 @@ class SendForm extends Form
         Send::create($data);
 
         $this->reset();
+    }
+
+    public function aiSuggestion($context = "")
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('DEEPSEEK_API_KEY'),
+                'Content-Type' => 'application/json',
+            ])->post('https://api.deepseek.com/v1/chat/completions', [
+                'model' => 'deepseek-chat',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => "Sugira uma mensagem profissional para: $context. Mantenha em 160 caracteres."
+                    ]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $this->menssage_content = $response->json()['choices'][0]['message']['content'];
+            }
+
+        } catch (\Exception $e) {
+            throw new \Exception("Erro na API: " . $e->getMessage());
+        }
     }
 }

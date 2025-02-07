@@ -14,7 +14,7 @@ class ChatwootService
      *
      * @return void
      */
-    public function getContatos()
+    public function getContatos($page = 1, $search = '')
     {
         $user = Auth::user();
         $chatwootAccountId = $user->chatwoot_accoumts;
@@ -28,25 +28,35 @@ class ChatwootService
                 'api_access_token' => $token,
             ])->get($url, [
                 'sort' => '-email',
-                'page' => 1,
+                'sort' => '-name',
+                'sort' => '-phone_number',
+                'sort' => '-last_activity_at',
+                'page' => $page,
+                'name' => $search, // Passa o termo de busca para a API
+                'email' => $search, // Pesquisa também por email
+                'phone_number' => $search, // Pesquisa também por telefone
             ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-
-                if (isset($data['payload'])) {
-                    return collect($data['payload'])->map(function ($contact) {
-                        return [
-                            'id' => $contact['phone_number'],
-                            'name' => $contact['name'] ?? $contact['phone_number'],
-                        ];
-                    })->toArray();
-                }
+            if (!$response->successful()) {
+                Log::error('Erro na API: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
             }
 
-            return [];
+            $data = $response->json();
+            Log::info("Página {$page} - Dados:", $data);
+
+            // Obter os contatos da página atual
+            $contacts = $data['payload'] ?? [];
+
+            return collect($contacts)->map(function ($contact) {
+                return [
+                    'id' => $contact['phone_number'],
+                    'name' => $contact['name'] ?? $contact['phone_number'],
+                ];
+            })->toArray();
+
         } catch (\Exception $e) {
-            Log::error('Erro ao recuperar contatos da API: ' . $e->getMessage());
+            Log::error('Erro ao recuperar contatos: ' . $e->getMessage());
             return [];
         }
     }

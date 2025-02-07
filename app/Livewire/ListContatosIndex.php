@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Livewire;
 
 use App\Services\ChatwootService;
@@ -7,32 +6,66 @@ use Livewire\Component;
 
 class ListContatosIndex extends Component
 {
-
-    public $contatos;
-
+    public $contatos = [];
     protected $chatwootService;
-
     public $search = '';
-
-    public int $perPage = 3;
-
-    public $page = 1;
+    public int $page = 1; // Página atual
+    public $contatosPages;
+    public int $totalPages = 1; // Total de páginas
 
     public function mount(ChatwootService $chatwootService)
     {
         $this->chatwootService = $chatwootService;
+        $this->contatosPages = $this->chatwootService->getContatos();
+        $this->updateContatos();
+    }
 
-        $this->contatos = $this->chatwootService->getContatos();
+    public function updateContatos()
+    {
+        $this->chatwootService = app(ChatwootService::class);
+        if (!$this->chatwootService) {
+            throw new \Exception("ChatwootService não foi injetado corretamente.");
+        }
+
+        $result = $this->chatwootService->getContatos($this->page);
+        $this->contatos = is_array($result) ? $result : [];
+
+        // Se houver uma pesquisa, filtra os contatos
+        if ($this->search) {
+            $this->contatos = $this->searchContatos($this->search);
+        }
+
+        // Ajuste correto do total de páginas
+        $this->totalPages = count($this->contatos) > 0 ? ceil(count($this->contatos) / 10) : 1;
+    }
+
+    public function searchContatos($searchTerm)
+    {
+        return collect($this->contatosPages)->filter(function ($contato) use ($searchTerm) {
+            return strpos(strtolower($contato['name']), strtolower($searchTerm)) !== false ||
+                strpos(strtolower($contato['id']), strtolower($searchTerm)) !== false;
+        })->values()->all();
+    }
+
+    public function nextPage()
+    {
+        //if ($this->page < $this->totalPages) {
+            $this->page++;
+            $this->updateContatos();
+        //}
+    }
+
+    public function previousPage()
+    {
+        //if ($this->page > 1) {
+            $this->page--;
+            $this->updateContatos();
+        //}
     }
 
     public function render()
     {
-
-        $filteredContatos = collect($this->contatos)->filter(function($contato) {
-            return strpos($contato['name'], $this->search) !== false || strpos($contato['id'], $this->search) !== false;
-        });
-
-        $contatos_table = $filteredContatos->map(function($contato, $index) {
+        $contatos_table = collect($this->contatos)->map(function($contato, $index) {
             return [
                 'id'    => $index + 1,
                 'phone' => $contato['id'],
@@ -46,9 +79,9 @@ class ListContatosIndex extends Component
             ['key' => 'name', 'label' => 'Nome do Contato'],
         ];
 
-        $descriptionCard = 'Essa lista de contatos foi obtida do chatwoot.
+        $descriptionCard = 'Essa lista de contatos foi obtida do Chatwoot.
                             Em breve você poderá inserir seus contatos aqui e não
-                            só enviar suas campanhas com os contatos do chatwoot.';
+                            só enviar suas campanhas com os contatos do Chatwoot.';
 
         return view('livewire.list-contatos-index', [
             'headers'         => $headers,

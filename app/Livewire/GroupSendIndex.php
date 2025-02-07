@@ -27,11 +27,13 @@ class GroupSendIndex extends Component
 
     public $search = '';
 
+    public $pages = 21; //pensar melhor
+
     public function mount(ChatwootService $chatwootService)
     {
         $this->chatwootService = $chatwootService;
 
-        $this->contatos = $this->chatwootService->getContatos();
+        $this->contatos = $this->chatwootService->getContatos($this->pages);
     }
 
     public function showModal()

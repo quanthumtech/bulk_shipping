@@ -39,4 +39,10 @@
         @endscope
 
     </x-mary-table>
+
+    <div class="flex justify-between items-center mt-4">
+        <x-mary-button label="Anterior" icon="o-arrow-left" wire:click="previousPage" :disabled="$page === 1" />
+        <span>Página {{ $page }} </span>
+        <x-mary-button label="Próxima" icon="o-arrow-right" wire:click="nextPage"  />
+    </div>
 </div>
