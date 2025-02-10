@@ -21,21 +21,24 @@ class ChatwootService
         $tokenAcesso = $user->token_acess;
 
         $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$chatwootAccountId}/contacts";
-        $token = $tokenAcesso;
+        $headers = [
+            'api_access_token' => $tokenAcesso,
+        ];
+
+        // Concatena os critérios de ordenação em uma única string, se a API suportar múltiplos valores
+        $sort = '-email,-name,-phone_number,-last_activity_at';
+
+        $queryParams = [
+            'sort' => $sort,
+            'page' => $page,
+            'name' => $search,         // Pesquisa por nome
+            'email' => $search,        // Pesquisa por email
+            'phone_number' => $search, // Pesquisa por telefone
+        ];
 
         try {
-            $response = Http::withHeaders([
-                'api_access_token' => $token,
-            ])->get($url, [
-                'sort' => '-email',
-                'sort' => '-name',
-                'sort' => '-phone_number',
-                'sort' => '-last_activity_at',
-                'page' => $page,
-                'name' => $search, // Passa o termo de busca para a API
-                'email' => $search, // Pesquisa também por email
-                'phone_number' => $search, // Pesquisa também por telefone
-            ]);
+            $response = Http::withHeaders($headers)
+                    ->get($url, $queryParams);
 
             if (!$response->successful()) {
                 Log::error('Erro na API: Status ' . $response->status() . ' - Resposta: ' . $response->body());
@@ -57,6 +60,44 @@ class ChatwootService
 
         } catch (\Exception $e) {
             Log::error('Erro ao recuperar contatos: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function searchContatosApi($searchTerm)
+    {
+        $searchTerm = (string) $searchTerm;
+        $user = Auth::user();
+        $chatwootAccountId = $user->chatwoot_accoumts;
+        $tokenAcesso = $user->token_acess;
+
+        // URL correta para busca
+        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$chatwootAccountId}/contacts/search?q=" . urlencode($searchTerm);
+
+        $headers = [
+            'api_access_token' => $tokenAcesso,
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)->get($url);
+
+            if (!$response->successful()) {
+                Log::error('Erro na API de busca: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
+            }
+
+            $data = $response->json();
+            $contacts = $data['payload'] ?? [];
+
+            return collect($contacts)->map(function ($contact) {
+                return [
+                    'id' => $contact['phone_number'],
+                    'name' => $contact['name'] ?? $contact['phone_number'],
+                ];
+            })->toArray();
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao pesquisar contatos: ' . $e->getMessage());
             return [];
         }
     }

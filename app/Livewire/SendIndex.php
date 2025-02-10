@@ -87,6 +87,30 @@ class SendIndex extends Component
         $this->info('Menssagem excluída com sucesso.', position: 'toast-top');
     }
 
+    public function updatedUserSearchableId($value)
+    {
+        $existing = collect($this->form->phone_number);
+        $selected = collect($this->contatos)->firstWhere('id', $value);
+
+        if ($selected && !$existing->contains($value)) {
+            $this->form->phone_number[] = $value;
+        }
+    }
+
+    public function searchContatosf($value = '')
+    {
+        $this->chatwootService = app(ChatwootService::class);
+        $result = $this->chatwootService->searchContatosApi($value);
+
+        // Mantém os contatos já selecionados no campo `phone_number`
+        $selectedContacts = collect($this->form->phone_number)->map(function ($contactId) {
+            return collect($this->contatos)->firstWhere('id', $contactId);
+        })->filter()->toArray();
+
+        // Garante que os contatos selecionados não sejam removidos
+        $this->contatos = array_merge($selectedContacts, $result);
+    }
+
     public function render()
     {
         $userId = auth()->id();

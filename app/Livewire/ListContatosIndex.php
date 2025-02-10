@@ -3,15 +3,20 @@ namespace App\Livewire;
 
 use App\Services\ChatwootService;
 use Livewire\Component;
+use Mary\Traits\Toast;
+
 
 class ListContatosIndex extends Component
 {
+    use Toast;
+
     public $contatos = [];
     protected $chatwootService;
     public $search = '';
     public int $page = 1; // Página atual
     public $contatosPages;
     public int $totalPages = 1; // Total de páginas
+    public $nomeCompleto = '';
 
     public function mount(ChatwootService $chatwootService)
     {
@@ -30,41 +35,42 @@ class ListContatosIndex extends Component
         $result = $this->chatwootService->getContatos($this->page);
         $this->contatos = is_array($result) ? $result : [];
 
-        // Se houver uma pesquisa, filtra os contatos
-        if ($this->search) {
-            $this->contatos = $this->searchContatos($this->search);
-        }
-
         // Ajuste correto do total de páginas
         $this->totalPages = count($this->contatos) > 0 ? ceil(count($this->contatos) / 10) : 1;
     }
 
-    public function searchContatos($searchTerm)
+    public function searchContatos()
     {
-        return collect($this->contatosPages)->filter(function ($contato) use ($searchTerm) {
-            return strpos(strtolower($contato['name']), strtolower($searchTerm)) !== false ||
-                strpos(strtolower($contato['id']), strtolower($searchTerm)) !== false;
-        })->values()->all();
+        if (!empty($this->search)) {
+            $this->contatos = $this->chatwootService->searchContatosApi($this->search);
+        } else {
+            $this->updateContatos(); // Volta para a listagem normal paginada
+        }
     }
 
     public function nextPage()
     {
-        //if ($this->page < $this->totalPages) {
-            $this->page++;
-            $this->updateContatos();
-        //}
+        $this->page++;
+        $this->updateContatos();
     }
 
     public function previousPage()
     {
-        //if ($this->page > 1) {
-            $this->page--;
-            $this->updateContatos();
-        //}
+        $this->page--;
+        $this->updateContatos();
     }
 
     public function render()
     {
+        if (!empty($this->search)) {
+            // Usa o método de pesquisa dedicado
+            $this->chatwootService = app(ChatwootService::class);
+            $this->contatos = $this->chatwootService->searchContatosApi($this->search);
+        } else {
+            // Usa os contatos da página atual
+            $this->updateContatos();
+        }
+
         $contatos_table = collect($this->contatos)->map(function($contato, $index) {
             return [
                 'id'    => $index + 1,
@@ -89,4 +95,5 @@ class ListContatosIndex extends Component
             'descriptionCard' => $descriptionCard
         ]);
     }
+
 }

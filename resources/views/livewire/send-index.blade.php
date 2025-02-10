@@ -73,7 +73,19 @@
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$filteredContacts" allow-all />
+            {{-- <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$filteredContacts" allow-all /> --}}
+
+            <x-mary-choices
+                label="Contatos"
+                wire:model="form.phone_number"
+                :options="$contatos"
+                placeholder="Clique no 'X' antes de buscar..."
+                debounce="300ms" {{-- Default is `250ms`--}}
+                min-chars="2" {{-- Default is `0`--}}
+                searchable
+                no-result-text="Nenhum contato encontrado."
+                search-function="searchContatosf"
+            />
 
             <x-mary-markdown wire:model="form.menssage_content" label="Mensagem">
                 <x-slot:append>

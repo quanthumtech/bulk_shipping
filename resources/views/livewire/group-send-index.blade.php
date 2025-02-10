@@ -31,7 +31,22 @@
         <x-mary-form wire:submit="save">
             <x-mary-input label="Titulo" wire:model="form.title" />
             <x-mary-input label="Sub Titulo" wire:model="form.sub_title" />
-            <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$contatos" allow-all />
+            {{--
+                <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$contatos" allow-all />
+
+
+                <x-mary-choices
+                    label="Contatos"
+                    wire:model="form.phone_number"
+                    :options="$contatos"
+                    placeholder="Clique no 'X' antes de buscar..."
+                    debounce="300ms"
+                    min-chars="2"
+                    searchable
+                    no-result-text="Nenhum contato encontrado."
+                    search-function="searchContatosf"
+                />
+            --}}
 
             <x-mary-textarea
                 label="Descrição"

@@ -17,6 +17,10 @@ class GroupSendIndex extends Component
 
     public $title = '';
 
+    public $searchContatos = '';
+
+    public array $phone_number = [];
+
     public bool $groupModal = false;
 
     public bool $editMode = false;
@@ -29,11 +33,30 @@ class GroupSendIndex extends Component
 
     public $pages = 21; //pensar melhor
 
+    public int $totalPages = 1; // Total de páginas
+
+    public $selectedContact;
+
+
     public function mount(ChatwootService $chatwootService)
     {
         $this->chatwootService = $chatwootService;
 
         $this->contatos = $this->chatwootService->getContatos($this->pages);
+    }
+
+    public function updateContatos()
+    {
+        $this->chatwootService = app(ChatwootService::class);
+        if (!$this->chatwootService) {
+            throw new \Exception("ChatwootService não foi injetado corretamente.");
+        }
+
+        $result = $this->chatwootService->getContatos($this->pages);
+        $this->contatos = is_array($result) ? $result : [];
+
+        // Ajuste correto do total de páginas
+        $this->totalPages = count($this->contatos) > 0 ? ceil(count($this->contatos) / 10) : 1;
     }
 
     public function showModal()
@@ -99,8 +122,33 @@ class GroupSendIndex extends Component
         $this->info('Grupo excluído com sucesso.', position: 'toast-top');
     }
 
+    public function updatedUserSearchableId($value)
+    {
+        $existing = collect($this->form->phone_number);
+        $selected = collect($this->contatos)->firstWhere('id', $value);
+
+        if ($selected && !$existing->contains($value)) {
+            $this->form->phone_number[] = $value;
+        }
+    }
+
+    public function searchContatosf($value = '')
+    {
+        $this->chatwootService = app(ChatwootService::class);
+        $result = $this->chatwootService->searchContatosApi($value);
+
+        // Mantém os contatos já selecionados no campo `phone_number`
+        $selectedContacts = collect($this->form->phone_number)->map(function ($contactId) {
+            return collect($this->contatos)->firstWhere('id', $contactId);
+        })->filter()->toArray();
+
+        // Garante que os contatos selecionados não sejam removidos
+        $this->contatos = array_merge($selectedContacts, $result);
+    }
+
     public function render()
     {
+
         $userId = auth()->id();
 
         $groups = GroupSend::where('user_id', $userId)
