@@ -86,9 +86,12 @@
             {{-- Activates the menu item when a route matches the `link` property --}}
             <x-mary-menu activate-by-route>
                 <x-mary-menu-item title="Home" icon="o-home" link="/statistic" />
-                <x-mary-menu-sub title="Messages" icon="o-envelope">
+                <x-mary-menu-sub title="Gerenciar mensagens" icon="o-envelope">
                     <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
+                </x-mary-menu-sub>
+                <x-mary-menu-sub title="Gerenciar cadência" icon="o-queue-list">
+                    <x-mary-menu-item title="Configurar etapas" icon="s-bars-arrow-up" link="#" />
                 </x-mary-menu-sub>
                 @if($user = auth()->user())
                     @if($user->type_user === '1' || $user->type_user === '2')

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ListContatos;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -100,6 +101,102 @@ class ChatwootService
             Log::error('Erro ao pesquisar contatos: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Sinconiza os contatos da conta do Chatwoot
+     *
+     * @return void
+     */
+    public function syncContatos()
+    {
+        $user = Auth::user();
+        $chatwootAccountId = $user->chatwoot_accoumts;
+        $tokenAcesso = $user->token_acess;
+
+        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$chatwootAccountId}/contacts";
+        $headers = ['api_access_token' => $tokenAcesso];
+
+        $page = 1;
+        $perPage = 15;
+        $totalContacts = 0;
+
+        do {
+            try {
+                $response = Http::withHeaders($headers)->get($url, [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                ]);
+
+                Log::info("Resposta da API Chatwoot (Página $page): " . json_encode($response->json()));
+
+                if (!$response->successful()) {
+                    Log::error("Erro ao buscar contatos - Página: $page - Status: " . $response->status());
+                    break;
+                }
+
+                $data = $response->json();
+
+                if (isset($data['payload'])) {
+                    $contactsRetrieved = $data['payload'];
+                } elseif (isset($data['data'])) {
+                    $contactsRetrieved = $data['data'];
+                } else {
+                    Log::warning("Nenhum contato encontrado na página $page.");
+                    break;
+                }
+
+                if (empty($contactsRetrieved)) {
+                    Log::info("Página $page retornou vazia. Encerrando sincronização.");
+                    break;
+                }
+
+                foreach ($contactsRetrieved as $contact) {
+                    if (!empty($contact['phone_number'])) {
+                        if ($this->isWhatsappNumber($contact['phone_number'])) {
+                            ListContatos::updateOrCreate(
+                                ['phone_number' => $contact['phone_number']],
+                                [
+                                    'contact_name' => $contact['name'] ?? $contact['phone_number'],
+                                    'chatwoot_id' => $chatwootAccountId
+                                ]
+                            );
+                            $totalContacts++;
+                            Log::info("Contato {$contact['phone_number']} sincronizado.");
+                        } else {
+                            Log::info("Contato {$contact['phone_number']} não é um número de WhatsApp.");
+                        }
+                    }
+                }
+
+                Log::info("Página $page sincronizada. Contatos processados até agora: $totalContacts.");
+
+                $page++;
+            } catch (\Exception $e) {
+                Log::error("Erro ao sincronizar contatos: " . $e->getMessage());
+                break;
+            }
+        } while (!empty($contactsRetrieved));
+
+        Log::info("Sincronização finalizada. Total de contatos sincronizados: $totalContacts.");
+    }
+
+    protected function isWhatsappNumber($phoneNumber)
+    {
+        // Remove caracteres não numéricos
+        $cleaned = preg_replace('/\D/', '', $phoneNumber);
+
+        // Verifica se o número começa com o código do país (55 para o Brasil)
+        // E se possui um tamanho compatível (13 ou 14 dígitos: 55 + DDD + número)
+        if (strpos($cleaned, '55') === 0 && (strlen($cleaned) === 13 || strlen($cleaned) === 14)) {
+            return true;
+        }
+
+        // Se preferir uma lógica mais genérica, pode utilizar outra abordagem,
+        // por exemplo, verificar se o número possui pelo menos 10 dígitos
+        // return strlen($cleaned) >= 10;
+
+        return false;
     }
 
     /**
