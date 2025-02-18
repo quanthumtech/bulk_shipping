@@ -11,5 +11,6 @@ class Cadencias extends Model
         'name',
         'description',
         'active',
+        'user_id',
     ];
 }

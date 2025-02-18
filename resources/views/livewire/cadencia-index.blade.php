@@ -44,15 +44,15 @@
         @endscope
 
         {{-- Overrides `active` header --}}
-        @scope('active', $header)
+        @scope('header_active_name', $header)
             <h3 class="text-xl font-bold text-black">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Special `actions` slot --}}
-        @scope('actions', $group_table)
-            <x-mary-button icon="o-plus" wire:click="" spinner class="btn-sm btn-primary" title="adicionar etapas" />
+        @scope('actions', $row)
+            <x-mary-button icon="o-plus" @click="window.location.href = '{{ route('etapas.index', ['cadenciaId' => $row->id]) }}'" spinner class="btn-sm btn-primary" title="adicionar etapas" />
         @endscope
 
     </x-mary-table>

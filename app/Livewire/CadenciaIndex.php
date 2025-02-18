@@ -72,16 +72,24 @@ class CadenciaIndex extends Component
 
     public function render()
     {
-        $cadencias_table = Cadencias::where('name', 'like', '%' . $this->search . '%')
-                     ->orWhere('description', 'like', '%' . $this->search . '%')
-                     ->paginate($this->perPage);
+        $user = auth()->user();
+        $cadencias_table = Cadencias::where('user_id', $user->id)
+                    ->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('description', 'like', '%' . $this->search . '%')
+                    ->paginate($this->perPage);
+
+        $cadencias = Cadencias::where('user_id', $user->id)->where('active', 1)->get();
+
+        foreach ($cadencias_table as $cadencia) {
+            $cadencia->active = $this->getActiveUser($cadencia->active);
+        }
 
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'name', 'label' => 'Nome'],
             ['key' => 'description', 'label' => 'Descrição'],
             ['key' => 'active', 'label' => 'Ativo'],
-            ['key' => 'actions', 'label' => 'Adicionar Etapas', 'class' => 'w-1 text-center'],
+            //['key' => 'actions', 'label' => 'Adicionar Etapas', 'class' => 'w-1 text-black'],
         ];
 
         $descriptionCard = 'Cadências são fluxos de comunicação que podem ser aplicados a um ou mais contatos. Cada cadência é composta por uma série de etapas,
@@ -89,8 +97,19 @@ class CadenciaIndex extends Component
 
         return view('livewire.cadencia-index', [
             'cadencias_table' => $cadencias_table,
+            'cadencias' => $cadencias,
             'headers' => $headers,
             'descriptionCard' => $descriptionCard,
         ]);
+    }
+
+    public function getActiveUser($active)
+    {
+        $type = [
+            1 => 'Ativo',
+            0 => 'Inativo'
+        ];
+
+        return $type[$active] ?? '';
     }
 }

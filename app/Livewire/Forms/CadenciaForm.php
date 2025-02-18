@@ -44,6 +44,7 @@ class CadenciaForm extends Form
             'name'        => $this->name,
             'description' => $this->description,
             'active'      => $this->active,
+            'user_id'     => auth()->id(),
         ];
 
        Cadencias::create($data);
