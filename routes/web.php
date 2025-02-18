@@ -2,6 +2,7 @@
 
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
+use App\Livewire\CadenciaIndex;
 use App\Livewire\GroupSendIndex;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
@@ -62,5 +63,10 @@ Route::get('/perfil/{id?}', PerfilIndex::class)
 Route::get('/contatos', ListContatosIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('contatos.index');
+
+// Gerenciar cadencia
+Route::get('/cadencias', CadenciaIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('cadencias.index');
 
 require __DIR__.'/auth.php';
