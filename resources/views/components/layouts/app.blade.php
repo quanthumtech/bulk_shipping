@@ -90,8 +90,8 @@
                     <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
                 </x-mary-menu-sub>
-                <x-mary-menu-sub title="Cadência" icon="o-queue-list">
-                    <x-mary-menu-item title="Gerenciar cadência" icon="s-bars-arrow-up" link="/cadencias" />
+                <x-mary-menu-sub title="Cadência" icon="o-clock">
+                    <x-mary-menu-item title="Gerenciar cadência" icon="o-document-chart-bar" link="/cadencias" />
                 </x-mary-menu-sub>
                 @if($user = auth()->user())
                     @if($user->type_user === '1' || $user->type_user === '2')

@@ -6,33 +6,60 @@
         </x-slot:actions>
     </x-mary-header>
 
-    @if (session()->has('success'))
-        <x-mary-alert title="Sucesso!" description="{{ session('success') }}" class="bg-green-100 text-green-900 mb-4" dismissible />
-    @endif
-
-    <x-mary-table :rows="$etapas" :headers="$headers" class="bg-white" with-pagination>
-        @scope('titulo', $header)
-            <h3 class="text-xl font-bold">{{ $header['label'] }}</h3>
+    <x-mary-table
+        :rows="$etapas"
+        :headers="$headers"
+        class="bg-white"
+        striped @row-click="$wire.edit($event.detail.id)"
+        with-pagination
+        per-page="perPage"
+        :per-page-values="[3, 5, 10]"
+        >
+        @scope('header_titulo', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
-        @scope('tempo', $header)
-            <h3 class="text-xl font-bold">{{ $header['label'] }}</h3>
+        @scope('header_tempo', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
-        @scope('unidade_tempo', $header)
-            <h3 class="text-xl font-bold">{{ $header['label'] }}</h3>
+        @scope('header_unidade_tempo', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
         @scope('actions', $etapa)
-            <x-mary-button icon="o-trash" class="btn-sm btn-danger" wire:click="delete({{ $etapa->id }})" title="Excluir" />
+            <x-mary-button icon="o-trash" spinner class="btn-sm btn-error" wire:click="delete({{ $etapa->id }})" title="Excluir" />
         @endscope
     </x-mary-table>
 
-    <x-mary-drawer wire:model="etapaModal" title="Nova Etapa" class="w-11/12 lg:w-1/3" right>
+    <x-mary-drawer
+        wire:model="etapaModal"
+        title="{{ $title }}"
+        subtitle=""
+        separator
+        with-close-button
+        close-on-escape
+        class="w-11/12 lg:w-1/3"
+        right
+        >
+
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Título" wire:model="titulo" />
-            <x-mary-input label="Tempo" type="number" wire:model="tempo" min="1" max="30" />
-            <x-mary-select label="Unidade de Tempo" wire:model="unidade_tempo" :options="$options" />
+            <x-mary-input label="Título" wire:model="form.titulo" />
+            <x-mary-input label="Tempo" type="number" wire:model="form.tempo" min="1" max="30" />
+            <x-mary-select label="Unidade de Tempo" wire:model="form.unidade_tempo" :options="$options" />
+
+            <x-mary-select label="Tipo de envio" wire:model="form.type_send" :options="$optionsSend" />
+            <x-mary-markdown wire:model="form.message_content" label="Mensagem">
+                <x-slot:append>
+                    <x-mary-button
+                        icon="o-sparkles"
+                        wire:click="generateSuggestion"
+                        spinner
+                        class="btn-ghost"
+                        tooltip="Sugerir mensagem com AI"
+                    />
+                </x-slot:append>
+            </x-mary-markdown>
 
             <x-slot:actions>
                 <x-mary-button label="Cancelar" @click="$wire.etapaModal = false" />

@@ -30,21 +30,21 @@
     >
 
         {{-- Overrides `name` header --}}
-        @scope('name', $header)
+        @scope('header_name', $header)
             <h3 class="text-xl font-bold text-black">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `description` header --}}
-        @scope('description', $header)
+        @scope('header_description', $header)
             <h3 class="text-xl font-bold text-black">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `active` header --}}
-        @scope('header_active_name', $header)
+        @scope('header_active', $header)
             <h3 class="text-xl font-bold text-black">
                 {{ $header['label'] }}
             </h3>

@@ -27,6 +27,13 @@
         :per-page-values="[3, 5, 10]"
     >
 
+        {{-- Overrides `contact_name` header --}}
+        @scope('header_contact_name', $header)
+            <h3 class="text-xl font-bold text-black">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
         {{-- Overrides `phone` header --}}
         @scope('header_formatted_phone_number', $header)
             <h3 class="text-xl font-bold text-black">

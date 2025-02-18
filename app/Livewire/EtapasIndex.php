@@ -1,58 +1,77 @@
 <?php
 namespace App\Livewire;
 
-use App\Models\Etapa;
+use App\Livewire\Forms\EtapasForm;
 use App\Models\Cadencias;
 use App\Models\Etapas;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Mary\Traits\Toast;
 
 class EtapasIndex extends Component
 {
-    use WithPagination;
+    use WithPagination, Toast;
+
+    public EtapasForm $form;
 
     public $cadenciaId;
-    public $titulo = '';
-    public $tempo = '';
-    public $unidade_tempo = 'dias';
-    public bool $etapaModal = false;
 
-    protected $rules = [
-        'titulo' => 'required|string|max:255',
-        'tempo' => 'required|integer|min:1|max:30',
-        'unidade_tempo' => 'required|in:dias,horas,minutos',
-    ];
+    public $title = '';
+
+    public bool $etapaModal = false;
+    public bool $editMode = false;
 
     public function mount($cadenciaId)
     {
-        $this->cadenciaId = $cadenciaId;
+        $this->form->cadenciaId = $cadenciaId;
     }
 
     public function showModal()
     {
-        $this->reset(['titulo', 'tempo', 'unidade_tempo']);
+        $this->form->reset();
         $this->etapaModal = true;
+        $this->form->cadenciaId = $this->cadenciaId;
+        $this->title = 'Adicionar Etapa';
     }
 
     public function save()
     {
-        $this->validate();
+        try {
+            if ($this->editMode) {
+                $this->form->update();
+                $this->editMode = false;
+                $this->success('Etapa atualizado com sucesso!', position: 'toast-top');
+            } else {
+                $this->form->store();
+                $this->success('Etapa cadastrado com sucesso!', position: 'toast-top');
+            }
 
-        Etapas::create([
-            'cadencia_id' => $this->cadenciaId,
-            'titulo' => $this->titulo,
-            'tempo' => $this->tempo,
-            'unidade_tempo' => $this->unidade_tempo,
-        ]);
+            $this->etapaModal = false;
 
-        session()->flash('success', 'Etapa adicionada com sucesso!');
-        $this->etapaModal = false;
+        } catch (\Exception $e) {
+            dd($e);
+            $this->error('Erro ao salvar o Etapa.', position: 'toast-top');
+
+        }
+    }
+
+    public function edit($id)
+    {
+        $etapasEdit = Etapas::find($id);
+
+        if ($etapasEdit) {
+            $this->form->setEtapas($etapasEdit);
+            $this->editMode = true;
+            $this->etapaModal = true;
+        } else {
+            $this->info('Etapa não encontrada.', position: 'toast-top');
+        }
     }
 
     public function delete($id)
     {
         Etapas::findOrFail($id)->delete();
-        session()->flash('success', 'Etapa removida com sucesso!');
+        $this->success('Etapa deletada com sucesso!', position: 'toast-top');
     }
 
     public function render()
@@ -65,14 +84,19 @@ class EtapasIndex extends Component
             ['key' => 'titulo', 'label' => 'Título'],
             ['key' => 'tempo', 'label' => 'Tempo'],
             ['key' => 'unidade_tempo', 'label' => 'Unidade de Tempo'],
-            ['key' => 'actions', 'label' => 'Ações'],
         ];
 
         $options = [
-            ['value' => '', 'name' => 'Selecione...'],
+            ['id' => '', 'name' => 'Selecione...'],
             ['id' => 'dias', 'name' => 'Dias'],
             ['id' => 'horas', 'name' => 'Horas'],
             ['id' => 'minutos', 'name' => 'Minutos'],
+        ];
+
+        $optionsSend = [
+            ['id' => '', 'name' => 'Selecione...'],
+            ['id' => 'email', 'name' => 'E-mail'],
+            ['id' => 'whatsapp', 'name' => 'WhatsApp'],
         ];
 
         return view('livewire.etapas-index', [
@@ -80,6 +104,7 @@ class EtapasIndex extends Component
             'etapas' => $etapas,
             'headers' => $headers,
             'options' => $options,
+            'optionsSend' => $optionsSend,
         ]);
     }
 }

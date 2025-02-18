@@ -62,7 +62,13 @@ class SendIndex extends Component
         try {
 
             $this->chatwootService = $chatwootService;
+
+            // Collect contact names and send messages
             foreach ($this->form->phone_number as $index => $phoneNumber) {
+                $contact = collect($this->contatos)->firstWhere('id', $phoneNumber);
+                $contactName = $contact['name'] ?? 'Sem Nome';
+                $this->form->contact_name = $contactName;
+
                 $this->chatwootService->sendMessage($phoneNumber, $this->form->menssage_content);
 
                 if ($index < count($this->form->phone_number) - 1) {
@@ -75,7 +81,6 @@ class SendIndex extends Component
             $this->sendModal = false;
 
         } catch (\Exception $e) {
-            dd($e);
             $this->error('Erro ao salvar as Menssagens.', position: 'toast-top');
 
         }
@@ -152,6 +157,7 @@ class SendIndex extends Component
                         })
                         ->where(function ($query) {
                             $query->where('phone_number', 'like', '%' . $this->search . '%')
+                                ->orWhere('contact_name', 'like', '%' . $this->search . '%')
                                 ->orWhere('message_content', 'like', '%' . $this->search . '%');
                         })
                         ->with('user')
@@ -178,6 +184,7 @@ class SendIndex extends Component
 
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
+            ['key' => 'contact_name', 'label' => 'Nome do Contato'],
             ['key' => 'formatted_phone_number', 'label' => 'Tel de Contato'],
             ['key' => 'criado_por', 'label' => 'Remetente'],
             ['key' => 'menssage', 'label' => 'Menssagem'],

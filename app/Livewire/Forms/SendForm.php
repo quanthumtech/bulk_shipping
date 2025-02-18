@@ -57,7 +57,7 @@ class SendForm extends Form
         $this->validate();
 
         $data = [
-            'contact_name'    => $this->contato,
+            'contact_name'    => $this->contact_name,
             'phone_number'    => json_encode($this->phone_number),
             'message_content' => $this->menssage_content,
             'message_interval'=> $this->message_interval,
