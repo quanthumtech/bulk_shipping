@@ -94,6 +94,16 @@
                 search-function="searchContatosf"
             />
 
+            <x-mary-alert
+                title="Como enviar imagens? 📸"
+                description="Siga estes passos:
+                    1. Clique no ícone de imagem para selecionar sua foto.
+                    2. Envie a imagem junto com a mensagem, como no WhatsApp!
+                    3. Toque no ícone de olho para ver como ficou.
+                    4. Se a imagem estiver errada, apague e escolha outra."
+                icon="o-exclamation-triangle"
+            />
+
             <x-mary-markdown wire:model="form.menssage_content" label="Mensagem">
                 <x-slot:append>
                     <x-mary-button

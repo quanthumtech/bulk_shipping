@@ -258,8 +258,6 @@ class ChatwootService
                 'Content-Type' => 'application/json'
             ])->post($endpoint, $payload);
 
-            dd($response->json());
-
             Log::info("Resposta da API Evolution: " . $response->body());
 
             if ($response->successful()) {
