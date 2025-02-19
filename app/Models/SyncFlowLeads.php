@@ -18,4 +18,9 @@ class SyncFlowLeads extends Model
         'cadencia_id',
         'chatwoot_accoumts',
     ];
+
+    public function cadencia()
+    {
+        return $this->belongsTo(Cadencias::class, 'cadencia_id');
+    }
 }

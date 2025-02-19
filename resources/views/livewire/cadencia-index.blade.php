@@ -52,7 +52,10 @@
 
         {{-- Special `actions` slot --}}
         @scope('actions', $row)
-            <x-mary-button icon="o-plus" @click="window.location.href = '{{ route('etapas.index', ['cadenciaId' => $row->id]) }}'" spinner class="btn-sm btn-primary" title="adicionar etapas" />
+            <div class="flex space-x-2">
+                <x-mary-button icon="o-trash" spinner class="btn-sm btn-error" wire:click="delete({{ $row->id }})" title="Excluir" />
+                <x-mary-button icon="o-plus" @click="window.location.href = '{{ route('etapas.index', ['cadenciaId' => $row->id]) }}'" spinner class="btn-sm btn-primary" title="adicionar etapas" />
+            </div>
         @endscope
 
     </x-mary-table>
