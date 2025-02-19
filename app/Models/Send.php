@@ -22,7 +22,8 @@ class Send extends Model
         'start_date',
         'end_date',
         'interval',
-        'message_interval'
+        'message_interval',
+        'cadencias',
     ];
 
     /**

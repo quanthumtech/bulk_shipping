@@ -11,8 +11,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('cadencia_id')->constrained()->onDelete('cascade');
             $table->string('titulo');
-            $table->integer('tempo');
-            $table->enum('unidade_tempo', ['dias', 'horas', 'minutos']);
+            $table->integer('tempo')->nullable();
+            $table->enum('unidade_tempo', ['dias', 'horas', 'minutos'])->nullable();
             $table->timestamps();
         });
     }

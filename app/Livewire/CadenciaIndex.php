@@ -74,8 +74,12 @@ class CadenciaIndex extends Component
     {
         $user = auth()->user();
         $cadencias_table = Cadencias::where('user_id', $user->id)
-                    ->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('description', 'like', '%' . $this->search . '%')
+                    ->when($this->search, function($query) {
+                        $query->where(function($q) {
+                            $q->where('name', 'like', '%' . $this->search . '%')
+                              ->orWhere('description', 'like', '%' . $this->search . '%');
+                        });
+                    })
                     ->paginate($this->perPage);
 
         $cadencias = Cadencias::where('user_id', $user->id)->where('active', 1)->get();

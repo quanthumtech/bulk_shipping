@@ -108,8 +108,7 @@
 
             <hr>
 
-            {{--<x-mary-file wire:model="form.file" multiple />--}}
-
+           {{--
             <x-mary-popover position="top-start" offset="20">
                 <x-slot:trigger>
                     <x-mary-button label="Configurar cadência (Opcional)" />
@@ -145,8 +144,11 @@
                 placeholder="Digite aqui ..."
                 hint="Max 1000 chars"
                 rows="5"
-                inline />
+                inline
+            />
+            --}}
 
+            <x-mary-select label="Cadêcnia (Opcional)" wire:model="form.cadencias" :options="$cadencias" />
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />
 

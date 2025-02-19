@@ -19,11 +19,11 @@
             <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
-        @scope('header_tempo', $header)
+        @scope('header_dias', $header)
             <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
-        @scope('header_unidade_tempo', $header)
+        @scope('header_hora', $header)
             <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
@@ -39,27 +39,36 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/12 lg:w-1/3"
+        class="w-11/12 lg:w-2/3"
         right
         >
 
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Título" wire:model="form.titulo" />
-            <x-mary-input label="Tempo" type="number" wire:model="form.tempo" min="1" max="30" />
-            <x-mary-select label="Unidade de Tempo" wire:model="form.unidade_tempo" :options="$options" />
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <x-mary-input label="Título" wire:model="form.titulo" />
+                    {{-- <x-mary-select label="Unidade de Tempo" wire:model="form.unidade_tempo" :options="$options" /> --}}
+                    <x-mary-datetime label="Hora" wire:model="form.hora" icon="o-clock" type="time" />
+                </div>
+                <div class="space-y-2">
+                    <x-mary-input label="Dias" type="number" wire:model="form.dias" min="1" max="30" />
+                    <x-mary-select label="Tipo de envio" wire:model="form.type_send" :options="$optionsSend" />
+                </div>
+            </div>
 
-            <x-mary-select label="Tipo de envio" wire:model="form.type_send" :options="$optionsSend" />
-            <x-mary-markdown wire:model="form.message_content" label="Mensagem">
-                <x-slot:append>
-                    <x-mary-button
-                        icon="o-sparkles"
-                        wire:click="generateSuggestion"
-                        spinner
-                        class="btn-ghost"
-                        tooltip="Sugerir mensagem com AI"
-                    />
-                </x-slot:append>
-            </x-mary-markdown>
+            <div class="mt-4">
+                <x-mary-markdown wire:model="form.message_content" label="Mensagem">
+                    <x-slot:append>
+                        <x-mary-button
+                            icon="o-sparkles"
+                            wire:click="generateSuggestion"
+                            spinner
+                            class="btn-ghost"
+                            tooltip="Sugerir mensagem com AI"
+                        />
+                    </x-slot:append>
+                </x-mary-markdown>
+            </div>
 
             <x-slot:actions>
                 <x-mary-button label="Cancelar" @click="$wire.etapaModal = false" />

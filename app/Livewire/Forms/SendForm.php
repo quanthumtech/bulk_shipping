@@ -31,7 +31,7 @@ class SendForm extends Form
 
     public $contato, $file, $phone_number, $sent_at, $active,
             $status, $contact_name, $menssage_content, $message_interval,
-            $group_id, $user_id, $start_date, $end_date, $interval;
+            $group_id, $user_id, $start_date, $end_date, $interval, $cadencias;
 
     public function setSend(Send $sends)
     {
@@ -49,6 +49,7 @@ class SendForm extends Form
         $this->end_date            = $sends->end_date;
         $this->interval            = $sends->interval;
         $this->file                = $sends->file ? asset('send/' . $sends->file) : null;
+        $this->cadencias           = $sends->cadencias;
 
     }
 
@@ -69,6 +70,7 @@ class SendForm extends Form
             'start_date'      => $this->start_date,
             'end_date'        => $this->end_date,
             'interval'        => $this->interval,
+            'cadencias'       => $this->cadencias,
         ];
 
         if ($this->file && is_array($this->file)) {
@@ -83,9 +85,12 @@ class SendForm extends Form
 
         Send::create($data);
 
+        //$this->iniciarEtapasCadencia($this->cadencias);
+
         $this->reset();
     }
 
+    //Em analise
     public function aiSuggestion($context = "")
     {
         try {

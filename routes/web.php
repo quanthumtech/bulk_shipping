@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\WebhookZohoController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\CadenciaIndex;
@@ -9,6 +10,7 @@ use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\StatisticIndex;
+use App\Livewire\SyncFlowLeads;
 use App\Livewire\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
@@ -73,5 +75,9 @@ Route::get('/cadencias', CadenciaIndex::class)
 Route::get('/cadencias/{cadenciaId}/etapas', EtapasIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('etapas.index');
+
+Route::get('/sync-flow', SyncFlowLeads::class)
+    ->middleware(['auth', 'verified'])
+    ->name('sync-flow.index');
 
 require __DIR__.'/auth.php';

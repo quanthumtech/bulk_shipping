@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Forms\SendForm;
+use App\Models\Cadencias;
 use App\Models\GroupSend;
 use App\Models\Send;
 use App\Models\User;
@@ -182,6 +183,9 @@ class SendIndex extends Component
 
         }
 
+        $cadencias = collect([['id' => '', 'name' => 'Selecione uma cadência']])
+            ->concat(Cadencias::where('user_id', $userId)->get());
+
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'contact_name', 'label' => 'Nome do Contato'],
@@ -192,9 +196,9 @@ class SendIndex extends Component
         ];
 
         $descriptionCard = 'Utilize este recurso para enviar mensagens em massa para os contatos selecionados.
-                            Crie cadências personalizadas, programe intervalos entre os envios e alcance seus
-                            contatos de forma eficiente e organizada. Obs: Não esqueça de clicar no "X" para
-                            zerar o campo, assim você pode selecionar novos contatos!';
+                    Crie cadências personalizadas, programe intervalos entre os envios e alcance seus
+                    contatos de forma eficiente e organizada. Obs: Não esqueça de clicar no "X" para
+                    zerar o campo, assim você pode selecionar novos contatos!';
 
         $configDatePicker = ['locale' => 'pt'];
 
@@ -203,6 +207,7 @@ class SendIndex extends Component
             'group_table'      => $group_table,
             'descriptionCard'  => $descriptionCard,
             'configDatePicker' => $configDatePicker,
+            'cadencias'        => $cadencias,
             'filteredContacts' => $filteredContacts->toArray()
         ]);
     }

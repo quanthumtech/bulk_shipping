@@ -17,11 +17,15 @@ class EtapasForm extends Form
 
     public $titulo = '';
 
-    public $tempo = '';
+    public $tempo = '1';
 
     public $type_send = '';
 
     public $unidade_tempo = 'dias';
+
+    public $dias;
+
+    public $hora;
 
     public $message_content;
 
@@ -29,19 +33,26 @@ class EtapasForm extends Form
 
     protected $rules = [
         'titulo' => 'required|string|max:255',
-        'tempo' => 'required|integer|min:1|max:30',
-        'unidade_tempo' => 'required|in:dias,horas,minutos',
+        //'tempo' => 'required|integer|min:1|max:30',
+        //'unidade_tempo' => 'required|in:dias,horas,minutos',
+        'type_send' => 'required|in:email,sms,whatsapp',
+        'message_content' => 'required|string',
+        'dias' => 'required|integer|min:1|max:30',
+        'hora' => 'required',
     ];
 
     public function setEtapas(Etapas $etapas)
     {
         $this->etapas             = $etapas;
         $this->titulo             = $etapas->titulo;
-        $this->tempo              = $etapas->tempo;
-        $this->unidade_tempo      = $etapas->unidade_tempo;
+        //$this->tempo              = $etapas->tempo;
+        //$this->unidade_tempo      = $etapas->unidade_tempo;
         $this->type_send          = $etapas->type_send;
         $this->message_content    = $etapas->message_content;
         $this->cadenciaId         = $etapas->cadencia_id;
+        $this->dias               = $etapas->dias;
+        $this->hora               = $etapas->hora;
+
     }
 
     public function store()
@@ -50,11 +61,13 @@ class EtapasForm extends Form
 
         $data = [
             'titulo'          => $this->titulo,
-            'tempo'           => $this->tempo,
-            'unidade_tempo'   => $this->unidade_tempo,
+            'tempo'           => $this->tempo, //dias
+            'unidade_tempo'   => $this->unidade_tempo, //horas
             'type_send'       => $this->type_send,
             'message_content' => $this->message_content,
             'cadencia_id'     => $this->cadenciaId,
+            'dias'            => $this->dias,
+            'hora'            => $this->hora,
         ];
 
        Etapas::create($data);
@@ -74,6 +87,8 @@ class EtapasForm extends Form
             'type_send'       => $this->type_send,
             'message_content' => $this->message_content,
             'cadencia_id'     => $this->cadenciaId,
+            'dias'            => $this->dias,
+            'hora'            => $this->hora,
         ];
 
         $this->etapas->update($data);

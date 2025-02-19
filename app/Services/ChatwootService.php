@@ -181,7 +181,7 @@ class ChatwootService
         Log::info("Sincronização finalizada. Total de contatos sincronizados: $totalContacts.");
     }
 
-    protected function isWhatsappNumber($phoneNumber)
+    public function isWhatsappNumber($phoneNumber)
     {
         // Remove caracteres não numéricos
         $cleaned = preg_replace('/\D/', '', $phoneNumber);
@@ -206,15 +206,15 @@ class ChatwootService
      * @param string $message - O conteúdo da mensagem a ser enviada.
      * @return void
      */
-    public function sendMessage($phoneNumber, $messageContent)
+    public function sendMessage($phoneNumber, $messageContent, $apiPost = null, $Apikey = null)
     {
         $phoneNumber = (string) $phoneNumber;
         $messageContent = (string) $messageContent;
 
         //dados da api post
         $user = Auth::user();
-        $apikey = $user->apikey;
-        $api_post = $user->api_post;
+        $apikey = $user->apikey ?? $Apikey;
+        $api_post = $user->api_post ?? $apiPost;
 
         $payload = [
             "number" => $phoneNumber,

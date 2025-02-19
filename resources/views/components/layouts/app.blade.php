@@ -93,6 +93,9 @@
                 <x-mary-menu-sub title="Cadência" icon="o-clock">
                     <x-mary-menu-item title="Gerenciar cadência" icon="o-document-chart-bar" link="/cadencias" />
                 </x-mary-menu-sub>
+
+                <x-mary-menu-item title="SyncFlow" icon="s-square-3-stack-3d" link="/sync-flow" />
+
                 @if($user = auth()->user())
                     @if($user->type_user === '1' || $user->type_user === '2')
                         <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">

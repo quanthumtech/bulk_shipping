@@ -82,8 +82,10 @@ class EtapasIndex extends Component
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'titulo', 'label' => 'Título'],
-            ['key' => 'tempo', 'label' => 'Tempo'],
-            ['key' => 'unidade_tempo', 'label' => 'Unidade de Tempo'],
+            //['key' => 'tempo', 'label' => 'Tempo'],
+            ['key' => 'dias', 'label' => 'Dias'],
+            ['key' => 'hora', 'label' => 'Hora'],
+            //['key' => 'unidade_tempo', 'label' => 'Unidade de Tempo'],
         ];
 
         $options = [
@@ -95,7 +97,7 @@ class EtapasIndex extends Component
 
         $optionsSend = [
             ['id' => '', 'name' => 'Selecione...'],
-            ['id' => 'email', 'name' => 'E-mail'],
+            //['id' => 'email', 'name' => 'E-mail'], Em breve
             ['id' => 'whatsapp', 'name' => 'WhatsApp'],
         ];
 
