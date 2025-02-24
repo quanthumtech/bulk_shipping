@@ -18,7 +18,7 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__.'/Commands');
 
         // Opcional: registre comandos adicionais via o arquivo de rotas console
-        require base_path('routes/console.php');
+        //require base_path('routes/console.php');
     }
 
     /**
@@ -30,7 +30,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // Execute o comando cadence:process a cada hora, por exemplo
-        $schedule->command('cadence:process')->hourly();
+        //$schedule->command('cadence:process')->hourly();
         //$schedule->command('cadence:process')->everyMinute();
     }
 
