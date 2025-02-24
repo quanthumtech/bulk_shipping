@@ -24,6 +24,7 @@
         :headers="$headers"
         :rows="$cadencias_table"
         class="bg-white"
+        @row-click="$wire.edit($event.detail.id)"
         with-pagination
         per-page="perPage"
         :per-page-values="[3, 5, 10]"
@@ -72,7 +73,23 @@
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Nome do contato" wire:model="form.name" />
+            <x-mary-input label="Nome do contato" wire:model="form.name" placeholder="Digite aqui o nome da cadência..." />
+
+            {{-- INFO: range --}}
+            <x-mary-alert
+                title="Range"
+                description="Insira o intervalo da cadência, dentro do horário comercial."
+                icon="o-exclamation-triangle"
+                dismissible
+            />
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <x-mary-datetime label="Hora Inicio" wire:model="form.hora_inicio" icon="o-clock" type="time" />
+                </div>
+                <div class="space-y-2">
+                    <x-mary-datetime label="Hora Fim" wire:model="form.hora_fim" icon="o-clock" type="time" />
+                </div>
+            </div>
 
             <x-mary-textarea
                 label="Descrição"
@@ -85,7 +102,7 @@
             <x-mary-toggle label="Ativo" wire:model="form.active" />
 
             <x-slot:actions>
-                <x-mary-button label="Cancel" @click="$wire.contactModal = false" />
+                <x-mary-button label="Cancel" @click="$wire.cadenciaModal = false" />
                 <x-mary-button label="Save" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-mary-form>

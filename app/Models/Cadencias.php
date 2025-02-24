@@ -11,6 +11,8 @@ class Cadencias extends Model
     protected $fillable = [
         'name',
         'description',
+        'hora_inicio', //range de horario inicio
+        'hora_fim', //range de horario fim
         'active',
         'user_id',
     ];

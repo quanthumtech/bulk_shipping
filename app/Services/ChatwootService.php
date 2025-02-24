@@ -206,7 +206,7 @@ class ChatwootService
      * @param string $messageContent - O conteúdo da mensagem a ser enviada (texto ou URL da imagem).
      * @param string|null $apiPost - URL da API para onde enviar a mensagem (opcional).
      * @param string|null $Apikey - Chave de API se não for obtida do usuário (opcional).
-     * @return void
+     * @return array|null - Resposta da API ou null em caso de erro.
      */
     public function sendMessage($phoneNumber, $messageContent, $apiPost = null, $Apikey = null)
     {
@@ -215,13 +215,21 @@ class ChatwootService
 
         // Dados da API
         $user = Auth::user();
-        $apikey = $user->apikey ?? $Apikey;
-        $api_post = $user->api_post ?? $apiPost;
+        $apikey = $Apikey ?? $user->apikey ?? null;
+        $api_post = $apiPost ?? $user->api_post ?? null;
 
-        // Verifica se a mensagem contém uma imagem
-        if (preg_match('/!\[.*?\]\((.*?)\)/', $messageContent, $matches)) {
-            $imageUrl = $matches[1];
-            $caption = trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)); // Extrai legenda
+        if (!$api_post || !$apikey) {
+            Log::error("API Post ou API Key não fornecidos.");
+            return null;
+        }
+
+        // Verifica se é uma URL de imagem diretamente ou Markdown
+        $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
+                preg_match('/!\[.*?\]\((https?:\/\/.*?)\)/', $messageContent, $matches);
+
+        if ($isImage) {
+            $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
+            $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
 
             $payload = [
                 "number" => $phoneNumber,
@@ -230,14 +238,13 @@ class ChatwootService
                     "presence" => "composing"
                 ],
                 "mediaMessage" => [
-                    "mediatype" => "image", // Corrigido para letras minúsculas
+                    "mediatype" => "image",
                     "caption" => $caption,
                     "media" => $imageUrl
                 ]
             ];
             $endpoint = str_replace('sendText', 'sendMedia', $api_post);
         } else {
-            // Configuração para envio de texto
             $payload = [
                 "number" => $phoneNumber,
                 "options" => [
@@ -258,7 +265,7 @@ class ChatwootService
                 'Content-Type' => 'application/json'
             ])->post($endpoint, $payload);
 
-            Log::info("Resposta da API Evolution: " . $response->body());
+            Log::info("Resposta da API: " . $response->body());
 
             if ($response->successful()) {
                 Log::info("Mensagem enviada com sucesso para {$phoneNumber}");
@@ -267,9 +274,9 @@ class ChatwootService
             }
 
             return $response->json();
-
         } catch (\Exception $e) {
             Log::error("Erro ao enviar mensagem: " . $e->getMessage());
+            return null;
         }
     }
 

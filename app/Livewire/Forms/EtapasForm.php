@@ -31,13 +31,17 @@ class EtapasForm extends Form
 
     public $cadenciaId;
 
+    public $imediat;
+
+    public $active;
+
     protected $rules = [
         'titulo' => 'required|string|max:255',
         //'tempo' => 'required|integer|min:1|max:30',
         //'unidade_tempo' => 'required|in:dias,horas,minutos',
         'type_send' => 'required|in:email,sms,whatsapp',
         'message_content' => 'required|string',
-        'dias' => 'required|integer|min:1|max:30',
+        'dias' => 'required|integer|min:0|max:30',
         'hora' => 'required',
     ];
 
@@ -52,6 +56,8 @@ class EtapasForm extends Form
         $this->cadenciaId         = $etapas->cadencia_id;
         $this->dias               = $etapas->dias;
         $this->hora               = $etapas->hora;
+        $this->imediat            = (bool) $etapas->imediat;
+        $this->active             = (bool) $etapas->active;
 
     }
 
@@ -68,6 +74,8 @@ class EtapasForm extends Form
             'cadencia_id'     => $this->cadenciaId,
             'dias'            => $this->dias,
             'hora'            => $this->hora,
+            'imediat'         => $this->imediat,
+            'active'          => $this->active,
         ];
 
        Etapas::create($data);
@@ -89,6 +97,8 @@ class EtapasForm extends Form
             'cadencia_id'     => $this->cadenciaId,
             'dias'            => $this->dias,
             'hora'            => $this->hora,
+            'imediat'         => $this->imediat,
+            'active'          => $this->active,
         ];
 
         $this->etapas->update($data);

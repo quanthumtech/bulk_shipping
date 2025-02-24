@@ -27,6 +27,22 @@
             <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
         @endscope
 
+        @scope('header_imediat_format', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+        @endscope
+
+        @scope('header_active_format', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+        @endscope
+
+        @scope('header_message_status', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+        @endscope
+
+        @scope('header_message_time', $header)
+            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+        @endscope
+
         @scope('actions', $etapa)
             <x-mary-button icon="o-trash" spinner class="btn-sm btn-error" wire:click="delete({{ $etapa->id }})" title="Excluir" />
         @endscope
@@ -45,14 +61,26 @@
         >
         <x-mary-form wire:submit="save">
             <x-mary-input label="Título" wire:model="form.titulo" />
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 gap-4 mt-4">
                 <div class="space-y-2">
-                    <x-mary-input label="Dias" type="number" wire:model="form.dias" min="1" max="30" />
+                    <x-mary-input label="Dias" type="number" wire:model="form.dias" min="0" max="30" />
                 </div>
                 <div class="space-y-2">
                     <x-mary-datetime label="Hora" wire:model="form.hora" icon="o-clock" type="time" />
                 </div>
+                <div class="space-y-2">
+                    <x-mary-checkbox
+                        label="Envio imediato"
+                        wire:model="form.imediat"
+                        hint="Opção para envio imediato
+                            (Checkbox que marcado assim que entrar o
+                            SyncFlow deverá ser enviado (Ex: mensagem de boas vindas)"
+                        right
+                    />
+                </div>
             </div>
+            <br>
+
             <x-mary-select label="Tipo de envio" wire:model="form.type_send" :options="$optionsSend" />
 
             <div class="mt-4">
@@ -68,6 +96,9 @@
                     </x-slot:append>
                 </x-mary-markdown>
             </div>
+
+            <x-mary-toggle label="Ativo" wire:model="form.active" />
+
             <x-slot:actions>
                 <x-mary-button label="Cancelar" @click="$wire.etapaModal = false" />
                 <x-mary-button label="Salvar" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />

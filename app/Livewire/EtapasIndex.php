@@ -2,6 +2,7 @@
 namespace App\Livewire;
 
 use App\Livewire\Forms\EtapasForm;
+use App\Models\CadenceMessage;
 use App\Models\Cadencias;
 use App\Models\Etapas;
 use Livewire\Component;
@@ -79,12 +80,31 @@ class EtapasIndex extends Component
         $cadencia = Cadencias::findOrFail($this->cadenciaId);
         $etapas = Etapas::where('cadencia_id', $this->cadenciaId)->paginate(5);
 
+        foreach ($etapas as $etapa) {
+            $etapa->active_format = $this->getActiveUser($etapa->active);
+            $etapa->imediat_format = $this->getImediat($etapa->imediat);
+
+            // Busca a mensagem de cadence para a etapa atual
+            $cadenceMessage = CadenceMessage::where('etapa_id', $etapa->id)->first();
+            if ($cadenceMessage) {
+                $etapa->message_status = 'Enviada';
+                $etapa->message_time = $cadenceMessage->enviado_em;
+            } else {
+                $etapa->message_status = 'Não enviada';
+                $etapa->message_time = null;
+            }
+        }
+
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'titulo', 'label' => 'Título'],
             //['key' => 'tempo', 'label' => 'Tempo'],
             ['key' => 'dias', 'label' => 'Dias'],
             ['key' => 'hora', 'label' => 'Hora'],
+            ['key' => 'imediat_format', 'label' => 'Envio imediato'],
+            ['key' => 'active_format', 'label' => 'Ativo'],
+            ['key' => 'message_status', 'label' => 'Mensagem enviada'],
+            ['key' => 'message_time', 'label' => 'Hora do envio'],
             //['key' => 'unidade_tempo', 'label' => 'Unidade de Tempo'],
         ];
 
@@ -109,4 +129,26 @@ class EtapasIndex extends Component
             'optionsSend' => $optionsSend,
         ]);
     }
+
+    public function getActiveUser($active)
+    {
+        $type = [
+            1 => 'Ativo',
+            0 => 'Inativo'
+        ];
+
+        return $type[$active] ?? '';
+    }
+
+    public function getImediat($imediat)
+    {
+        $type = [
+            1 => 'Sim',
+            0 => 'Não',
+            null => 'Não'
+        ];
+
+        return $type[$imediat] ?? '';
+    }
+
 }
