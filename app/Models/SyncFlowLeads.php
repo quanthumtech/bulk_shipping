@@ -17,6 +17,7 @@ class SyncFlowLeads extends Model
         'estagio',
         'cadencia_id',
         'chatwoot_accoumts',
+        'situacao_contato',
     ];
 
     public function cadencia()

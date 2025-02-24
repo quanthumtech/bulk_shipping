@@ -32,6 +32,18 @@ class ProcessCadence extends Command
                 continue;
             }
 
+            // Verifica se a situação do contato é 'Contato Efetivo'
+            if ($lead->situacao_contato === 'Contato Efetivo') {
+                Log::info("Lead {$lead->id} possui situação 'Contato Efetivo'. Pulando execução das etapas.");
+                continue;
+            }
+
+            // Valida hora_inicio e hora_fim antes de processar
+            if (!$this->isValidTime($lead->cadencia->hora_inicio) || !$this->isValidTime($lead->cadencia->hora_fim)) {
+                Log::warning("Horário inválido ou ausente para a cadência do lead {$lead->id}. Pulando...");
+                continue;
+            }
+
             $etapas = $lead->cadencia->etapas;
             $lastSentEtapa = CadenceMessage::where('sync_flow_leads_id', $lead->id)
                 ->orderBy('etapa_id', 'desc')
@@ -71,11 +83,27 @@ class ProcessCadence extends Command
                     if ($now->between($horaInicio, $horaFim)) {
                         $this->processarEtapa($lead, $etapa, $chatwootService);
                     } else {
-                        // Se fora do horário, loga e pula para o próximo dia
                         Log::info("Etapa {$etapa->id} do lead {$lead->id} fora do horário permitido ({$lead->cadencia->hora_inicio} - {$lead->cadencia->hora_fim}). Adiada para o próximo dia.");
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Verifica se o horário é válido no formato H:i:s
+     */
+    protected function isValidTime($time)
+    {
+        if (is_null($time) || trim($time) === '') {
+            return false;
+        }
+
+        try {
+            Carbon::createFromFormat('H:i:s', $time);
+            return true;
+        } catch (\Exception $e) {
+            return false;
         }
     }
 
