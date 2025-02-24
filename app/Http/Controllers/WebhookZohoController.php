@@ -26,6 +26,7 @@ class WebhookZohoController extends Controller
             $sync_emp->estagio = $request->estagio ?? 'Não fornecido';
             $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
             $sync_emp->cadencia_id = $request->id_cadencia ?? null;
+            $sync_emp->situacao_contato = $request->situacao_contato ?? 'Não fornecido'; //se é efetivo ou não
             $sync_emp->created_at = now();
             $sync_emp->save();
 
