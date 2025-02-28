@@ -17,8 +17,6 @@ class ProcessCadence extends Command
 
     public function handle()
     {
-        $chatwootService = new ChatwootService();
-
         while (true) {
             $now = Carbon::now();
             $this->info("Horário atual no início do ciclo: " . $now);
@@ -84,7 +82,7 @@ class ProcessCadence extends Command
 
                         if ($now->between($horaInicio, $horaFim)) {
                             $this->info("Dentro do horário permitido. Processando etapa...");
-                            $this->processarEtapa($lead, $etapa, $chatwootService);
+                            $this->processarEtapa($lead, $etapa);
                         } else {
                             Log::info("Etapa {$etapa->id} do lead {$lead->id} fora do horário permitido ({$lead->cadencia->hora_inicio} - {$lead->cadencia->hora_fim}). Adiada para o próximo dia.");
                         }
@@ -116,26 +114,34 @@ class ProcessCadence extends Command
         }
     }
 
-    protected function processarEtapa($lead, $etapa, $chatwootService)
+    protected function processarEtapa($lead, $etapa)
     {
 
         $this->chatwootServices = new ChatwootService();
         $user = User::where('chatwoot_accoumts', $lead->chatwoot_accoumts)->first();
 
         if ($user && $user->api_post && $user->apikey) {
-            Log::info("Processando etapa {$etapa->id} para lead {$lead->id}");
+            Log::info("Processando etapa {$etapa->id} para lead {$lead->contact_name}");
+
+            $numeroWhatsapp = $this->chatwootServices->isWhatsappNumber($lead->contact_number);
+
+            if (!$numeroWhatsapp) {
+                Log::error("Número {$lead->contact_number} não é um número de WhatsApp válido para o lead {$lead->contact_name}");
+                echo "Número {$lead->contact_number} não é um número de WhatsApp válido para o lead {$lead->contact_name}";
+                return;
+            }
 
             try {
                 $this->chatwootServices->sendMessage(
-                    $lead->contact_number,
+                    $numeroWhatsapp,
                     $etapa->message_content,
                     $user->api_post,
                     $user->apikey
                 );
                 $this->registrarEnvio($lead, $etapa);
-                $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->id}");
+                $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
             } catch (\Exception $e) {
-                Log::error("Erro ao enviar mensagem para o lead {$lead->id}: " . $e->getMessage());
+            Log::error("Erro ao enviar mensagem para o lead {$lead->contact_name}: " . $e->getMessage());
             }
         } else {
             Log::error("Usuário ou credenciais não encontradas para a conta Chatwoot: {$lead->chatwoot_accounts}");

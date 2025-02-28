@@ -263,8 +263,6 @@ class ChatwootService
 
             Log::info("Resposta da API: " . $response->body());
 
-            //dd($response->json());
-
             if ($response->successful()) {
                 Log::info("Mensagem enviada com sucesso para {$phoneNumber}");
             } else {
