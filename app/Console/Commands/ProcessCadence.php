@@ -119,7 +119,7 @@ class ProcessCadence extends Command
     protected function processarEtapa($lead, $etapa, $chatwootService)
     {
 
-        $this->chatwootServices = app(ChatwootService::class);
+        $this->chatwootServices = new ChatwootService();
         $user = User::where('chatwoot_accoumts', $lead->chatwoot_accoumts)->first();
 
         if ($user && $user->api_post && $user->apikey) {
