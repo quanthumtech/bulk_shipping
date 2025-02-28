@@ -13,6 +13,7 @@ class ProcessCadence extends Command
 {
     protected $signature = 'cadence:process';
     protected $description = 'Processa os envios de mensagens de cadência conforme as etapas';
+    protected $chatwootServices;
 
     public function handle()
     {
@@ -118,13 +119,14 @@ class ProcessCadence extends Command
     protected function processarEtapa($lead, $etapa, $chatwootService)
     {
 
+        $this->chatwootServices = app(ChatwootService::class);
         $user = User::where('chatwoot_accoumts', $lead->chatwoot_accoumts)->first();
 
         if ($user && $user->api_post && $user->apikey) {
             Log::info("Processando etapa {$etapa->id} para lead {$lead->id}");
 
             try {
-                $chatwootService->sendMessage(
+                $this->chatwootServices->sendMessage(
                     $lead->contact_number,
                     $etapa->message_content,
                     $user->api_post,
