@@ -200,7 +200,7 @@ class ChatwootService
     }
 
     /**
-     * Envia uma mensagem (texto ou imagem) para a API externa.
+     * Envia uma mensagem (texto ou imagem) para a API Evolution 2.2.
      *
      * @param string $phoneNumber - O número de telefone do destinatário.
      * @param string $messageContent - O conteúdo da mensagem a ser enviada (texto ou URL da imagem).
@@ -223,6 +223,9 @@ class ChatwootService
             return null;
         }
 
+        // Determina a instância padrão (ajuste conforme sua configuração)
+        $instance = 'default'; // Substitua por sua instância real, se necessário
+
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
                 preg_match('/!\[.*?\]\((https?:\/\/.*?)\)/', $messageContent, $matches);
@@ -231,32 +234,32 @@ class ChatwootService
             $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
             $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
 
+            $endpoint = rtrim($api_post, '/') . "/message/sendMedia/{$instance}";
             $payload = [
-                "number" => $phoneNumber,
-                "options" => [
-                    "delay" => 1200,
-                    "presence" => "composing"
+                'number' => $phoneNumber,
+                'mediaMessage' => [
+                    'mediaUrl' => $imageUrl, // Evolution API 2.2 usa 'mediaUrl' para URL externa
+                    'caption' => $caption,
+                    'fileName' => basename($imageUrl) // Opcional, mas útil para identificação
                 ],
-                "mediaMessage" => [
-                    "mediatype" => "image",
-                    "caption" => $caption,
-                    "media" => $imageUrl
+                'options' => [
+                    'delay' => 1200,
+                    'presence' => 'composing'
                 ]
             ];
-            $endpoint = str_replace('sendText', 'sendMedia', $api_post);
         } else {
+            $endpoint = rtrim($api_post, '/') . "/message/sendText/{$instance}";
             $payload = [
-                "number" => $phoneNumber,
-                "options" => [
-                    "delay" => 1200,
-                    "presence" => "composing",
-                    "linkPreview" => false
+                'number' => $phoneNumber,
+                'textMessage' => [
+                    'text' => $messageContent
                 ],
-                "textMessage" => [
-                    "text" => $messageContent
+                'options' => [
+                    'delay' => 1200,
+                    'presence' => 'composing',
+                    'linkPreview' => false
                 ]
             ];
-            $endpoint = $api_post;
         }
 
         try {
@@ -265,17 +268,17 @@ class ChatwootService
                 'Content-Type' => 'application/json'
             ])->post($endpoint, $payload);
 
-            Log::info("Resposta da API: " . $response->body());
+            Log::info("Resposta da API Evolution 2.2: " . $response->body());
 
             if ($response->successful()) {
-                Log::info("Mensagem enviada com sucesso para {$phoneNumber}");
+                Log::info("Mensagem enviada com sucesso para {$phoneNumber} via Evolution API 2.2");
             } else {
                 Log::error("Erro ao enviar mensagem: " . $response->body());
             }
 
             return $response->json();
         } catch (\Exception $e) {
-            Log::error("Erro ao enviar mensagem: " . $e->getMessage());
+            Log::error("Erro ao enviar mensagem para Evolution API 2.2: " . $e->getMessage());
             return null;
         }
     }

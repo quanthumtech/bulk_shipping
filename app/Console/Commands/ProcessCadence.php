@@ -18,11 +18,10 @@ class ProcessCadence extends Command
     {
         $chatwootService = new ChatwootService();
 
-        // Loop infinito para manter o processo ativo
         while (true) {
             $now = Carbon::now();
+            $this->info("Horário atual no início do ciclo: " . $now);
 
-            // Busca os leads com cadência atribuída
             $leads = SyncFlowLeads::whereNotNull('cadencia_id')
                 ->with(['cadencia.etapas' => function($query) {
                     $query->orderBy('id');
@@ -35,13 +34,11 @@ class ProcessCadence extends Command
                     continue;
                 }
 
-                // Verifica se a situação do contato é 'Contato Efetivo'
                 if ($lead->situacao_contato === 'Contato Efetivo') {
                     Log::info("Lead {$lead->id} possui situação 'Contato Efetivo'. Pulando execução das etapas.");
                     continue;
                 }
 
-                // Valida hora_inicio e hora_fim antes de processar
                 if (!$this->isValidTime($lead->cadencia->hora_inicio) || !$this->isValidTime($lead->cadencia->hora_fim)) {
                     Log::warning("Horário inválido ou ausente para a cadência do lead {$lead->id}. Pulando...");
                     continue;
@@ -56,45 +53,48 @@ class ProcessCadence extends Command
                     return $etapa->id === $lastSentEtapa->etapa_id;
                 }) + 1 : 0;
 
-                // Processa a próxima etapa pendente
                 if (isset($etapas[$currentEtapaIndex])) {
                     $etapa = $etapas[$currentEtapaIndex];
 
-                    // Verifica se a etapa está ativa
                     if (!$etapa->active) {
                         Log::info("Etapa {$etapa->id} do lead {$lead->id} não está ativa. Pulando...");
                         continue;
                     }
 
-                    // Define o horário agendado para a etapa
                     $dataAgendada = $lead->created_at
                         ->copy()
                         ->addDays((int)$etapa->dias)
                         ->setTimeFromTimeString($etapa->hora);
 
-                    // Verifica se já passou o horário agendado
+                    Log::debug("Horário agendado para a etapa {$etapa->id} do lead {$lead->id}: " . $dataAgendada);
+                    $this->info("Horário agendado para a etapa {$etapa->id} do lead {$lead->id}: " . $dataAgendada);
+
                     if ($now->greaterThanOrEqualTo($dataAgendada) && !$this->etapaEnviada($lead, $etapa)) {
-                        // Converte os horários de início e fim da cadência para objetos Carbon
+                        Log::debug("Horário atual: " . $now . " é maior ou igual a " . $dataAgendada);
+                        $this->info("Horário atual: " . $now . " é maior ou igual a " . $dataAgendada);
+
                         $horaInicio = Carbon::createFromFormat('H:i:s', $lead->cadencia->hora_inicio, $now->timezone);
                         $horaFim = Carbon::createFromFormat('H:i:s', $lead->cadencia->hora_fim, $now->timezone);
 
-                        // Ajusta os horários ao dia atual
                         $horaInicio->setDate($now->year, $now->month, $now->day);
                         $horaFim->setDate($now->year, $now->month, $now->day);
 
-                        // Verifica se o horário atual está dentro do range da cadência
+                        $this->info("Intervalo permitido: {$horaInicio} até {$horaFim}");
+
                         if ($now->between($horaInicio, $horaFim)) {
+                            $this->info("Dentro do horário permitido. Processando etapa...");
                             $this->processarEtapa($lead, $etapa, $chatwootService);
                         } else {
                             Log::info("Etapa {$etapa->id} do lead {$lead->id} fora do horário permitido ({$lead->cadencia->hora_inicio} - {$lead->cadencia->hora_fim}). Adiada para o próximo dia.");
                         }
+                    } else {
+                        $this->info("Etapa {$etapa->id} do lead {$lead->id} ainda não está pronta ou já foi enviada.");
                     }
                 }
             }
 
-            // Pausa de 60 segundos antes do próximo ciclo
             $this->info("Ciclo concluído. Aguardando 60 segundos para o próximo ciclo.");
-            sleep(60); // Ajuste o tempo conforme necessário (ex.: sleep(300) para 5 minutos)
+            sleep(6);
         }
     }
 
@@ -117,6 +117,7 @@ class ProcessCadence extends Command
 
     protected function processarEtapa($lead, $etapa, $chatwootService)
     {
+
         $user = User::where('chatwoot_accoumts', $lead->chatwoot_accoumts)->first();
 
         if ($user && $user->api_post && $user->apikey) {

@@ -45,7 +45,7 @@
             <x-mary-card
                 title="{{ $sync->contact_name }}"
                 class="bg-gray-50 shadow-lg"
-                subtitle="{{ $sync->contact_number }} | {{ $sync->contact_email }}"
+                subtitle="Telefone: {{ $sync->contact_number }} | Email: {{ $sync->contact_email }} | Cadência: {{ $sync->cadencia->name }}"
                 separator
             >
                 <x-slot:menu>

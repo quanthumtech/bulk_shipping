@@ -103,10 +103,15 @@ class SyncFlowLeads extends Component
     {
         $user = auth()->user();
 
-        $syncFlowLeads = ModelsSyncFlowLeads::where('chatwoot_accoumts', $user->chatwoot_accoumts)
+        $syncFlowLeads = ModelsSyncFlowLeads::with('cadencia')
+            ->where('chatwoot_accoumts', $user->chatwoot_accoumts)
             ->when($this->search, function ($query) {
-                $query->where('contact_name', 'like', '%' . $this->search . '%')
-                      ->orWhere('contact_number', 'like', '%' . $this->search . '%');
+            $query->where('contact_name', 'like', '%' . $this->search . '%')
+                  ->orWhere('contact_number', 'like', '%' . $this->search . '%')
+                  ->orWhere('contact_number_empresa', 'like', '%' . $this->search . '%')
+                  ->orWhere('contact_email', 'like', '%' . $this->search . '%')
+                  ->orWhere('estagio', 'like', '%' . $this->search . '%')
+                  ->orWhere('situacao_contato', 'like', '%' . $this->search . '%');
             })
             ->paginate($this->perPage);
 
@@ -114,8 +119,9 @@ class SyncFlowLeads extends Component
             ->concat(Cadencias::where('user_id', $user->id)->get());
 
         return view('livewire.sync-flow-leads', [
-            'syncFlowLeads' => $syncFlowLeads,
-            'cadencias' => $cadencias,
+            'syncFlowLeads'           => $syncFlowLeads,
+            'cadencias'               => $cadencias,
         ]);
     }
+
 }
