@@ -48,14 +48,15 @@ class UsersForm extends Form
         $this->type_user         = $users->type_user;
         $this->token_acess       = $users->token_acess;
         $this->apikey            = $users->apikey;
-        $this->api_post          = $users->api_post;
+        $this->api_post          = substr($users->api_post, strrpos($users->api_post, '/') + 1);
         $this->password          = '';
     }
 
     public function store()
     {
-
         $this->validate();
+
+        $completeApiPost = "https://evolution-inst001.quanthum.tec.br/message/sendText/" . $this->api_post;
 
         User::create([
             'name'              => $this->name,
@@ -65,17 +66,18 @@ class UsersForm extends Form
             'type_user'         => $this->type_user,
             'token_acess'       => $this->token_acess,
             'apikey'            => $this->apikey,
-            'api_post'          => $this->api_post,
+            'api_post'          => $completeApiPost,
             'password'          => Hash::make($this->password),
         ]);
 
         $this->reset();
-
     }
 
     public function update()
     {
         $this->validate();
+
+        $completeApiPost = "https://evolution-inst001.quanthum.tec.br/message/sendText/" . $this->api_post;
 
         $data = [
             'name'              => $this->name,
@@ -85,7 +87,7 @@ class UsersForm extends Form
             'type_user'         => $this->type_user,
             'token_acess'       => $this->token_acess,
             'apikey'            => $this->apikey,
-            'api_post'          => $this->api_post,
+            'api_post'          => $completeApiPost,
         ];
 
         if (!empty($this->password)) {
@@ -96,4 +98,5 @@ class UsersForm extends Form
 
         $this->reset();
     }
+
 }

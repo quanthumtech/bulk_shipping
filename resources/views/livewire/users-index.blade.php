@@ -5,6 +5,7 @@
         </x-slot:middle>
         <x-slot:actions>
             <x-mary-button icon="o-funnel" />
+            <x-mary-button label="API Versão" @click="$wire.showVersionModal()"/>
             <x-mary-button icon="o-plus" class="btn-primary" @click="$wire.showModal()" />
         </x-slot:actions>
     </x-mary-header>
@@ -66,57 +67,96 @@
         @endscope
     </x-mary-table>
 
-    {{-- INFO: Modal users --}}
-    <x-mary-modal wire:model="userModal" class="backdrop-blur">
+    {{-- INFO: Slide users --}}
+    <x-mary-drawer
+        wire:model="userModal"
+        title="{{ $title }}"
+        subtitle=""
+        separator
+        with-close-button
+        close-on-escape
+        class="w-11/12 lg:w-1/3"
+        right
+    >
         <x-mary-form wire:submit="save">
 
             {{-- INFO: campos --}}
-            <x-mary-input label="Name" wire:model="form.name" />
-            <x-mary-input label="E-mail" wire:model="form.email" />
-            <x-mary-password label="Password" hint="It toggles visibility" wire:model="form.password" clearable />
+            <div class="col-span-2 space-y-2">
+                <x-mary-input label="Name" wire:model="form.name" placeholder="Digite aqui..." />
+                <x-mary-input label="E-mail" wire:model="form.email" placeholder="Digite aqui..." />
+                <x-mary-password label="Password" hint="It toggles visibility" wire:model="form.password" clearable />
+            </div>
 
-            <hr>
+            <x-mary-hr />
 
-            <p>Configurações para obter os contatos.</p>
+            <div class="col-span-2 space-y-2">
+                <x-mary-header title="Configurações" subtitle="Configurações para obter os contatos." size="text-2xl" />
 
-            <x-mary-input
-                label="ID Conta Chatwoot"
-                placeholder="Exemplo: 1"
-                hint="Informe o token de acesso necessário para vincular sua conta ao Chatwoot. Apenas número por favor."
-                wire:model="form.chatwoot_accoumts"
-            />
-            <x-mary-input
-                label="Token"
-                placeholder="Exemplo: adfxwj34...."
-                wire:model="form.token_acess"
-            />
+                <x-mary-input
+                    label="ID Conta Chatwoot"
+                    placeholder="Exemplo: 1"
+                    hint="Informe o token de acesso necessário para vincular sua conta ao Chatwoot. Apenas número por favor."
+                    wire:model="form.chatwoot_accoumts"
+                />
+                <x-mary-input
+                    label="Token"
+                    placeholder="Exemplo: adfxwj34...."
+                    wire:model="form.token_acess"
+                />
+            </div>
 
-            <hr>
+            <x-mary-hr />
 
-            <p>Configurações da API de envio.</p>
+            <div class="col-span-2 space-y-2">
+                <x-mary-header title="Configurações" subtitle="Configurações da API de envio." size="text-2xl" />
 
-            <x-mary-input
-                label="API key"
-                placeholder="Exemplo: adfxwj34...."
-                hint="Informe o Key da api de envio."
-                wire:model="form.apikey"
-            />
-            <x-mary-input
-                label="API Evolution"
-                hit="Informe a API de envio aqui"
-                placeholder="Exemplo: https://api-exemplo"
-                wire:model="form.api_post"
-            />
+                <x-mary-input
+                    label="API key"
+                    placeholder="Exemplo: adfxwj34...."
+                    hint="Informe o Key da api de envio."
+                    wire:model="form.apikey"
+                />
+                <x-mary-input
+                    label="API Evolution"
+                    hit="Informe a API de envio aqui"
+                    placeholder="Exemplo: User Empresa criado no Evolution"
+                    wire:model="form.api_post"
+                />
 
-            <x-mary-select label="Tipo de Usuário" :options="$options" wire:model="form.type_user" />
-            <x-mary-toggle label="Ativo" wire:model="form.active" />
+            </div>
 
+            <x-mary-hr />
 
+            <div class="col-span-2 space-y-4">
+                <x-mary-header title="Configurações" subtitle="Selecione o perfil e o status do usuário." size="text-2xl" />
 
+                <x-mary-select label="Perfil do Usuário" :options="$options" wire:model="form.type_user" />
+                <x-mary-toggle label="Usuário Ativo" wire:model="form.active" />
+            </div>
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.userModal = false" />
                 <x-mary-button label="Create" class="btn-primary" type="submit" spinner="save" />
+            </x-slot:actions>
+        </x-mary-form>
+    </x-mary-drawer>
+
+    {{-- INFO: Versões --}}
+    <x-mary-modal wire:model="versionModal" title="API Versão" wire:ignore.self persistent>
+        <x-mary-form wire:submit="saveVersion">
+
+            {{-- INFO: campos --}}
+            <x-mary-select label="Escolha a Versão" :options="$optionsVersion" wire:model="form_versions.version" />
+
+            @if($form_versions->version)
+                <div class="mt-2 text-sm text-gray-600">
+                    Versão selecionada: {{ $form_versions->version }}
+                </div>
+            @endif
+
+            <x-slot:actions>
+                <x-mary-button label="Cancel" @click="$wire.versionModal = false" />
+                <x-mary-button label="Salvar" class="btn-primary" type="submit" spinner="save" />
             </x-slot:actions>
         </x-mary-form>
     </x-mary-modal>

@@ -5,7 +5,7 @@ import forms from '@tailwindcss/forms';
 export default {
     darkMode: 'class',
     daisyui: {
-        themes: ["light", "dark", "cupcake"],
+        themes: ["light", "cupcake"],
     },
     content: [
 		'./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',

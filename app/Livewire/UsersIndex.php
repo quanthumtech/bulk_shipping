@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Livewire\Forms\UsersForm;
+use App\Livewire\Forms\VersionForm;
 use App\Models\User;
+use App\Models\Versions;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
@@ -18,19 +20,33 @@ class UsersIndex extends Component
 
     public UsersForm $form;
 
+    public VersionForm $form_versions;
+
     public bool $userModal = false;
 
     public bool $editMode = false;
 
+    public bool $versionModal = false;
+
     public $search = '';
 
     public int $perPage = 3;
+
+    public $title = '';
 
     public function showModal()
     {
         $this->form->reset();
         $this->editMode = false;
         $this->userModal = true;
+        $this->title = 'Cadastrar Usuário';
+    }
+
+    public function showVersionModal()
+    {
+        $this->form_versions->reset();
+        $this->versionModal = true;
+        $this->userModal = false;
     }
 
     public function edit($id)
@@ -41,6 +57,7 @@ class UsersIndex extends Component
             $this->form->setUsers($users);
             $this->editMode = true;
             $this->userModal = true;
+            $this->title = 'Editar Usuário';
         } else {
             $this->info('Usuário não encontrado.', position: 'toast-top');
         }
@@ -62,6 +79,20 @@ class UsersIndex extends Component
 
         } catch (\Exception $e) {
             $this->error('Erro ao salvar o usuário.', position: 'toast-top', redirectTo: route('users.index'));
+
+        }
+    }
+
+    public function saveVersion()
+    {
+        try {
+            $this->form_versions->store();
+            $this->success('Versão cadastrada com sucesso!', position: 'toast-top', redirectTo: route('users.index'));
+
+            $this->versionModal = false;
+
+        } catch (\Exception $e) {
+            $this->error('Erro ao salvar a versão.', position: 'toast-top', redirectTo: route('users.index'));
 
         }
     }
@@ -100,10 +131,18 @@ class UsersIndex extends Component
             ['id' => 3, 'name' => 'User'],
         ];
 
+        $optionsVersion = Versions::all()->map(function ($version) {
+            return [
+                'id' => $version->id,
+                'name' => $version->name . ($version->active ? ' (Ativa)' : '')
+            ];
+        })->prepend(['id' => '', 'name' => 'Selecione...'])->all();
+
         return view('livewire.users-index', [
             'users'   => $users,
             'headers' => $headers,
-            'options' => $options
+            'options' => $options,
+            'optionsVersion' => $optionsVersion
         ]);
     }
 
