@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ListContatos;
+use App\Models\Versions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -223,36 +224,147 @@ class ChatwootService
             return null;
         }
 
+        // Verifica a versão ativa da API
+        $activeVersion = Versions::getActiveVersion();
+        if (!$activeVersion) {
+            Log::error("Nenhuma versão ativa da API encontrada.");
+            return null;
+        }
+
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
                 preg_match('/!\[.*?\]\((https?:\/\/.*?)\)/', $messageContent, $matches);
 
-        if ($isImage) {
-            $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
-            $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
+        // Configuração do payload e endpoint com base na versão
+        if ($activeVersion === 'Evolution v1') {
+            if ($isImage) {
+                $imageUrl = $matches[1] ?? trim($messageContent);
+                $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
 
-            $payload = [
-                "number" => $phoneNumber,
-                "mediatype" => "image", // Altere para o tipo de mídia correto, se necessário
-                "mimetype" => "image/jpeg", // Altere para o MIME type correto
-                "caption" => $caption,
-                "media" => base64_encode(file_get_contents($imageUrl)),
-                // "fileName" => "nome_do_arquivo.jpg", // Descomente e ajuste se necessário
-                // "delay" => 1200, // Descomente e ajuste se necessário
-                // "quoted" => [...], // Descomente e ajuste se necessário
-            ];
-            $endpoint = str_replace('sendText', 'sendMedia', $api_post);
+                // Determina o domínio base da aplicação (funciona em local e produção)
+                $appUrl = config('app.url'); // Ex.: http://localhost ou https://seudominio.com
+                $storagePrefix = $appUrl . '/storage/markdown/';
+
+                // Verifica se é uma URL do storage local
+                if (str_starts_with($imageUrl, $storagePrefix)) {
+                    $fileName = basename($imageUrl);
+                    $filePath = storage_path('app/public/markdown/' . $fileName);
+
+                    if (!file_exists($filePath)) {
+                        Log::error("Arquivo não encontrado: {$filePath}");
+                        return null;
+                    }
+
+                    // Limite de tamanho (ex.: 5MB)
+                    $fileSize = filesize($filePath);
+                    if ($fileSize > 5 * 1024 * 1024) {
+                        Log::error("Arquivo muito grande: {$fileSize} bytes em {$filePath}");
+                        return null;
+                    }
+
+                    $imgContent = file_get_contents($filePath);
+                    if ($imgContent === false) {
+                        Log::error("Falha ao ler o arquivo: {$filePath}");
+                        return null;
+                    }
+                } else {
+                    // Para URLs externas, faz o download
+                    $imgContent = file_get_contents($imageUrl);
+                    if ($imgContent === false) {
+                        Log::error("Falha ao baixar a imagem: {$imageUrl}");
+                        return null;
+                    }
+                    $fileName = basename($imageUrl);
+                }
+
+                $media = base64_encode($imgContent);
+
+                $payload = [
+                    "number" => $phoneNumber,
+                    "options" => [
+                        "delay" => 1200,
+                        "presence" => "composing"
+                    ],
+                    "mediaMessage" => [
+                        "mediatype" => "image",
+                        "fileName" => $fileName,
+                        "caption" => $caption,
+                        "media" => $media
+                    ]
+                ];
+                $endpoint = str_replace('sendText', 'sendMedia', $api_post);
+            } else {
+                $payload = [
+                    "number" => $phoneNumber,
+                    "options" => [
+                        "delay" => 1200,
+                        "presence" => "composing",
+                        "linkPreview" => false
+                    ],
+                    "textMessage" => [
+                        "text" => $messageContent
+                    ]
+                ];
+                $endpoint = $api_post;
+            }
+        } elseif ($activeVersion === 'Evolution v2') {
+            if ($isImage) {
+                $imageUrl = $matches[1] ?? trim($messageContent);
+                $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
+
+                $appUrl = config('app.url');
+                $storagePrefix = $appUrl . '/storage/markdown/';
+
+                if (str_starts_with($imageUrl, $storagePrefix)) {
+                    $fileName = basename($imageUrl);
+                    $filePath = storage_path('app/public/markdown/' . $fileName);
+
+                    if (!file_exists($filePath)) {
+                        Log::error("Arquivo não encontrado: {$filePath}");
+                        return null;
+                    }
+
+                    $fileSize = filesize($filePath);
+                    if ($fileSize > 5 * 1024 * 1024) {
+                        Log::error("Arquivo muito grande: {$fileSize} bytes em {$filePath}");
+                        return null;
+                    }
+
+                    $imgContent = file_get_contents($filePath);
+                    if ($imgContent === false) {
+                        Log::error("Falha ao ler o arquivo: {$filePath}");
+                        return null;
+                    }
+                } else {
+                    $imgContent = file_get_contents($imageUrl);
+                    if ($imgContent === false) {
+                        Log::error("Falha ao baixar a imagem: {$imageUrl}");
+                        return null;
+                    }
+                    $fileName = basename($imageUrl);
+                }
+
+                $media = base64_encode($imgContent);
+
+                $payload = [
+                    "number" => $phoneNumber,
+                    "mediatype" => "image",
+                    "mimetype" => "image/jpeg",
+                    "caption" => $caption,
+                    "media" => $media,
+                    "fileName" => $fileName
+                ];
+                $endpoint = str_replace('sendText', 'sendMedia', $api_post);
+            } else {
+                $payload = [
+                    "number" => $phoneNumber,
+                    "message" => $messageContent
+                ];
+                $endpoint = $api_post;
+            }
         } else {
-            $payload = [
-                "number" => $phoneNumber,
-                "text" => $messageContent,
-                // "delay" => 1200, // Descomente e ajuste se necessário
-                // "quoted" => [...], // Descomente e ajuste se necessário
-                // "linkPreview" => false, // Descomente e ajuste se necessário
-                // "mentionsEveryOne" => false, // Descomente e ajuste se necessário
-                // "mentioned" => [], // Descomente e ajuste se necessário
-            ];
-            $endpoint = $api_post;
+            Log::error("Versão da API desconhecida: {$activeVersion}");
+            return null;
         }
 
         try {
@@ -265,11 +377,11 @@ class ChatwootService
 
             if ($response->successful()) {
                 Log::info("Mensagem enviada com sucesso para {$phoneNumber}");
+                return $response->json();
             } else {
                 Log::error("Erro ao enviar mensagem: " . $response->body());
+                return null;
             }
-
-            return $response->json();
         } catch (\Exception $e) {
             Log::error("Erro ao enviar mensagem: " . $e->getMessage());
             return null;

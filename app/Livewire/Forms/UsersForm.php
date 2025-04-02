@@ -77,7 +77,8 @@ class UsersForm extends Form
     {
         $this->validate();
 
-        $completeApiPost = "https://evolution-inst001.quanthum.tec.br/message/sendText/" . $this->api_post;
+        // Analisar o valor do campo api_post
+        $completeApiPost = "https://evolution.plataformamundo.com.br/message/sendText/" . $this->api_post;
 
         $data = [
             'name'              => $this->name,

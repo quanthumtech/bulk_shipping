@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use App\Livewire\Forms\CadenciaForm;
 use App\Models\Cadencias;
+use App\Services\ZohoCrmService; // Importe o serviço
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -23,6 +25,37 @@ class CadenciaIndex extends Component
     public int $perPage = 3;
 
     public $title = '';
+
+    public $options = [];
+
+    protected $zohoService;
+
+    // Injete o serviço no construtor
+    public function mount(ZohoCrmService $zohoService)
+    {
+        $this->zohoService = $zohoService;
+        $this->loadStages();
+    }
+
+    public function loadStages()
+    {
+        try {
+            $this->zohoService = app(ZohoCrmService::class);
+            $stages = $this->zohoService->getStages();
+            // Formate os estágios para o formato esperado pelo mary-select (['value' => '', 'label' => ''])
+            $this->options = array_map(function ($stage) {
+                return [
+                    'id' => $stage['display_value'],
+                    //'value' => $stage['actual_value'],
+                    'name' => $stage['display_value'],
+                ];
+            }, $stages);
+
+            //dd($this->options); // Adicione aqui para depurar
+        } catch (\Exception $e) {
+            $this->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage(), position: 'toast-top');
+        }
+    }
 
     public function showModal()
     {
@@ -58,10 +91,8 @@ class CadenciaIndex extends Component
             }
 
             $this->cadenciaModal = false;
-
         } catch (\Exception $e) {
             $this->error('Erro ao salvar o Cadência.', position: 'toast-top', redirectTo: route('cadencias.index'));
-
         }
     }
 
@@ -72,15 +103,15 @@ class CadenciaIndex extends Component
 
     public function render()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $cadencias_table = Cadencias::where('user_id', $user->id)
-                    ->when($this->search, function($query) {
-                        $query->where(function($q) {
-                            $q->where('name', 'like', '%' . $this->search . '%')
-                              ->orWhere('description', 'like', '%' . $this->search . '%');
-                        });
-                    })
-                    ->paginate($this->perPage);
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('description', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->paginate($this->perPage);
 
         $cadencias = Cadencias::where('user_id', $user->id)->where('active', 1)->get();
 
@@ -93,7 +124,6 @@ class CadenciaIndex extends Component
             ['key' => 'name', 'label' => 'Nome'],
             ['key' => 'description', 'label' => 'Descrição'],
             ['key' => 'active', 'label' => 'Ativo'],
-            //['key' => 'actions', 'label' => 'Adicionar Etapas', 'class' => 'w-1 text-black'],
         ];
 
         $descriptionCard = 'Cadências são fluxos de comunicação que podem ser aplicados a um ou mais contatos. Cada cadência é composta por uma série de etapas,
@@ -104,6 +134,7 @@ class CadenciaIndex extends Component
             'cadencias' => $cadencias,
             'headers' => $headers,
             'descriptionCard' => $descriptionCard,
+            'options' => $this->options, // Passe as opções para a view
         ]);
     }
 

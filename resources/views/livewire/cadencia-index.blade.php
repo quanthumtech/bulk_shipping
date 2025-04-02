@@ -69,11 +69,21 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/12 lg:w-1/3"
+        class="w-11/12 lg:w-1/2"
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Nome do contato" wire:model="form.name" placeholder="Digite aqui o nome da cadência..." />
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <x-mary-input label="Nome do contato" wire:model="form.name" placeholder="Digite aqui o nome da cadência..." />
+                </div>
+                <div class="space-y-2">
+                    <x-mary-select label="Escolha o Estágio" :options="$options" wire:model="form.stage" />
+                </div>
+            </div>
+
+            {{-- INFO: cadência --}}
 
             {{-- INFO: range --}}
             <x-mary-alert
@@ -82,6 +92,7 @@
                 icon="o-exclamation-triangle"
                 dismissible
             />
+
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <x-mary-datetime label="Hora Inicio" wire:model="form.hora_inicio" icon="o-clock" type="time" />

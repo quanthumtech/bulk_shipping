@@ -25,6 +25,8 @@ class CadenciaForm extends Form
 
     public $active;
 
+    public $stage = '';
+
     public $rules = [
         'name'        => 'required|string',
         'description' => 'nullable|string',
@@ -38,6 +40,7 @@ class CadenciaForm extends Form
         $this->hora_inicio            = $cadencias->hora_inicio;
         $this->hora_fim               = $cadencias->hora_fim;
         $this->description           = $cadencias->description;
+        $this->stage                 = $cadencias->stage;
         $this->active                = (bool) $cadencias->active;
     }
 
@@ -51,6 +54,7 @@ class CadenciaForm extends Form
             'hora_inicio' => $this->hora_inicio,
             'hora_fim'    => $this->hora_fim,
             'description' => $this->description,
+            'stage'      => $this->stage,
             'active'      => $this->active,
             'user_id'     => auth()->id(),
         ];
@@ -70,6 +74,7 @@ class CadenciaForm extends Form
             'hora_inicio' => $this->hora_inicio,
             'hora_fim'    => $this->hora_fim,
             'description' => $this->description,
+            'stage'      => $this->stage,
             'active'      => $this->active,
         ];
 

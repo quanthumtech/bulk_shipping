@@ -17,4 +17,15 @@ class Versions extends Model
     protected $casts = [
         'active' => 'boolean'
     ];
+
+    /**
+     * Retorna a versão ativa da API.
+     *
+     * @return string|null
+     */
+    public static function getActiveVersion(): ?string
+    {
+        $activeVersion = self::where('active', true)->first();
+        return $activeVersion ? $activeVersion->name : null;
+    }
 }

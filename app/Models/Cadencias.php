@@ -15,6 +15,7 @@ class Cadencias extends Model
         'hora_fim', //range de horario fim
         'active',
         'user_id',
+        'stage'
     ];
 
     public function etapas()

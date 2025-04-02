@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'zoho' => [
+        'client_id' => env('ZOHO_CLIENT_ID'),
+        'client_secret' => env('ZOHO_CLIENT_SECRET'),
+        'redirect_uri' => env('ZOHO_REDIRECT_URI'),
+        'auth_url' => env('ZOHO_AUTH_URL'),
+        'token_url' => env('ZOHO_TOKEN_URL'),
+        'api_url' => env('ZOHO_API_URL'),
+        'scope' => env('ZOHO_SCOPE'),
+        'refresh_token' => env('ZOHO_REFRESH_TOKEN'),
+    ],
+
 ];
