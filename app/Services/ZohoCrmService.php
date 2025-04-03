@@ -12,6 +12,12 @@
  * Url para obter o access token:
  * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
  *
+ * Exemplo de retorno:
+ * https://bulkship.plataformamundo.com.br/login?code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&state=state
+ *
+ * Esse código é o que você vai usar para obter o access token:
+ * 1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731
+ *
  * Url para obter o refresh token:
  * https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&redirect_uri=https://bulkship.plataformamundo.com.br/login&client_secret=1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
  *
