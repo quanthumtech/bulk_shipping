@@ -1,5 +1,34 @@
 <?php
 
+/**
+ * ZohoCrmService.php
+ *
+ * Documentação:
+ * zoho.com/creator/help/api/v2/generate-token.html
+ *
+ * Cliar o Cliente ID e o Client Secret:
+ * https://api-console.zoho.com/
+ *
+ * Url para obter o access token:
+ * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
+ *
+ * Url para obter o refresh token:
+ * https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&redirect_uri=https://bulkship.plataformamundo.com.br/login&client_secret=1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
+ *
+ *
+ * grant_type: authorization_code
+ * code: 1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731
+ * client_id: 1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP
+ * redirect_uri: https://bulkship.plataformamundo.com.br/login
+ * client_secret: 1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
+ *
+ * Serviço para interagir com a API do Zoho CRM.
+ *
+ * $accessToken = $this->getAccessToken(); Serviço para obter o access token do Zoho CRM.
+ * Assim usado nas funções que envolve requisições a API do Zoho CRM e Outros serviços do Zoho.
+ *
+ */
+
 namespace App\Services;
 
 use GuzzleHttp\Client;
@@ -20,6 +49,11 @@ class ZohoCrmService
         }
     }
 
+    /**
+     * Obtém o access token do Zoho CRM usando o refresh token.
+     *
+     * @return void
+     */
     public function getAccessToken()
     {
         try {
@@ -33,7 +67,6 @@ class ZohoCrmService
             ]);
 
             $responseData = json_decode($response->getBody(), true);
-            //dd($responseData); // Adicione aqui para depurar
 
             if (isset($responseData['access_token'])) {
                 Log::info('Novo Access Token obtido com sucesso: ' . $responseData['access_token']);
@@ -48,6 +81,11 @@ class ZohoCrmService
         }
     }
 
+    /**
+     * Obtem os estágios do módulo Potentials do Zoho CRM.
+     *
+     * @return void
+     */
     public function getStages()
     {
         $accessToken = $this->getAccessToken();
@@ -63,7 +101,6 @@ class ZohoCrmService
             ]);
 
             $data = json_decode($response->getBody(), true);
-            Log::info('Resposta da API Zoho CRM:', $data);
 
             foreach ($data['fields'] as $field) {
                 if ($field['api_name'] === 'Stage') {
