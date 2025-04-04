@@ -56,7 +56,7 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/12 lg:w-1/3"
+        class="w-11/13 lg:w-1/2"
         right
         >
         <x-mary-form wire:submit="save">
