@@ -33,6 +33,10 @@ class ProcessCadence extends Command
                     continue;
                 }
 
+                /**
+                 * vale apenas para stage lead novo.
+                 *
+                 */
                 if ($lead->situacao_contato === 'Contato Efetivo') {
                     Log::info("Lead {$lead->id} possui situação 'Contato Efetivo'. Pulando execução das etapas.");
                     continue;

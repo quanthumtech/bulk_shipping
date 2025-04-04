@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Models\Cadencias;
+use App\Models\SyncFlowLeads;
 use Livewire\Attributes\Validate;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\Form;
@@ -59,7 +60,18 @@ class CadenciaForm extends Form
             'user_id'     => auth()->id(),
         ];
 
-       Cadencias::create($data);
+        $cadencias = Cadencias::create($data);
+
+       /**
+        * Aqui checa os leads do syncflow, se o estagio dele corresponde ao estagio da cadencia criada ele checa se
+        * já oi atribuida a cadencia a esse lead se não ele atribui.
+        */
+        $sync_emp = SyncFlowLeads::whereRaw('UPPER(estagio) = ?', [strtoupper($this->stage)])->first();
+
+        if ($sync_emp) {
+            $sync_emp->cadencia_id = $cadencias->id;
+            $sync_emp->save();
+        }
 
         $this->reset();
 

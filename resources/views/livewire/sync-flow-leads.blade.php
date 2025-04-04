@@ -43,13 +43,13 @@
     <div class="grid lg:grid-cols-3 gap-5 mt-4">
         @foreach ($syncFlowLeads as $sync)
             <x-mary-card
-                title="{{ $sync->contact_name }}"
+                title="{{ $sync->contact_name ?? 'Não definido' }}"
                 class="bg-gray-50 shadow-lg"
-                subtitle="Telefone: {{ $sync->contact_number }} | Email: {{ $sync->contact_email }} | Cadência: {{ $sync->cadencia->name }}"
+                subtitle="Telefone: {{ $sync->contact_number }} | Email: {{ $sync->contact_email }} | Cadência: {{ $sync->cadencia->name ?? 'Não definido' }}"
                 separator
             >
                 <x-slot:menu>
-                    <x-mary-badge value="#{{ $sync->estagio }}" class="badge-primary" />
+                    <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge-primary" />
                 </x-slot:menu>
                 <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" />
                 <x-mary-button icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" class="btn-primary" />

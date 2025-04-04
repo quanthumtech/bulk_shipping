@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CadenceMessage;
+use App\Models\Cadencias;
 use App\Models\SyncFlowLeads;
 use App\Models\User;
 use App\Models\Etapas;
@@ -25,15 +26,32 @@ class WebhookZohoController extends Controller
 
             if ($sync_emp) {
                 // Lead existe, atualiza as informações
+                $oldEstagio = $sync_emp->estagio; // Guarda o estágio antigo para comparação
                 $sync_emp->contact_name = $request->contact_name ?? $sync_emp->contact_name;
                 $sync_emp->contact_number = $request->contact_number ?? $sync_emp->contact_number;
                 $sync_emp->contact_number_empresa = $request->contact_number_empresa ?? $sync_emp->contact_number_empresa;
                 $sync_emp->contact_email = $request->contact_email ?? $sync_emp->contact_email;
                 $sync_emp->estagio = $request->estagio ?? $sync_emp->estagio;
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $sync_emp->chatwoot_accoumts;
-                $sync_emp->cadencia_id = $request->id_cadencia ?? $sync_emp->cadencia_id;
+                $sync_emp->cadencia_id = $request->id_cadencia ?? $sync_emp->cadencia_id; // Mantém o valor atual se não vier id_cadencia
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
                 $sync_emp->updated_at = now();
+
+                // Se o estágio mudou e não veio cadencia_id, atualiza a cadência com base no novo estágio
+                if (!$request->id_cadencia && $sync_emp->estagio !== $oldEstagio && $sync_emp->estagio !== 'Não fornecido') {
+                    $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
+                        ->where('active', 1)
+                        ->first();
+                    if ($cadencia) {
+                        $sync_emp->cadencia_id = $cadencia->id;
+                        Log::info("Cadência ID {$cadencia->id} atualizada para o lead ID {$sync_emp->id} com base no novo estágio: {$sync_emp->estagio}");
+                    } else {
+                        // Se não houver cadência, define cadencia_id como null
+                        $sync_emp->cadencia_id = null;
+                        Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio} do lead ID {$sync_emp->id}, cadencia_id definido como null");
+                    }
+                }
+
                 $sync_emp->save();
 
                 Log::info("Lead existente atualizado com ID: {$sync_emp->id}");
@@ -47,9 +65,25 @@ class WebhookZohoController extends Controller
                 $sync_emp->contact_email = $request->contact_email ?? 'Não fornecido';
                 $sync_emp->estagio = $request->estagio ?? 'Não fornecido';
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
-                $sync_emp->cadencia_id = $request->id_cadencia ?? null;
+                $sync_emp->cadencia_id = $request->id_cadencia ?? null; // Pode vir do request ou ser null
                 $sync_emp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
                 $sync_emp->created_at = now();
+
+                // Se não veio cadencia_id mas tem estágio, busca a cadência pelo estágio
+                if (!$sync_emp->cadencia_id && $sync_emp->estagio !== 'Não fornecido') {
+                    $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
+                        ->where('active', 1)
+                        ->first();
+                    if ($cadencia) {
+                        $sync_emp->cadencia_id = $cadencia->id;
+                        Log::info("Cadência ID {$cadencia->id} atribuída ao lead com base no estágio: {$sync_emp->estagio}");
+                    } else {
+                        // Se não houver cadência, define cadencia_id como null
+                        $sync_emp->cadencia_id = null;
+                        Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio}, cadencia_id definido como null");
+                    }
+                }
+
                 $sync_emp->save();
 
                 Log::info("Novo lead salvo com ID: {$sync_emp->id}");
@@ -97,7 +131,7 @@ class WebhookZohoController extends Controller
                                 Log::info("Nenhuma etapa imediata ativa encontrada para a cadência {$sync_emp->cadencia_id}");
                             }
                         } else {
-                            Log::info("Nenhuma cadência associada ao lead {$sync_emp->id}");
+                            Log::info("Nenhuma cadência associada ao lead {$sync_emp->id}, cadencia_id está null");
                         }
                     } else {
                         Log::error("API_POST ou APIKEY ausentes para o usuário ID: {$user->id}");
