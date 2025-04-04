@@ -29,8 +29,16 @@
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Titulo" wire:model="form.title" />
-            <x-mary-input label="Sub Titulo" wire:model="form.sub_title" />
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <x-mary-input label="Titulo" wire:model="form.title" />
+                </div>
+                <div class="space-y-2">
+                    <x-mary-input label="Sub Titulo" wire:model="form.sub_title" />
+                </div>
+            </div>
+
             {{--
                 <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$contatos" allow-all />
 
