@@ -28,6 +28,48 @@
     {{-- Chart.js  --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+    {{-- Flatpickr --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://unpkg.com/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <link href="https://unpkg.com/flatpickr/dist/plugins/monthSelect/style.css" rel="stylesheet">
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+
+    {{-- Vanilla Calendar --}}
+    <script src="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro@2.9.6/build/vanilla-calendar.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro@2.9.6/build/vanilla-calendar.min.css" rel="stylesheet">
+
+    {{-- DIFF2HTML --}}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/xcode.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.48/bundles/css/diff2html.min.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html@3.4.48/bundles/js/diff2html-ui.min.js"></script>
+
+    {{-- Chart.js  --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    {{-- Sortable.js --}}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
+
+    {{-- PhotoSwipe --}}
+    <script src="https://cdn.jsdelivr.net/npm/photoswipe@5.4.3/dist/umd/photoswipe.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photoswipe@5.4.3/dist/umd/photoswipe-lightbox.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.3/dist/photoswipe.min.css" rel="stylesheet">
+
+    {{--  Currency  --}}
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/gh/robsontenorio/mary@0.44.2/libs/currency/currency.js"></script>
+
+    {{-- Signature Pad  --}}
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+
+    {{-- Algolia docsearch --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" />
+    <link rel="preconnect" href="https://0AWOCS02I6-dsn.algolia.net" crossorigin />
+
+    {{--  Pirsch Analytics  --}}
+    <script defer src="https://api.pirsch.io/pa.js" id="pianjs" data-code="rOVAXMnSEiydpyfzhgPnLVbX6iWcik7m"></script>
+
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen font-sans antialiased">
@@ -103,7 +145,7 @@
                         </x-mary-menu-sub>
                     @endif
                 @endif
-                <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="#" />
+                <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="/faq-info" />
                 <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="#" />
             </x-mary-menu>
         </x-slot:sidebar>

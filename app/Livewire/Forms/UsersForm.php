@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Models\User;
+use App\Models\Versions;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -56,7 +57,10 @@ class UsersForm extends Form
     {
         $this->validate();
 
-        $completeApiPost = "https://evolution-inst001.quanthum.tec.br/message/sendText/" . $this->api_post;
+        $versionAtiva = Versions::where('active', 1)->first();
+
+        // concatena a url da versão ativa
+        $completeApiPost = (string)$versionAtiva->url_evolution  . $this->api_post;
 
         User::create([
             'name'              => $this->name,
@@ -77,8 +81,10 @@ class UsersForm extends Form
     {
         $this->validate();
 
-        // Analisar o valor do campo api_post
-        $completeApiPost = "https://evolution.plataformamundo.com.br/message/sendText/" . $this->api_post;
+        $versionAtiva = Versions::where('active', 1)->first();
+
+        // concatena a url da versão ativa
+        $completeApiPost = (string)$versionAtiva->url_evolution  . $this->api_post;
 
         $data = [
             'name'              => $this->name,

@@ -5,6 +5,7 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\CadenciaIndex;
 use App\Livewire\EtapasIndex;
+use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
@@ -79,5 +80,9 @@ Route::get('/cadencias/{cadenciaId}/etapas', EtapasIndex::class)
 Route::get('/sync-flow', SyncFlowLeads::class)
     ->middleware(['auth', 'verified'])
     ->name('sync-flow.index');
+
+Route::get('/faq-info', FaqIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('faq-info.index');
 
 require __DIR__.'/auth.php';

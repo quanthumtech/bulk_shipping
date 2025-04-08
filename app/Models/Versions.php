@@ -10,6 +10,7 @@ class Versions extends Model
 
     protected $fillable = [
         'name',
+        'url_evolution',
         'type',
         'active'
     ];

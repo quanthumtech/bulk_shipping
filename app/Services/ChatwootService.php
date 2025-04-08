@@ -309,56 +309,29 @@ class ChatwootService
             }
         } elseif ($activeVersion === 'Evolution v2') {
             if ($isImage) {
-                $imageUrl = $matches[1] ?? trim($messageContent);
+                $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
-
-                $appUrl = config('app.url');
-                $storagePrefix = $appUrl . '/storage/markdown/';
-
-                if (str_starts_with($imageUrl, $storagePrefix)) {
-                    $fileName = basename($imageUrl);
-                    $filePath = storage_path('app/public/markdown/' . $fileName);
-
-                    if (!file_exists($filePath)) {
-                        Log::error("Arquivo não encontrado: {$filePath}");
-                        return null;
-                    }
-
-                    $fileSize = filesize($filePath);
-                    if ($fileSize > 5 * 1024 * 1024) {
-                        Log::error("Arquivo muito grande: {$fileSize} bytes em {$filePath}");
-                        return null;
-                    }
-
-                    $imgContent = file_get_contents($filePath);
-                    if ($imgContent === false) {
-                        Log::error("Falha ao ler o arquivo: {$filePath}");
-                        return null;
-                    }
-                } else {
-                    $imgContent = file_get_contents($imageUrl);
-                    if ($imgContent === false) {
-                        Log::error("Falha ao baixar a imagem: {$imageUrl}");
-                        return null;
-                    }
-                    $fileName = basename($imageUrl);
-                }
-
-                $media = base64_encode($imgContent);
 
                 $payload = [
                     "number" => $phoneNumber,
-                    "mediatype" => "image",
-                    "mimetype" => "image/jpeg",
+                    "mediatype" => "image", // Altere para o tipo de mídia correto, se necessário
+                    "mimetype" => "image/jpeg", // Altere para o MIME type correto
                     "caption" => $caption,
-                    "media" => $media,
-                    "fileName" => $fileName
+                    "media" => base64_encode(file_get_contents($imageUrl)),
+                    // "fileName" => "nome_do_arquivo.jpg", // Descomente e ajuste se necessário
+                    // "delay" => 1200, // Descomente e ajuste se necessário
+                    // "quoted" => [...], // Descomente e ajuste se necessário
                 ];
                 $endpoint = str_replace('sendText', 'sendMedia', $api_post);
             } else {
                 $payload = [
                     "number" => $phoneNumber,
-                    "message" => $messageContent
+                    "text" => $messageContent,
+                    // "delay" => 1200, // Descomente e ajuste se necessário
+                    // "quoted" => [...], // Descomente e ajuste se necessário
+                    // "linkPreview" => false, // Descomente e ajuste se necessário
+                    // "mentionsEveryOne" => false, // Descomente e ajuste se necessário
+                    // "mentioned" => [], // Descomente e ajuste se necessário
                 ];
                 $endpoint = $api_post;
             }
