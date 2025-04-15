@@ -24,6 +24,7 @@ class Send extends Model
         'interval',
         'message_interval',
         'cadencias',
+        'evolution_id',
     ];
 
     /**
@@ -34,5 +35,15 @@ class Send extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(GroupSend::class);
+    }
+
+    public function evolution()
+    {
+        return $this->belongsTo(Evolution::class);
     }
 }

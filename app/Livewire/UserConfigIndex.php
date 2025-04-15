@@ -3,9 +3,9 @@
 namespace App\Livewire;
 
 use App\Livewire\Forms\UsersForm;
-use App\Models\ChatwootAgent;
 use App\Models\ChatwootsAgents;
 use App\Models\User;
+use App\Models\Versions;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -55,6 +55,26 @@ class UserConfigIndex extends Component
         }
     }
 
+    public function addEvolution()
+    {
+        $this->form->addEvolution();
+    }
+
+    public function removeEvolution($index)
+    {
+        $this->form->removeEvolution($index);
+    }
+
+    public function getVersionsProperty()
+    {
+        return Versions::all()->map(function ($version) {
+            return [
+                'id' => $version->id,
+                'name' => $version->name,
+            ];
+        })->toArray();
+    }
+
     public function render()
     {
         $headers = [
@@ -71,7 +91,6 @@ class UserConfigIndex extends Component
             ['id' => 3, 'name' => 'User'],
         ];
 
-        // Carrega agentes paginados apenas no modo de edição
         $agents = $this->editMode && $this->userId
             ? ChatwootsAgents::where('user_id', $this->userId)
                 ->paginate($this->perPage)
@@ -91,6 +110,7 @@ class UserConfigIndex extends Component
             'title' => $this->title,
             'agents' => $agents,
             'perPage' => $this->perPage,
+            'versions' => $this->versions,
         ]);
     }
 }

@@ -52,4 +52,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function evolutions()
+    {
+        return $this->hasMany(Evolution::class);
+    }
 }

@@ -253,15 +253,16 @@ class ChatwootService
         $phoneNumber = (string) $phoneNumber;
         $messageContent = (string) $messageContent;
 
-        // Dados da API
-        $user = Auth::user();
-        $apikey = $Apikey ?? $user->apikey ?? null;
-        $api_post = $apiPost ?? $user->api_post ?? null;
-
-        if (!$api_post || !$apikey) {
+        if (!$apiPost || !$Apikey) {
             Log::error("API Post ou API Key não fornecidos.");
             return null;
         }
+
+        // Dados da API
+        //$user = Auth::user();
+
+        $apikey = $Apikey ?? null;
+        $api_post = $apiPost ?? null;
 
         // Verifica a versão ativa da API
         $activeVersion = Versions::getActiveVersion();

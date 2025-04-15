@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Livewire\Forms\SendForm;
 use App\Models\Cadencias;
+use App\Models\Evolution;
 use App\Models\GroupSend;
 use App\Models\Send;
 use App\Models\User;
@@ -61,8 +62,14 @@ class SendIndex extends Component
     public function save(ChatwootService $chatwootService)
     {
         try {
-
             $this->chatwootService = $chatwootService;
+
+            // Busca a caixa Evolution selecionada
+            $evolution = Evolution::find($this->form->evolution_id);
+            if (!$evolution) {
+                $this->error('Caixa Evolution inválida.', position: 'toast-top');
+                return;
+            }
 
             // Collect contact names and send messages
             foreach ($this->form->phone_number as $index => $phoneNumber) {
@@ -70,7 +77,19 @@ class SendIndex extends Component
                 $contactName = $contact['name'] ?? 'Sem Nome';
                 $this->form->contact_name = $contactName;
 
-                $this->chatwootService->sendMessage($phoneNumber, $this->form->menssage_content);
+                Log::info('Enviando mensagem para: ' . $contactName . ' - ' . $phoneNumber);
+
+                // Dados da Caixa
+                Log::info('Caixa Evolution: ' . $evolution->api_post);
+                Log::info('API Key: ' . $evolution->apikey);
+
+                // Envia a mensagem usando a api_post e apikey da caixa escolhida
+                $this->chatwootService->sendMessage(
+                    $phoneNumber,
+                    $this->form->menssage_content,
+                    $evolution->api_post,
+                    $evolution->apikey
+                );
 
                 if ($index < count($this->form->phone_number) - 1) {
                     sleep(2);
@@ -82,15 +101,14 @@ class SendIndex extends Component
             $this->sendModal = false;
 
         } catch (\Exception $e) {
-            $this->error('Erro ao salvar as Menssagens.', position: 'toast-top');
-
+            $this->error('Erro ao salvar as mensagens: ' . $e->getMessage(), position: 'toast-top');
         }
     }
 
     public function delete($id)
     {
         Send::find($id)->delete();
-        $this->info('Menssagem excluída com sucesso.', position: 'toast-top');
+        $this->info('Mensagem excluída com sucesso.', position: 'toast-top');
     }
 
     public function updatedUserSearchableId($value)
@@ -108,18 +126,16 @@ class SendIndex extends Component
         $this->chatwootService = app(ChatwootService::class);
         $result = $this->chatwootService->searchContatosApi($value);
 
-        // Mantém os contatos já selecionados no campo `phone_number`
         $selectedContacts = collect($this->form->phone_number)->map(function ($contactId) {
             return collect($this->contatos)->firstWhere('id', $contactId);
         })->filter()->toArray();
 
-        // Garante que os contatos selecionados não sejam removidos
         $this->contatos = array_merge($selectedContacts, $result);
     }
 
     public function render()
     {
-        $userId = auth()->id();
+        $userId = Auth::id();
 
         $group = GroupSend::find($this->groupId);
 
@@ -130,42 +146,37 @@ class SendIndex extends Component
                 }, explode(',', $group->phone_number))
                 : [$group->phone_number];
 
-            // Normalizar os números para o formato desejado
             $normalizedGroupPhoneNumbers = collect($groupPhoneNumbers)->map(function ($phone) {
                 return [
                     'id' => $phone,
-                    'name' => $phone, // Ou aplique uma lógica para definir o nome se necessário
+                    'name' => $phone,
                 ];
             });
 
-            // Filtrar contatos com base nos números normalizados
             $filteredContacts = collect($this->contatos)->filter(function ($contact) use ($normalizedGroupPhoneNumbers) {
                 return $normalizedGroupPhoneNumbers->contains('id', $contact['id']);
             })->map(function ($contact) {
-                // Garantir que todos os contatos tenham um formato consistente
                 return [
                     'id' => $contact['id'],
-                    'name' => $contact['name'] ?? $contact['id'], // 'name' ou fallback para 'id'
+                    'name' => $contact['name'] ?? $contact['id'],
                 ];
-            })->values(); // Reseta as chaves para consistência
+            })->values();
         } else {
             $filteredContacts = collect();
         }
 
         $group_table = Send::where('group_id', $this->groupId)
-                        ->where(function ($query) {
-                            $query->where('user_id', auth()->id());
-                        })
-                        ->where(function ($query) {
-                            $query->where('phone_number', 'like', '%' . $this->search . '%')
-                                ->orWhere('contact_name', 'like', '%' . $this->search . '%')
-                                ->orWhere('message_content', 'like', '%' . $this->search . '%');
-                        })
-                        ->with('user')
-                        ->paginate($this->perPage);
+            ->where('user_id', Auth::id())
+            ->where(function ($query) {
+                $query->where('phone_number', 'like', '%' . $this->search . '%')
+                    ->orWhere('contact_name', 'like', '%' . $this->search . '%')
+                    ->orWhere('message_content', 'like', '%' . $this->search . '%');
+            })
+            ->with('user')
+            ->paginate($this->perPage);
 
-        foreach($group_table as $group){
-            $group->menssage =  Str::limit($group->message_content, 50);
+        foreach ($group_table as $group) {
+            $group->menssage = Str::limit($group->message_content, 50);
             $group->formatted_created_at = Carbon::parse($group->created_at)->format('d/m/Y');
             $group->criado_por = User::where('id', $group->user_id)->first()->name ?? 'Não atribuído';
 
@@ -180,7 +191,6 @@ class SendIndex extends Component
             } else {
                 $group->formatted_phone_number = $group->phone_number;
             }
-
         }
 
         $cadencias = collect([['id' => '', 'name' => 'Selecione uma cadência']])
@@ -191,7 +201,7 @@ class SendIndex extends Component
             ['key' => 'contact_name', 'label' => 'Nome do Contato'],
             ['key' => 'formatted_phone_number', 'label' => 'Tel de Contato'],
             ['key' => 'criado_por', 'label' => 'Remetente'],
-            ['key' => 'menssage', 'label' => 'Menssagem'],
+            ['key' => 'menssage', 'label' => 'Mensagem'],
             ['key' => 'formatted_created_at', 'label' => 'Enviado']
         ];
 
@@ -202,13 +212,30 @@ class SendIndex extends Component
 
         $configDatePicker = ['locale' => 'pt'];
 
+        $caixasEvolution = collect([['id' => '', 'name' => 'Selecione uma Caixa...']])
+            ->concat(
+                Evolution::where('user_id', $userId)
+                    ->where('active', 1)
+                    ->get()
+                    ->map(function ($evolution) {
+                        $url = $evolution->api_post ?? '';
+                        $parts = explode('sendText/', $url);
+                        $namePart = count($parts) > 1 ? $parts[1] : $url;
+                        return [
+                            'id' => $evolution->id,
+                            'name' => $namePart,
+                        ];
+                    })
+            );
+
         return view('livewire.send-index', [
-            'headers'          => $headers,
-            'group_table'      => $group_table,
-            'descriptionCard'  => $descriptionCard,
+            'headers' => $headers,
+            'group_table' => $group_table,
+            'descriptionCard' => $descriptionCard,
             'configDatePicker' => $configDatePicker,
-            'cadencias'        => $cadencias,
-            'filteredContacts' => $filteredContacts->toArray()
+            'cadencias' => $cadencias,
+            'filteredContacts' => $filteredContacts->toArray(),
+            'caixasEvolution' => $caixasEvolution,
         ]);
     }
 }

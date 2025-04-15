@@ -113,19 +113,60 @@
                     <x-slot:label>
                         Configurações da API Evolution
                     </x-slot:label>
-                    <div class="mt-4 space-y-2 mb-4">
-                        <x-mary-input
-                            label="API key"
-                            placeholder="Exemplo: adfxwj34...."
-                            hint="Informe o Key da api de envio."
-                            wire:model="form.apikey" />
-                    </div>
-                    <div class="space-y-2 mb-4">
-                        <x-mary-input
-                            label="API Evolution"
-                            hint="Informe a API de envio aqui"
-                            placeholder="Exemplo: User Empresa criado no Evolution"
-                            wire:model="form.api_post" />
+                    <div class="mt-4 space-y-4 mb-4">
+                        <x-mary-header title="Caixas Evolution" subtitle="Adicione as caixas Evolution para este usuário." size="text-2xl" />
+
+                        @foreach ($form->evolutions as $index => $evolution)
+                            <div class="border p-4 rounded-lg space-y-4 relative">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <x-mary-select
+                                            label="Versão"
+                                            placeholder="Selecione a versão..."
+                                            :options="$versions"
+                                            hint="Informe a versão do Evolution."
+                                            option-label="name"
+                                            option-value="id"
+                                            wire:model="form.evolutions.{{ $index }}.version_id"
+                                            required />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="API Key"
+                                            placeholder="Exemplo: adfxwj34...."
+                                            hint="Informe o Key da API de envio."
+                                            wire:model="form.evolutions.{{ $index }}.apikey" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="API Evolution"
+                                            hint="Informe o identificador da API de envio"
+                                            placeholder="Exemplo: User Empresa criado no Evolution"
+                                            wire:model="form.evolutions.{{ $index }}.api_post" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-toggle wire:model="form.evolutions.{{ $index }}.active">
+                                            <x-slot:label>
+                                                Caixa Ativa
+                                            </x-slot:label>
+                                        </x-mary-toggle>
+                                    </div>
+                                </div>
+                                @if (count($form->evolutions) > 1)
+                                    <x-mary-button
+                                        label="Remover Caixa"
+                                        class="btn-error btn-sm absolute top-2 right-2"
+                                        wire:click="removeEvolution({{ $index }})"
+                                        icon="o-trash" />
+                                @endif
+                            </div>
+                        @endforeach
+
+                        <x-mary-button
+                            label="Adicionar Nova Caixa"
+                            class="btn-primary"
+                            wire:click="addEvolution"
+                            icon="o-plus" />
                     </div>
                 </x-mary-tab>
             </x-mary-tabs>

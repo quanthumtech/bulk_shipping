@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Models\Send;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -31,7 +32,7 @@ class SendForm extends Form
 
     public $contato, $file, $phone_number, $sent_at, $active,
             $status, $contact_name, $menssage_content, $message_interval,
-            $group_id, $user_id, $start_date, $end_date, $interval, $cadencias;
+            $group_id, $user_id, $start_date, $end_date, $interval, $cadencias, $evolution_id;
 
     public function setSend(Send $sends)
     {
@@ -65,12 +66,13 @@ class SendForm extends Form
             'sent_at'         => $this->sent_at,
             'active'          => $this->active,
             'status'          => $this->status,
-            'user_id'         => auth()->id(),
+            'user_id'         => Auth::id(),
             'group_id'        => $this->sends->group_id ?? $this->group_id,
             'start_date'      => $this->start_date,
             'end_date'        => $this->end_date,
             'interval'        => $this->interval,
             'cadencias'       => $this->cadencias,
+            'evolution_id'    => $this->evolution_id,
         ];
 
         if ($this->file && is_array($this->file)) {
