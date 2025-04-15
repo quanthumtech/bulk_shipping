@@ -105,6 +105,45 @@ class ChatwootService
     }
 
     /**
+     * Obtém os agentes da conta do Chatwoot.
+     *
+     * @param string $chatwootAccountId
+     * @param string $tokenAcesso
+     * @return array
+     */
+    public function getAgents($chatwootAccountId, $tokenAcesso)
+    {
+        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$chatwootAccountId}/agents";
+        $headers = [
+            'api_access_token' => $tokenAcesso,
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)->get($url);
+
+            if (!$response->successful()) {
+                Log::error('Erro ao buscar agentes: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
+            }
+
+            $agents = $response->json();
+
+            return collect($agents)->map(function ($agent) {
+                return [
+                    'agent_id' => $agent['id'],
+                    'name' => $agent['name'],
+                    'email' => $agent['email'] ?? null,
+                    'role' => $agent['role'],
+                ];
+            })->toArray();
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao recuperar agentes: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Sinconiza os contatos da conta do Chatwoot
      *
      * @return void

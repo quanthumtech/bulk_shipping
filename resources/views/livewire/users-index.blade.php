@@ -6,68 +6,80 @@
         <x-slot:actions>
             <x-mary-button icon="o-funnel" />
             <x-mary-button label="API Versão" @click="$wire.showVersionModal()"/>
-            <x-mary-button icon="o-plus" class="btn-primary" @click="$wire.showModal()" />
+            <x-mary-button icon="o-plus" class="btn-primary" @click="window.location.href = '{{ route('users.config') }}'" />
         </x-slot:actions>
     </x-mary-header>
     {{-- INFO: table --}}
     <x-mary-table
         :headers="$headers"
         :rows="$users"
-        striped @row-click="$wire.edit($event.detail.id)"
-        class="bg-white"
+        striped
+        class="bg-base-100"
         with-pagination per-page="perPage"
         :per-page-values="[3, 5, 10]"
     >
 
         {{-- Overrides `name` header --}}
         @scope('header_name', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `email` header --}}
         @scope('header_email', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `type_user` header --}}
         @scope('header_type_user_name', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `active` header --}}
         @scope('header_active_name', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `account chatwoot` header --}}
         @scope('header_chatwoot_accoumts', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `created_at` header --}}
         @scope('header_formatted_created_at', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Special `actions` slot --}}
         @scope('actions', $users)
-            <x-mary-button icon="o-trash" wire:click="delete({{ $users->id }})" spinner class="btn-sm btn-error" />
+            <div class="flex space-x-2">
+                <x-mary-button
+                    icon="o-trash"
+                    wire:click="delete({{ $users->id }})"
+                    spinner
+                    class="btn-sm btn-error"
+                />
+                <x-mary-button
+                    icon="o-pencil-square"
+                    @click="window.location.href = '{{ route('users.config', ['userId' => $users->id]) }}'"
+                    class="btn-sm btn-primary"
+                />
+            </div>
         @endscope
     </x-mary-table>
 
-    {{-- INFO: Slide users --}}
+    {{-- INFO: Slide users (NÃO ESTA SENDO USADO NO MOMENTO) --}}
     <x-mary-drawer
         wire:model="userModal"
         title="{{ $title }}"

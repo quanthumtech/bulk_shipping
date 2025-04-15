@@ -12,6 +12,7 @@ use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\StatisticIndex;
 use App\Livewire\SyncFlowLeads;
+use App\Livewire\UserConfigIndex;
 use App\Livewire\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,11 @@ Route::view('dashboard', 'dashboard')
 Route::get('/users', UsersIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('users.index');
+
+// User config
+Route::get('/users-config/{userId?}', UserConfigIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('users.config');
 
 Route::get('/login', Login::class)
     ->middleware('guest')

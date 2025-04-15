@@ -2,7 +2,8 @@
     <x-mary-header
         title="Dashboard"
         subtitle="Visão geral de estatísticas e métricas de desempenho"
-        separator />
+        separator
+    />
 
     <div class="grid lg:grid-cols-4 gap-5">
         {{-- INFO: Mensagens --}}
@@ -11,7 +12,8 @@
             value="{{ $menssages }}"
             icon="o-envelope"
             tooltip="Hello"
-            class="bg-gray-50 shadow-lg"/>
+            class="bg-base-100 shadow-lg"
+        />
 
         {{-- INFO: Contatos --}}
         <x-mary-stat
@@ -20,7 +22,8 @@
             value="{{ count($contatos) }}"
             icon="o-user-circle"
             tooltip-bottom="There"
-            class="bg-gray-50 shadow-lg"/>
+            class="bg-base-100 shadow-lg"
+        />
 
         {{-- INFO: Grupos --}}
         <x-mary-stat
@@ -28,7 +31,8 @@
             value="{{ $grupos }}"
             icon="o-rectangle-group"
             tooltip-left="Ops!"
-            class="bg-gray-50 shadow-lg"/>
+            class="bg-base-100 shadow-lg"
+        />
 
         {{-- INFO: Média de contatos por grupo --}}
         <x-mary-stat
@@ -37,21 +41,25 @@
             value="{{ $media_contatos }}"
             icon="o-arrow-trending-up"
             tooltip-right="Gosh!"
-            class="bg-gray-50 shadow-lg"/>
+            class="bg-base-100 shadow-lg"
+        />
     </div>
 
     <div class="grid lg:grid-cols-2 gap-10 mt-10 justify-items-center">
         {{-- Gráfico de Contatos Durante o Mês --}}
-        <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center">
-            <h3 class="text-lg font-semibold mb-4 text-center">Contatos Durante o Mês</h3>
+        <div class="bg-base-100 p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center"> <!-- Alterado de bg-white para bg-base-100 -->
+            <h3 class="text-lg font-semibold mb-4 text-center text-base-content"> <!-- Adicionado text-base-content -->
+                Contatos Durante o Mês
+            </h3>
             <x-mary-chart wire:model="contatosChart" class="w-full h-72 mx-auto flex justify-center items-center" />
-            </div>
+        </div>
 
         {{-- Gráfico de Frequência de Mensagens --}}
-        <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center">
-            <h3 class="text-lg font-semibold mb-4 text-center">Frequência de Mensagens</h3>
-            <x-mary-chart wire:model="mensagensChart" class="w-full h-72 mx-auto flex justify-center items-center" /> <!-- Centralizando o gráfico -->
+        <div class="bg-base-100 p-4 rounded-lg shadow-lg w-full max-w-md flex flex-col items-center"> <!-- Alterado de bg-white para bg-base-100 -->
+            <h3 class="text-lg font-semibold mb-4 text-center text-base-content"> <!-- Adicionado text-base-content -->
+                Frequência de Mensagens
+            </h3>
+            <x-mary-chart wire:model="mensagensChart" class="w-full h-72 mx-auto flex justify-center items-center" />
         </div>
     </div>
-
 </div>

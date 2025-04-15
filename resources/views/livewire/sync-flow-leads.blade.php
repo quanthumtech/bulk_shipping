@@ -8,14 +8,13 @@
     {{-- INFO: Modal users --}}
     <x-mary-modal wire:model="syncLeadsModal" class="backdrop-blur">
         <x-mary-form wire:submit="save">
-
             {{-- INFO: campos --}}
             <x-mary-input label="Name" wire:model="form.contact_name" />
             <x-mary-input label="Number" wire:model="form.contact_number" />
             <x-mary-input label="Email" wire:model="form.contact_email" />
             <x-mary-input label="Contato empresa" wire:model="form.contact_number_empresa" />
             <x-mary-input label="Stage" wire:model="form.estagio" />
-            <x-mary-select label="Cadêcnia" wire:model="form.cadenciaId" :options="$cadencias" />
+            <x-mary-select label="Cadência" wire:model="form.cadenciaId" :options="$cadencias" />
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.syncLeadsModal = false" />
@@ -24,13 +23,13 @@
         </x-mary-form>
     </x-mary-modal>
 
-    {{-- INFO: Modal designar cadencia --}}
+    {{-- INFO: Modal designar cadência --}}
     <x-mary-modal wire:model="cadenceModal" class="backdrop-blur">
         <x-mary-form wire:submit="cadenceSave">
-            <div class="mb-5">{{ $this->title }}</div>
+            <div class="mb-5 text-base-content">{{ $this->title }}</div> <!-- Adicionado text-base-content -->
 
             {{-- INFO: campos --}}
-            <x-mary-select label="Cadêcnia" wire:model="form.cadenciaId" :options="$cadencias" />
+            <x-mary-select label="Cadência" wire:model="form.cadenciaId" :options="$cadencias" />
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.cadenceModal = false" />
@@ -44,7 +43,7 @@
         @foreach ($syncFlowLeads as $sync)
             <x-mary-card
                 title="{{ $sync->contact_name ?? 'Não definido' }}"
-                class="bg-gray-50 shadow-lg"
+                class="bg-base-100 shadow-lg"
                 subtitle="Telefone: {{ $sync->contact_number }} | Email: {{ $sync->contact_email }} | Cadência: {{ $sync->cadencia->name ?? 'Não definido' }}"
                 separator
             >
@@ -60,6 +59,6 @@
 
     {{-- PAGINAÇÃO --}}
     <div class="mt-4">
-        {{ $syncFlowLeads->links() }}
+        {{ $syncFlowLeads->links() }} <!-- Especificado template DaisyUI -->
     </div>
 </div>

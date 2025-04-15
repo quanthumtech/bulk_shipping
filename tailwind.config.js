@@ -4,16 +4,12 @@ import forms from '@tailwindcss/forms';
 /** @type {import('tailwindcss').Config} */
 export default {
     darkMode: 'class',
-    daisyui: {
-        themes: ["light", "cupcake"],
-    },
     content: [
-		'./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-		 './storage/framework/views/*.php',
-		 './resources/views/**/*.blade.php',
-		 "./vendor/robsontenorio/mary/src/View/Components/**/*.php"
-	],
-
+        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+        './storage/framework/views/*.php',
+        './resources/views/**/*.blade.php',
+        './vendor/robsontenorio/mary/src/View/Components/**/*.php',
+    ],
     theme: {
         extend: {
             fontFamily: {
@@ -21,9 +17,11 @@ export default {
             },
         },
     },
-
     plugins: [
-		forms,
-		require("daisyui")
-	],
+        forms,
+        require('daisyui'),
+    ],
+    daisyui: {
+        themes: ['light', 'dark', 'cupcake'], // Defina os temas que você deseja usar
+    },
 };

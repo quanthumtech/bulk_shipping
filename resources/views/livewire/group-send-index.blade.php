@@ -13,8 +13,7 @@
         title="Dica: Como criar suas demandas"
         icon="o-light-bulb"
         description="{!! $descriptionCard !!}"
-        class="bg-yellow-50 text-yellow-900 border-yellow-200 mb-4"
-        dismissible
+        class="bg-warning/10 text-warning border-warning/20 mb-4"
     />
 
     {{-- INFO: modal slide --}}
@@ -25,36 +24,18 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/13 lg:w-1/2"
+        class="w-11/12 lg:w-1/2"
         right
     >
         <x-mary-form wire:submit="save">
-
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                    <x-mary-input label="Titulo" wire:model="form.title" />
+                    <x-mary-input label="Título" wire:model="form.title" />
                 </div>
                 <div class="space-y-2">
-                    <x-mary-input label="Sub Titulo" wire:model="form.sub_title" />
+                    <x-mary-input label="Subtítulo" wire:model="form.sub_title" />
                 </div>
             </div>
-
-            {{--
-                <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$contatos" allow-all />
-
-
-                <x-mary-choices
-                    label="Contatos"
-                    wire:model="form.phone_number"
-                    :options="$contatos"
-                    placeholder="Clique no 'X' antes de buscar..."
-                    debounce="300ms"
-                    min-chars="2"
-                    searchable
-                    no-result-text="Nenhum contato encontrado."
-                    search-function="searchContatosf"
-                />
-            --}}
 
             <x-mary-textarea
                 label="Descrição"
@@ -62,7 +43,8 @@
                 placeholder="Your story ..."
                 hint="Max 1000 chars"
                 rows="5"
-                inline />
+                inline
+            />
 
             <hr>
 
@@ -83,7 +65,6 @@
                     alt="Note Image"
                     class="h-40 rounded-lg"
                 />
-
             </x-mary-file>
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />
@@ -100,11 +81,12 @@
         @foreach ($groups as $group)
             <x-mary-card
                 title="{{ $group->title }}"
-                class="bg-gray-50 shadow-lg"
+                class="bg-base-100 shadow-lg"
                 subtitle="{{ $group->sub_title }}"
+                subtitle-class="text-base-content/75"
                 separator
                 progress-indicator
-                >
+            >
                 <x-slot:figure>
                     <img src="{{ Storage::url($group->image) }}" class="h-28 w-full object-cover" />
                 </x-slot:figure>
@@ -117,5 +99,4 @@
             </x-mary-card>
         @endforeach
     </div>
-
 </div>

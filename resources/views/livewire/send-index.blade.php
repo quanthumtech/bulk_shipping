@@ -14,7 +14,7 @@
         title="Dica: Envie mensagens em massa e crie cadências personalizadas."
         icon="o-light-bulb"
         description="{!! $descriptionCard !!}"
-        class="bg-yellow-50 text-yellow-900 border-yellow-200 mb-4"
+        class="bg-warning/10 text-warning border-warning/20 mb-4"
         dismissible
     />
 
@@ -22,42 +22,43 @@
     <x-mary-table
         :headers="$headers"
         :rows="$group_table"
-        class="bg-white"
-        with-pagination per-page="perPage"
+        class="bg-base-100"
+        with-pagination
+        per-page="perPage"
         :per-page-values="[3, 5, 10]"
+        pagination-template="vendor.pagination.daisyui"
     >
-
         {{-- Overrides `contact_name` header --}}
         @scope('header_contact_name', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `phone` header --}}
         @scope('header_formatted_phone_number', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `criado_por` header --}}
         @scope('header_criado_por', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
-        {{-- Overrides `messagem` header --}}
+        {{-- Overrides `mensagem` header --}}
         @scope('header_menssage', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
 
         {{-- Overrides `formatted_created_at` header --}}
         @scope('header_formatted_created_at', $header)
-            <h3 class="text-xl font-bold text-black">
+            <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
             </h3>
         @endscope
@@ -76,19 +77,17 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/13 lg:w-1/2"
+        class="w-11/12 lg:w-1/2"
         right
     >
         <x-mary-form wire:submit="save">
-            {{-- <x-mary-choices label="Contatos" wire:model="form.phone_number" :options="$filteredContacts" allow-all /> --}}
-
             <x-mary-choices
                 label="Contatos"
                 wire:model="form.phone_number"
                 :options="$contatos"
                 placeholder="Clique no 'X' antes de buscar..."
-                debounce="300ms" {{-- Default is `250ms`--}}
-                min-chars="2" {{-- Default is `0`--}}
+                debounce="300ms"
+                min-chars="2"
                 searchable
                 no-result-text="Nenhum contato encontrado."
                 search-function="searchContatosf"
@@ -102,6 +101,7 @@
                     3. Toque no ícone de olho para ver como ficou.
                     4. Se a imagem estiver errada, apague e escolha outra."
                 icon="o-exclamation-triangle"
+                class="bg-warning/10 text-warning border-warning/20"
             />
 
             <x-mary-markdown wire:model="form.menssage_content" label="Mensagem">
@@ -118,47 +118,7 @@
 
             <hr>
 
-           {{--
-            <x-mary-popover position="top-start" offset="20">
-                <x-slot:trigger>
-                    <x-mary-button label="Configurar cadência (Opcional)" />
-                </x-slot:trigger>
-                <x-slot:content>
-                    Logo vamos aprimorar a cadência,
-                    por enquanto o envio de intervalo
-                    será apenas um.
-                </x-slot:content>
-            </x-marypopover>
-
-            <hr>
-
-            <x-mary-datepicker
-                label="Data inicial"
-                wire:model="form.start_date"
-                icon="o-calendar"
-                :config="$configDatePicker"
-                hint="Data de início do envio."
-            />
-
-            <x-mary-input
-                label="Intervalo (em dias)"
-                type="number"
-                wire:model="form.interval"
-                hint="Intervalo entre as mensagens (em dias)."
-                min="1"
-            />
-
-            <x-mary-textarea
-                label="Mensagem"
-                wire:model="form.message_interval"
-                placeholder="Digite aqui ..."
-                hint="Max 1000 chars"
-                rows="5"
-                inline
-            />
-            --}}
-
-            <x-mary-select label="Cadêcnia (Opcional)" wire:model="form.cadencias" :options="$cadencias" />
+            <x-mary-select label="Cadência (Opcional)" wire:model="form.cadencias" :options="$cadencias" />
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />
 
@@ -168,5 +128,4 @@
             </x-slot:actions>
         </x-mary-form>
     </x-mary-drawer>
-
 </div>

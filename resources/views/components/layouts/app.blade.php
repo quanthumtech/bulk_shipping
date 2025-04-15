@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="cupcake">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -90,6 +90,9 @@
         <x-slot:actions>
             {{--<x-mary-button label="Messages" icon="o-envelope" link="###" class="btn-ghost btn-sm" responsive />--}}
             <x-mary-button label="Notifications" icon="o-bell" link="###" class="btn-ghost btn-sm" responsive />
+            <div class="flex items-center justify-end">
+                <x-mary-theme-toggle lightTheme="cupcake" darkTheme="dark" />
+            </div>
         </x-slot:actions>
     </x-mary-nav>
 
@@ -116,8 +119,7 @@
 
                             <x-mary-menu-item title="logout" icon="o-power" link="/logout"/>
                             <x-mary-menu-item title="Perfil" icon="o-user" link="/perfil" :link="route('perfil.index', ['id' => auth()->user()->id])"/>
-                        {{-- <x-mary-menu-item title="Theme" icon="o-swatch" @click="$dispatch('mary-toggle-theme')" /> --}}
-                        </x-dropdown>
+                        </x-mary-dropdown>
                     </x-slot:actions>
                 </x-mary-list-item>
 

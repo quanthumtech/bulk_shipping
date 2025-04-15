@@ -9,38 +9,53 @@
     <x-mary-table
         :rows="$etapas"
         :headers="$headers"
-        class="bg-white"
-        striped @row-click="$wire.edit($event.detail.id)"
+        class="bg-base-100"
+        striped
+        @row-click="$wire.edit($event.detail.id)"
         with-pagination
         per-page="perPage"
         :per-page-values="[3, 5, 10]"
-        >
+    >
         @scope('header_titulo', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content"> <!-- Alterado de text-black para text-base-content -->
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_dias', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_hora', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_imediat_format', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_active_format', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_message_status', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('header_message_time', $header)
-            <h3 class="text-xl font-bold text-black">{{ $header['label'] }}</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
         @endscope
 
         @scope('actions', $etapa)
@@ -52,13 +67,12 @@
         wire:model="etapaModal"
         title="{{ $title }}"
         subtitle=""
-        subtitle=""
         separator
         with-close-button
         close-on-escape
-        class="w-11/13 lg:w-1/2"
+        class="w-11/12 lg:w-1/2"
         right
-        >
+    >
         <x-mary-form wire:submit="save">
             <x-mary-input label="Título" wire:model="form.titulo" />
             <div class="grid grid-cols-2 gap-4 mt-4">
@@ -72,9 +86,7 @@
                     <x-mary-checkbox
                         label="Envio imediato"
                         wire:model="form.imediat"
-                        hint="Opção para envio imediato
-                            (Checkbox que marcado assim que entrar o
-                            SyncFlow deverá ser enviado (Ex: mensagem de boas vindas)"
+                        hint="Opção para envio imediato (Checkbox que, quando marcado, faz com que a mensagem seja enviada assim que entrar no SyncFlow, ex: mensagem de boas-vindas)"
                         right
                     />
                 </div>

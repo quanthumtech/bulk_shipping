@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\ChatwootsAgents;
 use App\Models\User;
 use App\Models\Versions;
+use App\Services\ChatwootService;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -59,10 +61,11 @@ class UsersForm extends Form
 
         $versionAtiva = Versions::where('active', 1)->first();
 
-        // concatena a url da versão ativa
-        $completeApiPost = (string)$versionAtiva->url_evolution  . $this->api_post;
+        // Concatena a URL da versão ativa
+        $completeApiPost = (string)$versionAtiva->url_evolution . $this->api_post;
 
-        User::create([
+        // Cria o usuário
+        $user = User::create([
             'name'              => $this->name,
             'email'             => $this->email,
             'chatwoot_accoumts' => $this->chatwoot_accoumts,
@@ -74,6 +77,23 @@ class UsersForm extends Form
             'password'          => Hash::make($this->password),
         ]);
 
+        // Busca e armazena os agentes
+        if ($this->chatwoot_accoumts && $this->token_acess) {
+            $chatwootService = new ChatwootService();
+            $agents = $chatwootService->getAgents($this->chatwoot_accoumts, $this->token_acess);
+
+            foreach ($agents as $agent) {
+                ChatwootsAgents::create([
+                    'user_id'            => $user->id,
+                    'chatwoot_account_id' => $this->chatwoot_accoumts,
+                    'agent_id'           => $agent['agent_id'],
+                    'name'               => $agent['name'],
+                    'email'              => $agent['email'],
+                    'role'               => $agent['role'],
+                ]);
+            }
+        }
+
         $this->reset();
     }
 
@@ -83,8 +103,8 @@ class UsersForm extends Form
 
         $versionAtiva = Versions::where('active', 1)->first();
 
-        // concatena a url da versão ativa
-        $completeApiPost = (string)$versionAtiva->url_evolution  . $this->api_post;
+        // Concatena a URL da versão ativa
+        $completeApiPost = (string)$versionAtiva->url_evolution . $this->api_post;
 
         $data = [
             'name'              => $this->name,
@@ -102,6 +122,27 @@ class UsersForm extends Form
         }
 
         $this->users->update($data);
+
+        // Atualiza os agentes
+        if ($this->chatwoot_accoumts && $this->token_acess) {
+            $chatwootService = new ChatwootService();
+            $agents = $chatwootService->getAgents($this->chatwoot_accoumts, $this->token_acess);
+
+            // Remove agentes antigos
+            ChatwootsAgents::where('user_id', $this->users->id)->delete();
+
+            // Adiciona os novos agentes
+            foreach ($agents as $agent) {
+                ChatwootsAgents::create([
+                    'user_id'            => $this->users->id,
+                    'chatwoot_account_id' => $this->chatwoot_accoumts,
+                    'agent_id'           => $agent['agent_id'],
+                    'name'               => $agent['name'],
+                    'email'              => $agent['email'],
+                    'role'               => $agent['role'],
+                ]);
+            }
+        }
 
         $this->reset();
     }
