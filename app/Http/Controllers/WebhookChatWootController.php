@@ -63,7 +63,7 @@ class WebhookChatWootController extends Controller
                 // Obtém o token de acesso do usuário
                 $apiToken = User::where('chatwoot_accoumts', $chatWootAgents->chatwoot_account_id)->first();
 
-                if (!$chatWootAgents || !$chatWootAgents->chatwoot_account_id || !$apiToken) {
+                if (!$chatWootAgents || !$chatWootAgents->chatwoot_account_id || !$apiToken->token_acess) {
                     Log::warning('Detalhes do usuário ou conta Chatwoot não encontrados', [
                         'email_vendedor' => $lead->email_vendedor,
                         'conversation_id' => $conversationId
@@ -74,7 +74,7 @@ class WebhookChatWootController extends Controller
                 $accountId = $chatWootAgents->chatwoot_account_id;
 
                 // Obter lista de agentes
-                $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
+                $agents = $this->chatwootServices->getAgents($accountId, $apiToken->token_acess);
 
                 Log::info('Lista de agentes obtida', [
                     'account_id' => $accountId,
@@ -93,11 +93,11 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Atribuir agente à conversa
-                $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
+                $this->chatwootServices->assignAgentToConversation($accountId, $apiToken->token_acess, $conversationId, $matchingAgent['agent_id']);
 
                 // Abrir conversa se necessário
                 if ($payload['status'] !== 'open') {
-                    $this->chatwootServices->toggleConversationStatus($accountId, $apiToken, $conversationId);
+                    $this->chatwootServices->toggleConversationStatus($accountId, $apiToken->token_acess, $conversationId);
                 }
 
                 // Armazenar dados da conversa na tabela pivot
