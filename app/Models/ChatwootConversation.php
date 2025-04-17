@@ -22,4 +22,9 @@ class ChatwootConversation extends Model
     {
         return $this->belongsTo(SyncFlowLeads::class, 'sync_flow_lead_id');
     }
+
+    public function messages()
+    {
+        return $this->hasMany(ChatwootMessage::class, 'chatwoot_conversation_id');
+    }
 }
