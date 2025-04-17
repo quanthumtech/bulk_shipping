@@ -131,7 +131,7 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Obter o token de acesso do usuário
-                $user = User::where('chatwoot_accounts', $accountId)->first();
+                $user = User::where('chatwoot_accoumts', $accountId)->first();
 
                 if (!$user || !$user->token_acess) {
                     Log::warning('Usuário ou token de acesso não encontrado', [
