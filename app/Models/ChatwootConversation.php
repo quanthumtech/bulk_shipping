@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChatwootConversation extends Model
 {
-    protected $table = 'chatwoot_conversations';
+    protected $table = 'chatwoot_conversation';
 
     protected $fillable = [
         'sync_flow_lead_id',

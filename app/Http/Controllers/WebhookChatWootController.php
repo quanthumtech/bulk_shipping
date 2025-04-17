@@ -30,7 +30,7 @@ class WebhookChatWootController extends Controller
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
                 $contactPhone = $payload['meta']['sender']['phone_number'] ?? null;
 
-                Log::info('Processing conversation update', [
+                Log::info('Processando atualização da conversa', [
                     'conversation_id' => $conversationId,
                     'email' => $contactEmail,
                     'phone' => $contactPhone
@@ -42,12 +42,18 @@ class WebhookChatWootController extends Controller
                     ->first();
 
                 if (!$lead) {
-                    Log::warning('Lead not found for conversation', [
+                    Log::warning('Lead não encontrado para a conversa', [
                         'conversation_id' => $conversationId,
                         'email' => $contactEmail,
                         'phone' => $contactPhone
                     ]);
                     return response()->json(['status' => 'lead_not_found'], 404);
+                }else {
+                    Log::info('Lead encontrado', [
+                        'id_do_lead' => $lead->id,
+                        'email' => $contactEmail,
+                        'telefone' => $contactPhone
+                    ]);
                 }
 
                 // Encontrar o usuário associado ao email_vendedor para obter detalhes da conta Chatwoot
@@ -104,17 +110,30 @@ class WebhookChatWootController extends Controller
 
     private function storeConversationData($leadId, $conversationId, $accountId, $agentId)
     {
-        ChatwootConversation::updateOrCreate(
-            [
+        try {
+            ChatwootConversation::updateOrCreate(
+                [
+                    'sync_flow_lead_id' => $leadId,
+                    'conversation_id' => $conversationId
+                ],
+                [
+                    'account_id' => $accountId,
+                    'agent_id' => $agentId,
+                    'status' => 'open',
+                    'last_activity_at' => now()
+                ]
+            );
+
+            Log::info('Conversa armazenada com sucesso', [
                 'sync_flow_lead_id' => $leadId,
                 'conversation_id' => $conversationId
-            ],
-            [
-                'account_id' => $accountId,
-                'agent_id' => $agentId,
-                'status' => 'open',
-                'last_activity_at' => now()
-            ]
-        );
+            ]);
+        } catch (\Exception $exception) {
+            Log::error('Falha ao armazenar conversa', [
+                'sync_flow_lead_id' => $leadId,
+                'conversation_id' => $conversationId,
+                'error' => $exception->getMessage()
+            ]);
+        }
     }
 }
