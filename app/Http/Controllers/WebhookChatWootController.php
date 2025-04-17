@@ -90,7 +90,7 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Atribuir agente à conversa
-                $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['id']);
+                $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
 
                 // Abrir conversa se necessário
                 if ($payload['status'] !== 'open') {
@@ -98,7 +98,7 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Armazenar dados da conversa na tabela pivot
-                $this->storeConversationData($lead->id, $conversationId, $accountId, $matchingAgent['id']);
+                $this->storeConversationData($lead->id, $conversationId, $accountId, $matchingAgent['agent_id']);
 
                 return response()->json(['status' => 'ok']);
             }
