@@ -309,8 +309,20 @@ class ChatwootService
         $apikey = $Apikey ?? null;
         $api_post = $apiPost ?? null;
 
-        // Verifica a versão ativa da API
-        $activeVersion = Versions::getActiveVersion();
+        Log::info("API Post usada: {$api_post}");
+
+        // Extrai a parte da URL até "sendText/"
+        $needle = 'sendText/';
+        if (strpos($api_post, $needle) !== false) {
+            $baseUrl = substr($api_post, 0, strpos($api_post, $needle) + strlen($needle));
+        } else {
+            $baseUrl = $api_post;
+        }
+
+        // Verifica a versão ativa da API com base na parte extraída da URL
+        $activeVersion = Versions::where('url_evolution', $baseUrl)
+            ->value('name');
+
         if (!$activeVersion) {
             Log::error("Nenhuma versão ativa da API encontrada.");
             return null;
@@ -378,6 +390,8 @@ class ChatwootService
                     ]
                 ];
                 $endpoint = str_replace('sendText', 'sendMedia', $api_post);
+
+                Log::info("Payload sendo enviado para a API Evolution v1 (Imagem): " . json_encode($payload));
             } else {
                 $payload = [
                     "number" => $phoneNumber,
@@ -391,6 +405,8 @@ class ChatwootService
                     ]
                 ];
                 $endpoint = $api_post;
+
+                Log::info("Payload sendo enviado para a API Evolution v1 (Text): " . json_encode($payload));
             }
         } elseif ($activeVersion === 'Evolution v2') {
             if ($isImage) {

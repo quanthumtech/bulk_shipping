@@ -30,6 +30,12 @@ class WebhookChatWootController extends Controller
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
                 $contactPhone = $payload['meta']['sender']['phone_number'] ?? null;
 
+                Log::info('Processing conversation update', [
+                    'conversation_id' => $conversationId,
+                    'email' => $contactEmail,
+                    'phone' => $contactPhone
+                ]);
+
                 // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
                 $lead = SyncFlowLeads::where('contact_email', $contactEmail)
                     ->orWhere('contact_number', $contactPhone)
