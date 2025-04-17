@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Models\Cadencias;
 use App\Models\SyncFlowLeads;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Validate;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\Form;
@@ -28,6 +29,8 @@ class CadenciaForm extends Form
 
     public $stage = '';
 
+    public $evolution_id;
+
     public $rules = [
         'name'        => 'required|string',
         'description' => 'nullable|string',
@@ -43,51 +46,51 @@ class CadenciaForm extends Form
         $this->description           = $cadencias->description;
         $this->stage                 = $cadencias->stage;
         $this->active                = (bool) $cadencias->active;
+        $this->evolution_id          = $cadencias->evolution_id;
     }
 
     public function store()
     {
-
         $this->validate();
 
         $data = [
-            'name'        => $this->name,
-            'hora_inicio' => $this->hora_inicio,
-            'hora_fim'    => $this->hora_fim,
-            'description' => $this->description,
-            'stage'      => $this->stage,
-            'active'      => $this->active,
-            'user_id'     => auth()->id(),
+            'name'          => $this->name,
+            'hora_inicio'   => $this->hora_inicio,
+            'hora_fim'      => $this->hora_fim,
+            'description'   => $this->description,
+            'stage'         => $this->stage ?? 'Sem Estágio',
+            'active'        => $this->active,
+            'user_id'       => auth()->id(),
+            'evolution_id'  => $this->evolution_id,
         ];
 
         $cadencias = Cadencias::create($data);
 
-       /**
-        * Aqui checa os leads do syncflow, se o estagio dele corresponde ao estagio da cadencia criada ele checa se
-        * já oi atribuida a cadencia a esse lead se não ele atribui.
-        */
-        $sync_emp = SyncFlowLeads::whereRaw('UPPER(estagio) = ?', [strtoupper($this->stage)])->first();
+        if (Auth::user()->chatwoot_accoumts == 5) {
+            $sync_emp = SyncFlowLeads::whereRaw('UPPER(estagio) = ?', [strtoupper($this->stage)])->first();
 
-        if ($sync_emp) {
-            $sync_emp->cadencia_id = $cadencias->id;
-            $sync_emp->save();
+            if ($sync_emp) {
+                $sync_emp->cadencia_id = $cadencias->id;
+                $sync_emp->save();
+            }
         }
 
         $this->reset();
-
     }
+
 
     public function update()
     {
         $this->validate();
 
         $data = [
-            'name'        => $this->name,
-            'hora_inicio' => $this->hora_inicio,
-            'hora_fim'    => $this->hora_fim,
-            'description' => $this->description,
-            'stage'      => $this->stage,
-            'active'      => $this->active,
+            'name'         => $this->name,
+            'hora_inicio'  => $this->hora_inicio,
+            'hora_fim'     => $this->hora_fim,
+            'description'  => $this->description,
+            'stage'        => $this->stage,
+            'active'       => $this->active,
+            'evolution_id' => $this->evolution_id,
         ];
 
         $this->cadencias->update($data);

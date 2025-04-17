@@ -68,13 +68,15 @@
         class="w-11/12 lg:w-1/2"
     >
         <x-mary-form wire:submit="save">
-            <div class="grid grid-cols-2 gap-4">
+            <div @if (Auth::user()->chatwoot_accoumts == 5) class="grid grid-cols-2 gap-4" @else class="grid grid-cols-1 gap-4" @endif>
                 <div class="space-y-2">
-                    <x-mary-input label="Nome do contato" wire:model="form.name" placeholder="Digite aqui o nome da cadência..." />
+                    <x-mary-input label="Nome da cadência" wire:model="form.name" placeholder="Digite aqui o nome da cadência..." />
                 </div>
-                <div class="space-y-2">
-                    <x-mary-select label="Escolha o Estágio" :options="$options" wire:model="form.stage" />
-                </div>
+                @if(Auth::user()->chatwoot_accoumts == 5)
+                    <div class="space-y-2">
+                        <x-mary-select label="Escolha o Estágio" :options="$options" wire:model="form.stage" />
+                    </div>
+                @endif
             </div>
 
             {{-- INFO: range --}}
@@ -102,6 +104,14 @@
                 hint="Max 1000 chars"
                 rows="5"
                 inline
+            />
+
+            <x-mary-select
+                label="Selecione a Caixa"
+                wire:model.debounce.500ms="form.evolution_id"
+                hint="Escolha a caixa que será responsável por enviar as mensagens."
+                :options="$caixasEvolution"
+                required
             />
 
             <x-mary-toggle label="Ativo" wire:model="form.active" />

@@ -4,8 +4,10 @@ namespace App\Livewire;
 
 use App\Livewire\Forms\CadenciaForm;
 use App\Models\Cadencias;
+use App\Models\Evolution;
 use App\Services\ZohoCrmService; // Importe o serviço
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -34,7 +36,13 @@ class CadenciaIndex extends Component
     public function mount(ZohoCrmService $zohoService)
     {
         $this->zohoService = $zohoService;
-        $this->loadStages();
+
+        if(Auth::user()->chatwoot_accoumts == 5)
+        {
+            $this->loadStages();
+        }else{
+            Log::info('O usuário não possui a conta do Zoho CRM.');
+        }
     }
 
     public function loadStages()
@@ -129,12 +137,29 @@ class CadenciaIndex extends Component
         $descriptionCard = 'Cadências são fluxos de comunicação que podem ser aplicados a um ou mais contatos. Cada cadência é composta por uma série de etapas,
                             que podem ser mensagens de texto, e-mails, ligações, entre outros. Clique no botão "+" para criar as etapas da sua cadência.';
 
+        $caixasEvolution = collect([['id' => '', 'name' => 'Selecione uma Caixa...']])
+        ->concat(
+            Evolution::where('user_id', Auth::user()->id)
+                ->where('active', 1)
+                ->get()
+                ->map(function ($evolution) {
+                    $url = $evolution->api_post ?? '';
+                    $parts = explode('sendText/', $url);
+                    $namePart = count($parts) > 1 ? $parts[1] : $url;
+                    return [
+                        'id' => $evolution->id,
+                        'name' => $namePart,
+                    ];
+                })
+        );
+
         return view('livewire.cadencia-index', [
             'cadencias_table' => $cadencias_table,
             'cadencias' => $cadencias,
             'headers' => $headers,
             'descriptionCard' => $descriptionCard,
             'options' => $this->options, // Passe as opções para a view
+            'caixasEvolution' => $caixasEvolution,
         ]);
     }
 

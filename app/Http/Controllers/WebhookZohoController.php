@@ -35,6 +35,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $sync_emp->chatwoot_accoumts;
                 $sync_emp->cadencia_id = $request->id_cadencia ?? $sync_emp->cadencia_id; // Mantém o valor atual se não vier id_cadencia
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
+                $sync_emp->email_vendedor = $request->email_vendedor ?? $sync_emp->email_vendedor;
                 $sync_emp->updated_at = now();
 
                 // Se o estágio mudou e não veio cadencia_id, atualiza a cadência com base no novo estágio
@@ -67,6 +68,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
                 $sync_emp->cadencia_id = $request->id_cadencia ?? null; // Pode vir do request ou ser null
                 $sync_emp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
+                $sync_emp->email_vendedor = $request->email_vendedor ?? 'Não fornecido';
                 $sync_emp->created_at = now();
 
                 // Se não veio cadencia_id mas tem estágio, busca a cadência pelo estágio

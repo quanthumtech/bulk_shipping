@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Auth;
 
 class ChatwootService
 {
+
+    public $apiBaseUrl = 'https://chatwoot.plataformamundo.com.br/api/v1/accounts/';
+
     /**
      * Obtém os contatos da conta da
      * empresa do uauário.
@@ -144,6 +147,53 @@ class ChatwootService
     }
 
     /**
+     * Atribui um agente a uma conversa no Chatwoot.
+     *
+     * @param [type] $accountId
+     * @param [type] $apiToken
+     * @param [type] $conversationId
+     * @param [type] $agentId
+     * @return void
+     */
+    public function assignAgentToConversation($accountId, $apiToken, $conversationId, $agentId)
+    {
+        $response = Http::withHeaders([
+            'api_access_token' => $apiToken
+        ])->post($this->apiBaseUrl . $accountId . '/conversations/' . $conversationId . '/assignments', [
+            'assignee_id' => $agentId
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Failed to assign agent: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Toggles the status of a conversation in Chatwoot.
+     *
+     * @param [type] $accountId
+     * @param [type] $apiToken
+     * @param [type] $conversationId
+     * @return void
+     */
+    public function toggleConversationStatus($accountId, $apiToken, $conversationId)
+    {
+        $response = Http::withHeaders([
+            'api_access_token' => $apiToken
+        ])->post($this->apiBaseUrl . $accountId . '/conversations/' . $conversationId . '/toggle_status', [
+            'status' => 'open'
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Failed to toggle status: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Sinconiza os contatos da conta do Chatwoot
      *
      * @return void
@@ -223,20 +273,15 @@ class ChatwootService
 
     public function isWhatsappNumber($phoneNumber)
     {
-        // Remove caracteres não numéricos
-        $cleaned = preg_replace('/\D/', '', $phoneNumber);
+        // Remove todos os caracteres que não sejam dígitos
+        $digits = preg_replace('/\D/', '', $phoneNumber);
 
-        // Verifica se o número começa com o código do país (55 para o Brasil)
-        // E se possui um tamanho compatível (13 ou 14 dígitos: 55 + DDD + número)
-        if (strpos($cleaned, '55') === 0 && (strlen($cleaned) === 13 || strlen($cleaned) === 14)) {
-            return true;
+        // Se o número não começar com '55', o prefixa
+        if (substr($digits, 0, 2) !== '55') {
+            $digits = '55' . $digits;
         }
 
-        // Se preferir uma lógica mais genérica, pode utilizar outra abordagem,
-        // por exemplo, verificar se o número possui pelo menos 10 dígitos
-        // return strlen($cleaned) >= 10;
-
-        return false;
+        return $digits;
     }
 
     /**

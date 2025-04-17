@@ -15,11 +15,17 @@ class Cadencias extends Model
         'hora_fim', //range de horario fim
         'active',
         'user_id',
-        'stage'
+        'stage',
+        'evolution_id',
     ];
 
     public function etapas()
     {
         return $this->hasMany(Etapas::class, 'cadencia_id');
+    }
+
+    public function evolution()
+    {
+        return $this->belongsTo(Evolution::class, 'evolution_id');
     }
 }
