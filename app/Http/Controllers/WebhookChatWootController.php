@@ -28,10 +28,26 @@ class WebhookChatWootController extends Controller
 
             // Verifica se é um evento de atualização de conversa ou mensagem criada
             if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created'])) {
-                $conversationId = $payload['id'];
+                // Extrair o ID da conversa
+                $conversationId = $payload['event'] === 'message_created' ? ($payload['conversation']['id'] ?? null) : ($payload['id'] ?? null);
+
+                // Extrair o accountId
+                $accountId = $payload['account']['id'] ?? ($payload['messages'][0]['account_id'] ?? null);
+
+                // Extrair informações de contato
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
                 $contactPhone = $payload['meta']['sender']['phone_number'] ?? null;
-                $accountId = $payload['account']['id'] ?? null;
+
+                // Se contactPhone for null, tentar extrair de meta.sender.identifier ou messages[0].sender.phone_number
+                if (!$contactPhone && isset($payload['meta']['sender']['identifier'])) {
+                    // Extrair número de telefone de identifier (ex: 5512988784433@s.whatsapp.net)
+                    $identifier = $payload['meta']['sender']['identifier'];
+                    if (preg_match('/^(\d+)@s\.whatsapp\.net$/', $identifier, $matches)) {
+                        $contactPhone = '+' . $matches[1]; // Adiciona o "+" para formato internacional
+                    }
+                } elseif (!$contactPhone && isset($payload['messages'][0]['sender']['phone_number'])) {
+                    $contactPhone = $payload['messages'][0]['sender']['phone_number'];
+                }
 
                 // Extrair o conteúdo da mensagem e messageId com base no tipo de evento
                 $content = null;
@@ -51,6 +67,13 @@ class WebhookChatWootController extends Controller
                     return response()->json(['status' => 'account_id_missing'], 400);
                 }
 
+                if (!$conversationId) {
+                    Log::error('conversationId não encontrado no payload', [
+                        'payload' => $payload
+                    ]);
+                    return response()->json(['status' => 'conversation_id_missing'], 400);
+                }
+
                 Log::info('Processando atualização da conversa', [
                     'conversation_id' => $conversationId,
                     'email' => $contactEmail,
@@ -61,9 +84,12 @@ class WebhookChatWootController extends Controller
                 ]);
 
                 // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
-                $lead = SyncFlowLeads::where('contact_email', $contactEmail)
-                    ->orWhere('contact_number', $contactPhone)
-                    ->first();
+                $lead = null;
+                if ($contactEmail || $contactPhone) {
+                    $lead = SyncFlowLeads::where('contact_email', $contactEmail)
+                        ->orWhere('contact_number', $contactPhone)
+                        ->first();
+                }
 
                 if (!$lead) {
                     Log::warning('Lead não encontrado para a conversa', [
@@ -71,90 +97,105 @@ class WebhookChatWootController extends Controller
                         'email' => $contactEmail,
                         'phone' => $contactPhone
                     ]);
-                    return response()->json(['status' => 'lead_not_found'], 404);
+                    // Continuar o processamento mesmo sem lead
+                    // return response()->json(['status' => 'lead_not_found'], 404);
+                } else {
+                    Log::info('Lead encontrado', [
+                        'id_do_lead' => $lead->id,
+                        'email' => $contactEmail,
+                        'telefone' => $contactPhone
+                    ]);
                 }
 
-                Log::info('Lead encontrado', [
-                    'id_do_lead' => $lead->id,
-                    'email' => $contactEmail,
-                    'telefone' => $contactPhone
-                ]);
+                // Encontrar o agente associado ao email_vendedor (se houver lead)
+                $chatWootAgent = null;
+                if ($lead) {
+                    $chatWootAgent = ChatwootsAgents::where('email', $lead->email_vendedor)->first();
 
-                // Encontrar o agente associado ao email_vendedor
-                $chatWootAgent = ChatwootsAgents::where('email', $lead->email_vendedor)->first();
-
-                if (!$chatWootAgent || !$chatWootAgent->chatwoot_account_id) {
-                    Log::warning('Agente Chatwoot não encontrado', [
-                        'email_vendedor' => $lead->email_vendedor,
-                        'conversation_id' => $conversationId
-                    ]);
-                    return response()->json(['status' => 'chatwoot_agent_not_found'], 404);
-                }
-
-                // Validar se o accountId do agente corresponde ao accountId do payload
-                if ($chatWootAgent->chatwoot_account_id != $accountId) {
-                    Log::warning('accountId do agente não corresponde ao accountId do payload', [
-                        'email_vendedor' => $lead->email_vendedor,
-                        'agent_account_id' => $chatWootAgent->chatwoot_account_id,
-                        'payload_account_id' => $accountId,
-                        'conversation_id' => $conversationId
-                    ]);
-                    return response()->json(['status' => 'account_id_mismatch'], 400);
+                    if (!$chatWootAgent || !$chatWootAgent->chatwoot_account_id) {
+                        Log::warning('Agente Chatwoot não encontrado', [
+                            'email_vendedor' => $lead->email_vendedor,
+                            'conversation_id' => $conversationId
+                        ]);
+                        // Continuar o processamento mesmo sem agente
+                        // return response()->json(['status' => 'chatwoot_agent_not_found'], 404);
+                    } elseif ($chatWootAgent->chatwoot_account_id != $accountId) {
+                        Log::warning('accountId do agente não corresponde ao accountId do payload', [
+                            'email_vendedor' => $lead->email_vendedor,
+                            'agent_account_id' => $chatWootAgent->chatwoot_account_id,
+                            'payload_account_id' => $accountId,
+                            'conversation_id' => $conversationId
+                        ]);
+                        return response()->json(['status' => 'account_id_mismatch'], 400);
+                    }
                 }
 
                 // Obter o token de acesso do usuário
-                $user = User::where('chatwoot_accoumts', $chatWootAgent->chatwoot_account_id)->first();
+                $user = User::where('chatwoot_accounts', $accountId)->first();
 
                 if (!$user || !$user->token_acess) {
                     Log::warning('Usuário ou token de acesso não encontrado', [
-                        'chatwoot_account_id' => $chatWootAgent->chatwoot_account_id,
+                        'chatwoot_account_id' => $accountId,
                         'conversation_id' => $conversationId
                     ]);
-                    return response()->json(['status' => 'user_or_token_not_found'], 404);
+                    // Continuar o processamento mesmo sem token
+                    // return response()->json(['status' => 'user_or_token_not_found'], 404);
                 }
 
-                $apiToken = $user->token_acess;
+                $apiToken = $user ? $user->token_acess : null;
 
-                // Obter lista de agentes
-                $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
-
-                Log::info('Lista de agentes obtida', [
-                    'account_id' => $accountId,
-                    'agents_count' => count($agents)
-                ]);
-
-                // Encontrar agente com email_vendedor correspondente
-                $matchingAgent = collect($agents)->firstWhere('email', $lead->email_vendedor);
-
-                if (!$matchingAgent) {
-                    Log::info('Nenhum agente correspondente encontrado', [
-                        'email_vendedor' => $lead->email_vendedor,
-                        'conversation_id' => $conversationId,
-                        'account_id' => $accountId
+                // Obter lista de agentes (se houver token)
+                $agents = [];
+                if ($apiToken) {
+                    $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
+                    Log::info('Lista de agentes obtida', [
+                        'account_id' => $accountId,
+                        'agents_count' => count($agents)
                     ]);
-                    return response()->json(['status' => 'agent_not_found'], 404);
                 }
 
-                // Validar se o agent_id está presente
-                if (!isset($matchingAgent['agent_id'])) {
-                    Log::error('agent_id não encontrado no matchingAgent', [
-                        'email_vendedor' => $lead->email_vendedor,
-                        'conversation_id' => $conversationId,
-                        'matching_agent' => $matchingAgent
-                    ]);
-                    return response()->json(['status' => 'invalid_agent_data'], 400);
+                // Encontrar agente com email_vendedor correspondente (se houver lead e agente)
+                $matchingAgent = null;
+                if ($lead && $chatWootAgent) {
+                    $matchingAgent = collect($agents)->firstWhere('email', $lead->email_vendedor);
+
+                    if (!$matchingAgent) {
+                        Log::info('Nenhum agente correspondente encontrado', [
+                            'email_vendedor' => $lead->email_vendedor,
+                            'conversation_id' => $conversationId,
+                            'account_id' => $accountId
+                        ]);
+                        // Continuar o processamento mesmo sem agente correspondente
+                        // return response()->json(['status' => 'agent_not_found'], 404);
+                    } elseif (!isset($matchingAgent['agent_id'])) {
+                        Log::error('agent_id não encontrado no matchingAgent', [
+                            'email_vendedor' => $lead->email_vendedor,
+                            'conversation_id' => $conversationId,
+                            'matching_agent' => $matchingAgent
+                        ]);
+                        return response()->json(['status' => 'invalid_agent_data'], 400);
+                    }
                 }
 
-                // Atribuir agente à conversa
-                $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
+                // Atribuir agente à conversa (se houver agente e token)
+                if ($matchingAgent && $apiToken) {
+                    $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
+                }
 
-                // Abrir conversa se necessário
-                if ($payload['status'] !== 'open') {
+                // Abrir conversa se necessário (se houver token)
+                if ($apiToken && ($payload['status'] ?? 'open') !== 'open') {
                     $this->chatwootServices->toggleConversationStatus($accountId, $apiToken, $conversationId);
                 }
 
                 // Armazenar dados da conversa na tabela pivot
-                $this->storeConversationData($lead->id, $conversationId, $accountId, $matchingAgent['agent_id'], $content, $messageId);
+                $this->storeConversationData(
+                    $lead ? $lead->id : null,
+                    $conversationId,
+                    $accountId,
+                    $matchingAgent ? $matchingAgent['agent_id'] : null,
+                    $content,
+                    $messageId
+                );
 
                 return response()->json(['status' => 'ok']);
             }
@@ -172,20 +213,23 @@ class WebhookChatWootController extends Controller
     private function storeConversationData($leadId, $conversationId, $accountId, $agentId, $content = null, $messageId = null)
     {
         try {
-            $conversation = ChatwootConversation::updateOrCreate(
-                [
-                    'sync_flow_lead_id' => $leadId,
-                    'conversation_id' => $conversationId
-                ],
-                [
-                    'account_id' => $accountId,
-                    'agent_id' => $agentId,
-                    'status' => 'open',
-                    'last_activity_at' => now()
-                ]
-            );
+            $conversation = null;
+            if ($leadId) {
+                $conversation = ChatwootConversation::updateOrCreate(
+                    [
+                        'sync_flow_lead_id' => $leadId,
+                        'conversation_id' => $conversationId
+                    ],
+                    [
+                        'account_id' => $accountId,
+                        'agent_id' => $agentId,
+                        'status' => 'open',
+                        'last_activity_at' => now()
+                    ]
+                );
+            }
 
-            if ($content && $messageId) {
+            if ($content && $messageId && $conversation) {
                 ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
                     'content' => $content,
