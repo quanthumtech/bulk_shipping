@@ -60,7 +60,7 @@ class WebhookChatWootController extends Controller
                 $user = User::where('email', $lead->email_vendedor)->first();
 
                 if (!$user || !$user->chatwoot_accoumts || !$user->token_acess) {
-                    Log::warning('User or Chatwoot account details not found', [
+                    Log::warning('Detalhes do usuário ou conta Chatwoot não encontrados', [
                         'email_vendedor' => $lead->email_vendedor,
                         'conversation_id' => $conversationId
                     ]);
@@ -73,11 +73,16 @@ class WebhookChatWootController extends Controller
                 // Obter lista de agentes
                 $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
 
+                Log::info('Lista de agentes obtida', [
+                    'account_id' => $accountId,
+                    'agents_count' => count($agents['data'])
+                ]);
+
                 // Encontrar agente com email_vendedor correspondente
                 $matchingAgent = collect($agents['data'])->firstWhere('email', $lead->email_vendedor);
 
                 if (!$matchingAgent) {
-                    Log::warning('No matching agent found', [
+                    Log::info('Nenhum agente correspondente encontrado', [
                         'email_vendedor' => $lead->email_vendedor,
                         'conversation_id' => $conversationId
                     ]);
