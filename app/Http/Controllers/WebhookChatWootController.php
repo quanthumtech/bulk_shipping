@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\SyncFlowLeads;
 use App\Models\ChatwootConversation;
+use App\Models\ChatwootsAgents;
 use App\Models\User;
 use App\Services\ChatwootService;
 use Illuminate\Support\Facades\Log;
@@ -57,18 +58,20 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Encontrar o usuário associado ao email_vendedor para obter detalhes da conta Chatwoot
-                $user = User::where('email', $lead->email_vendedor)->first();
+                $chatWootAgents = ChatwootsAgents::where('email', $lead->email_vendedor)->first();
 
-                if (!$user || !$user->chatwoot_accoumts || !$user->token_acess) {
+                // Obtém o token de acesso do usuário
+                $apiToken = User::where('chatwoot_accoumts', $chatWootAgents->chatwoot_account_id)->first();
+
+                if (!$chatWootAgents || !$chatWootAgents->chatwoot_account_id || !$apiToken) {
                     Log::warning('Detalhes do usuário ou conta Chatwoot não encontrados', [
                         'email_vendedor' => $lead->email_vendedor,
                         'conversation_id' => $conversationId
                     ]);
-                    return response()->json(['status' => 'user_or_chatwoot_details_not_found'], 404);
+                    return response()->json(['status' => 'chatWootAgents_or_chatwoot_details_not_found'], 404);
                 }
 
-                $accountId = $user->chatwoot_accoumts;
-                $apiToken = $user->token_acess;
+                $accountId = $chatWootAgents->chatwoot_account_id;
 
                 // Obter lista de agentes
                 $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
