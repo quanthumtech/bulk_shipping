@@ -73,8 +73,8 @@
                     <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge-primary" />
                 </x-slot:menu>
                 <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" />
-                <x-mary-button label="Ver Histórico" @click="$wire.viewHistory({{ $sync->id }})" class="btn-outline" />
                 <x-mary-dropdown>
+                    <x-mary-menu-item title="Ver Histórico" icon="o-envelope" @click="$wire.viewHistory({{ $sync->id }})" />
                     <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
                     <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
                 </x-mary-dropdown>
