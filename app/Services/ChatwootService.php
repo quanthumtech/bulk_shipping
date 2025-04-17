@@ -131,6 +131,8 @@ class ChatwootService
 
             $agents = $response->json();
 
+            Log::info("Agentes recuperados: " . json_encode($agents));
+
             return collect($agents)->map(function ($agent) {
                 return [
                     'agent_id' => $agent['id'],
