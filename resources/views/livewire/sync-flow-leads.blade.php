@@ -5,10 +5,9 @@
         </x-slot:middle>
     </x-mary-header>
 
-    {{-- INFO: Modal users --}}
+    {{-- Modal para edição/criação de leads --}}
     <x-mary-modal wire:model="syncLeadsModal" class="backdrop-blur">
         <x-mary-form wire:submit="save">
-            {{-- INFO: campos --}}
             <x-mary-input label="Name" wire:model="form.contact_name" />
             <x-mary-input label="Number" wire:model="form.contact_number" />
             <x-mary-input label="Email" wire:model="form.contact_email" />
@@ -23,12 +22,10 @@
         </x-mary-form>
     </x-mary-modal>
 
-    {{-- INFO: Modal designar cadência --}}
+    {{-- Modal para atribuir cadência --}}
     <x-mary-modal wire:model="cadenceModal" class="backdrop-blur">
         <x-mary-form wire:submit="cadenceSave">
-            <div class="mb-5 text-base-content">{{ $this->title }}</div> <!-- Adicionado text-base-content -->
-
-            {{-- INFO: campos --}}
+            <div class="mb-5 text-base-content">{{ $this->title }}</div>
             <x-mary-select label="Cadência" wire:model="form.cadenciaId" :options="$cadencias" />
 
             <x-slot:actions>
@@ -38,7 +35,32 @@
         </x-mary-form>
     </x-mary-modal>
 
-    {{-- INFO: Cards Leads --}}
+    {{-- Modal para histórico de conversas --}}
+    <x-mary-modal wire:model="historyModal" class="backdrop-blur">
+        <div class="mb-5 text-base-content">
+            <h2 class="text-lg font-bold">Histórico de Conversas - {{ $selectedLead->contact_name ?? 'Lead' }}</h2>
+        </div>
+        <div class="max-h-96 overflow-y-auto">
+            @if (empty($conversationHistory))
+                <p class="text-gray-500">Nenhuma mensagem encontrada.</p>
+            @else
+                <ul class="space-y-4">
+                    @foreach ($conversationHistory as $message)
+                        <li class="border-b pb-2">
+                            <p class="text-sm text-gray-600">{{ $message['created_at'] }}</p>
+                            <p class="text-base">{{ $message['content'] }}</p>
+                            <p class="text-xs text-gray-400">Mensagem ID: {{ $message['message_id'] }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+        <x-slot:actions>
+            <x-mary-button label="Fechar" @click="$wire.historyModal = false" />
+        </x-slot:actions>
+    </x-mary-modal>
+
+    {{-- Cards Leads --}}
     <div class="grid lg:grid-cols-3 gap-5 mt-4">
         @foreach ($syncFlowLeads as $sync)
             <x-mary-card
@@ -51,14 +73,17 @@
                     <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge-primary" />
                 </x-slot:menu>
                 <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" />
-                <x-mary-button icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" class="btn-primary" />
-                <x-mary-button icon="o-trash" wire:click="delete({{ $sync->id }})" class="btn-error end" />
+                <x-mary-button label="Ver Histórico" @click="$wire.viewHistory({{ $sync->id }})" class="btn-outline" />
+                <x-mary-dropdown>
+                    <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
+                    <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
+                </x-mary-dropdown>
             </x-mary-card>
         @endforeach
     </div>
 
-    {{-- PAGINAÇÃO --}}
+    {{-- Paginação --}}
     <div class="mt-4">
-        {{ $syncFlowLeads->links() }} <!-- Especificado template DaisyUI -->
+        {{ $syncFlowLeads->links() }}
     </div>
 </div>

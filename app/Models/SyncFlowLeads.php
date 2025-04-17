@@ -25,4 +25,10 @@ class SyncFlowLeads extends Model
     {
         return $this->belongsTo(Cadencias::class, 'cadencia_id');
     }
+
+    // Relação com ChatwootConversation
+    public function chatwootConversations()
+    {
+        return $this->hasMany(ChatwootConversation::class, 'sync_flow_lead_id');
+    }
 }

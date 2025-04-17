@@ -18,15 +18,18 @@ class SyncFlowLeads extends Component
     public $title = '';
     public bool $syncLeadsModal = false;
     public bool $cadenceModal = false;
+    public bool $historyModal = false; // Novo modal para histórico
     public bool $editMode = false;
-    public string $search = ''; // Adicionando a pesquisa
+    public string $search = '';
     public int $perPage = 6;
+    public $selectedLead = null; // Lead selecionado para o histórico
+    public $conversationHistory = []; // Histórico de mensagens
 
-    protected $queryString = ['search']; // Mantém a pesquisa na URL
+    protected $queryString = ['search'];
 
     public function updatingSearch()
     {
-        $this->resetPage(); // Reseta a paginação ao alterar a busca
+        $this->resetPage();
     }
 
     public function cadenceModal()
@@ -96,22 +99,46 @@ class SyncFlowLeads extends Component
     {
         ModelsSyncFlowLeads::findOrFail($id)->delete();
         $this->success('Lead deletado com sucesso!', position: 'toast-top');
-        $this->resetPage(); // Atualiza a paginação após deletar
+        $this->resetPage();
+    }
+
+    // Novo método para visualizar o histórico de conversas
+    public function viewHistory($id)
+    {
+        $lead = ModelsSyncFlowLeads::with('chatwootConversations.messages')->find($id);
+
+        if ($lead) {
+            $this->selectedLead = $lead;
+            // Carregar mensagens de todas as conversas do lead
+            $this->conversationHistory = $lead->chatwootConversations->flatMap(function ($conversation) {
+                return $conversation->messages->map(function ($message) {
+                    return [
+                        'content' => $message->content,
+                        'message_id' => $message->message_id,
+                        'created_at' => $message->created_at->format('d/m/Y H:i'),
+                    ];
+                });
+            })->sortBy('created_at')->toArray();
+
+            $this->historyModal = true;
+        } else {
+            $this->info('Lead não encontrado.', position: 'toast-top');
+        }
     }
 
     public function render()
     {
         $user = auth()->user();
 
-        $syncFlowLeads = ModelsSyncFlowLeads::with('cadencia')
+        $syncFlowLeads = ModelsSyncFlowLeads::with(['cadencia', 'chatwootConversations'])
             ->where('chatwoot_accoumts', $user->chatwoot_accoumts)
             ->when($this->search, function ($query) {
-            $query->where('contact_name', 'like', '%' . $this->search . '%')
-                  ->orWhere('contact_number', 'like', '%' . $this->search . '%')
-                  ->orWhere('contact_number_empresa', 'like', '%' . $this->search . '%')
-                  ->orWhere('contact_email', 'like', '%' . $this->search . '%')
-                  ->orWhere('estagio', 'like', '%' . $this->search . '%')
-                  ->orWhere('situacao_contato', 'like', '%' . $this->search . '%');
+                $query->where('contact_name', 'like', '%' . $this->search . '%')
+                      ->orWhere('contact_number', 'like', '%' . $this->search . '%')
+                      ->orWhere('contact_number_empresa', 'like', '%' . $this->search . '%')
+                      ->orWhere('contact_email', 'like', '%' . $this->search . '%')
+                      ->orWhere('estagio', 'like', '%' . $this->search . '%')
+                      ->orWhere('situacao_contato', 'like', '%' . $this->search . '%');
             })
             ->paginate($this->perPage);
 
@@ -119,9 +146,8 @@ class SyncFlowLeads extends Component
             ->concat(Cadencias::where('user_id', $user->id)->get());
 
         return view('livewire.sync-flow-leads', [
-            'syncFlowLeads'           => $syncFlowLeads,
-            'cadencias'               => $cadencias,
+            'syncFlowLeads' => $syncFlowLeads,
+            'cadencias' => $cadencias,
         ]);
     }
-
 }
