@@ -75,11 +75,11 @@ class WebhookChatWootController extends Controller
 
                 Log::info('Lista de agentes obtida', [
                     'account_id' => $accountId,
-                    'agents_count' => count($agents['data'])
+                    'agents_count' => count($agents['email'])
                 ]);
 
                 // Encontrar agente com email_vendedor correspondente
-                $matchingAgent = collect($agents['data'])->firstWhere('email', $lead->email_vendedor);
+                $matchingAgent = collect($agents['email'])->firstWhere('email', $lead->email_vendedor);
 
                 if (!$matchingAgent) {
                     Log::info('Nenhum agente correspondente encontrado', [
