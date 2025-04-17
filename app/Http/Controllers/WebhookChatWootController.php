@@ -26,15 +26,17 @@ class WebhookChatWootController extends Controller
             Log::info('Chatwoot Webhook Received', ['payload' => $payload]);
 
             // Verifica se é um evento de atualização de conversa
-            if (isset($payload['event']) && $payload['event'] === 'conversation_updated') {
+            if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created'])) {
                 $conversationId = $payload['id'];
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
                 $contactPhone = $payload['meta']['sender']['phone_number'] ?? null;
+                $content = $payload['content'] ?? null;
 
                 Log::info('Processando atualização da conversa', [
                     'conversation_id' => $conversationId,
                     'email' => $contactEmail,
-                    'phone' => $contactPhone
+                    'phone' => $contactPhone,
+                    'content' => $content
                 ]);
 
                 // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
@@ -101,7 +103,7 @@ class WebhookChatWootController extends Controller
                 }
 
                 // Armazenar dados da conversa na tabela pivot
-                $this->storeConversationData($lead->id, $conversationId, $accountId, $matchingAgent['agent_id']);
+                $this->storeConversationData($lead->id, $conversationId, $accountId, $matchingAgent['agent_id'], $content);
 
                 return response()->json(['status' => 'ok']);
             }
@@ -116,7 +118,7 @@ class WebhookChatWootController extends Controller
         }
     }
 
-    private function storeConversationData($leadId, $conversationId, $accountId, $agentId)
+    private function storeConversationData($leadId, $conversationId, $accountId, $agentId, $content = null)
     {
         try {
             ChatwootConversation::updateOrCreate(
@@ -128,13 +130,17 @@ class WebhookChatWootController extends Controller
                     'account_id' => $accountId,
                     'agent_id' => $agentId,
                     'status' => 'open',
+                    'content' => $content,
                     'last_activity_at' => now()
                 ]
             );
 
             Log::info('Conversa armazenada com sucesso', [
                 'sync_flow_lead_id' => $leadId,
-                'conversation_id' => $conversationId
+                'conversation_id' => $conversationId,
+                'account_id' => $accountId,
+                'agent_id' => $agentId,
+                'content' => $content
             ]);
         } catch (\Exception $exception) {
             Log::error('Falha ao armazenar conversa', [

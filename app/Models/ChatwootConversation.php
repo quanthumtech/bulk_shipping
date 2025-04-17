@@ -14,6 +14,7 @@ class ChatwootConversation extends Model
         'account_id',
         'agent_id',
         'status',
+        'content',
         'last_activity_at',
     ];
 
