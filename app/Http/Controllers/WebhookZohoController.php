@@ -6,6 +6,7 @@ use App\Models\Cadencias;
 use App\Models\SyncFlowLeads;
 use App\Models\User;
 use App\Models\Etapas;
+use App\Models\Evolution;
 use App\Services\ChatwootService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -95,10 +96,14 @@ class WebhookZohoController extends Controller
             if ($this->chatwootService->isWhatsappNumber($sync_emp->contact_number)) {
                 $user = User::where('chatwoot_accoumts', $sync_emp->chatwoot_accoumts)->first();
 
-                if ($user) {
-                    Log::info("Usuário encontrado: ID {$user->id} | API_POST: {$user->api_post} | APIKEY: {$user->apikey}");
+                $Evolution = Evolution::where('user_id', $user->id)
+                    ->where('active', 1)
+                    ->first();
 
-                    if (!empty($user->api_post) && !empty($user->apikey)) {
+                if ($user) {
+                    Log::info("Usuário encontrado: ID {$user->id} | API_POST: {$Evolution->api_post} | APIKEY: {$Evolution->apikey}");
+
+                    if (!empty($Evolution->api_post) && !empty($Evolution->apikey)) {
                         // Envia mensagem padrão apenas para novos leads
                         if (!$sync_emp->wasRecentlyCreated) {
                             Log::info("Lead {$sync_emp->id} já existia, mensagem padrão não enviada.");
@@ -106,8 +111,8 @@ class WebhookZohoController extends Controller
                             $this->chatwootService->sendMessage(
                                 $sync_emp->contact_number,
                                 "Olá, recebemos seu contato!",
-                                $user->api_post,
-                                $user->apikey
+                                $Evolution->api_post,
+                                $Evolution->apikey
                             );
                         }
 
@@ -123,8 +128,8 @@ class WebhookZohoController extends Controller
                                 $this->chatwootService->sendMessage(
                                     $sync_emp->contact_number,
                                     $etapaImediata->message_content,
-                                    $user->api_post,
-                                    $user->apikey
+                                    $Evolution->api_post,
+                                    $Evolution->apikey
                                 );
 
                                 $this->registrarEnvio($sync_emp, $etapaImediata);

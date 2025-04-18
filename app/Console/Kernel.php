@@ -29,9 +29,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Execute o comando cadence:process a cada hora, por exemplo
-        //$schedule->command('cadence:process')->hourly();
-        //$schedule->command('cadence:process')->everyMinute();
+        $schedule->command('cadence:process')->everyMinute()->withoutOverlapping();
     }
 
 }
