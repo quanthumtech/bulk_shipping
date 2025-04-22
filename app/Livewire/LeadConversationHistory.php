@@ -56,6 +56,19 @@ class LeadConversationHistory extends Component
                     ? ($conversation->agent->name ?? $conversation->agent->email ?? 'Agente Desconhecido')
                     : 'Agente Desconhecido';
 
+                // Log para depuração
+                Log::info('Agent Loaded for Conversation', [
+                    'conversation_id' => $conversation->conversation_id,
+                    'agent_id' => $conversation->agent_id,
+                    'agent' => $conversation->agent ? [
+                        'id' => $conversation->agent->id,
+                        'agent_id' => $conversation->agent->agent_id,
+                        'name' => $conversation->agent->name,
+                        'email' => $conversation->agent->email,
+                    ] : null,
+                    'agent_name' => $agentName,
+                ]);
+
                 return [
                     'id' => $conversation->conversation_id, // Adicionado para corresponder à view
                     'status' => $conversation->status ?? 'N/A',
