@@ -7,6 +7,7 @@ use App\Livewire\CadenciaIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
+use App\Livewire\LeadConversationHistory;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
@@ -90,5 +91,8 @@ Route::get('/sync-flow', SyncFlowLeads::class)
 Route::get('/faq-info', FaqIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('faq-info.index');
+
+Route::get('/leads/history/{leadId}', LeadConversationHistory::class)
+    ->name('lead.conversation.history');
 
 require __DIR__.'/auth.php';
