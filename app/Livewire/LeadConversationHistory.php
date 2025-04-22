@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\SyncFlowLeads;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Mary\Traits\Toast;
 
@@ -25,7 +26,7 @@ class LeadConversationHistory extends Component
     {
         $this->lead = SyncFlowLeads::with([
             'chatwootConversations.agent' => function ($query) {
-                $query->select('id', 'name', 'email');
+                $query->select('id', 'agent_id', 'name', 'email'); // Inclui agent_id para depuração
             },
             'chatwootConversations.messages' => function ($query) {
                 $query->orderBy('created_at', 'asc');
@@ -34,23 +35,33 @@ class LeadConversationHistory extends Component
 
         if ($this->lead) {
             $this->conversations = $this->lead->chatwootConversations->map(function ($conversation) {
-                $lastActivityAt = (is_numeric($conversation->last_activity_at) || is_string($conversation->last_activity_at))
-                    ? Carbon::createFromTimestamp($conversation->last_activity_at)
-                    : $conversation->last_activity_at;
+                if (is_numeric($conversation->last_activity_at)) {
+                    $lastActivityAt = Carbon::createFromTimestamp($conversation->last_activity_at);
+                } elseif (is_string($conversation->last_activity_at)) {
+                    $lastActivityAt = Carbon::parse($conversation->last_activity_at);
+                } else {
+                    $lastActivityAt = $conversation->last_activity_at;
+                }
 
                 // Definir o nome do agente para a conversa
                 $agentName = $conversation->agent
                     ? ($conversation->agent->name ?? $conversation->agent->email ?? 'Agente Desconhecido')
                     : 'Agente Desconhecido';
 
+                // Log para depuração
+                Log::info('Agent Loaded for Conversation', [
+                    'conversation_id' => $conversation->conversation_id,
+                    'agent_id' => $conversation->agent_id,
+                    'agent' => $conversation->agent ? $conversation->agent->toArray() : null,
+                    'agent_name' => $agentName,
+                ]);
+
                 return [
                     'id' => $conversation->conversation_id,
-                    'status' => $conversation->status,
                     'last_activity_at' => $lastActivityAt ? $lastActivityAt->format('d/m/Y H:i') : 'N/A',
-                    'agent_name' => $agentName, // Incluído explicitamente
                     'messages' => $conversation->messages->map(function ($message) use ($agentName) {
-                        $createdAt = (is_numeric($message->created_at) || is_string($message->created_at))
-                            ? Carbon::createFromTimestamp($message->created_at)
+                        $createdAt = is_string($message->created_at)
+                            ? Carbon::parse($message->created_at)
                             : $message->created_at;
 
                         return [
