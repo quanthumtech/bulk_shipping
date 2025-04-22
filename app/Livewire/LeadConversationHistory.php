@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\SyncFlowLeads;
+use Carbon\Carbon;
 use Livewire\Component;
 use Mary\Traits\Toast;
 
@@ -28,16 +29,26 @@ class LeadConversationHistory extends Component
 
         if ($this->lead) {
             $this->conversations = $this->lead->chatwootConversations->map(function ($conversation) {
+                // Converter last_activity_at para Carbon, se não for uma instância de Carbon
+                $lastActivityAt = !($conversation->last_activity_at instanceof Carbon)
+                    ? Carbon::parse($conversation->last_activity_at)
+                    : $conversation->last_activity_at;
+
                 return [
                     'id' => $conversation->conversation_id,
                     'status' => $conversation->status,
-                    'last_activity_at' => $conversation->last_activity_at->format('d/m/Y H:i'),
+                    'last_activity_at' => $lastActivityAt ? $lastActivityAt->format('d/m/Y H:i') : 'N/A',
                     'messages' => $conversation->messages->map(function ($message) {
+                        // created_at já deve ser Carbon, mas verificamos por segurança
+                        $createdAt = !($message->created_at instanceof Carbon)
+                            ? Carbon::parse($message->created_at)
+                            : $message->created_at;
+
                         return [
                             'message_id' => $message->message_id,
                             'content' => $message->content,
-                            'created_at' => $message->created_at->format('d/m/Y H:i'),
-                            'is_sent' => $message->message_type === 'outgoing', // Ajuste conforme sua lógica
+                            'created_at' => $createdAt ? $createdAt->format('d/m/Y H:i') : 'N/A',
+                            'is_sent' => $message->message_type === 'outgoing', // Ajuste conforme necessário
                         ];
                     })->toArray(),
                 ];
