@@ -27,6 +27,6 @@ class ChatwootsAgents extends Model
 
     public function conversations()
     {
-        return $this->hasMany(ChatwootConversation::class, 'agent_id', 'id');
+        return $this->hasMany(ChatwootConversation::class, 'agent_id', 'agent_id'); // Ajustado para 'agent_id'
     }
 }

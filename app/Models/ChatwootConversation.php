@@ -30,6 +30,6 @@ class ChatwootConversation extends Model
 
     public function agent()
     {
-        return $this->belongsTo(ChatwootsAgents::class, 'agent_id', 'id');
+        return $this->belongsTo(ChatwootsAgents::class, 'agent_id', 'agent_id'); // Ajustado para 'agent_id'
     }
 }
