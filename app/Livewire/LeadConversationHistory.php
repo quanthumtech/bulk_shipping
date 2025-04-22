@@ -35,14 +35,20 @@ class LeadConversationHistory extends Component
 
         if ($this->lead) {
             $this->conversations = $this->lead->chatwootConversations->map(function ($conversation) {
-                if (!($conversation->last_activity_at instanceof Carbon)) {
-                    if (is_numeric($conversation->last_activity_at)) {
-                        $lastActivityAt = Carbon::createFromTimestamp($conversation->last_activity_at);
-                    } else {
-                        $lastActivityAt = Carbon::parse($conversation->last_activity_at);
+                // Tratar last_activity_at
+                $lastActivityAt = null;
+                if ($conversation->last_activity_at) {
+                    try {
+                        $lastActivityAt = is_string($conversation->last_activity_at)
+                            ? Carbon::parse($conversation->last_activity_at)
+                            : $conversation->last_activity_at;
+                    } catch (\Exception $e) {
+                        Log::warning('Erro ao parsear last_activity_at', [
+                            'conversation_id' => $conversation->conversation_id,
+                            'last_activity_at' => $conversation->last_activity_at,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                } else {
-                    $lastActivityAt = $conversation->last_activity_at;
                 }
 
                 // Definir o nome do agente para a conversa
@@ -64,16 +70,30 @@ class LeadConversationHistory extends Component
                 ]);
 
                 return [
+                    'id' => $conversation->conversation_id, // Adicionado para corresponder à view
+                    'status' => $conversation->status ?? 'N/A',
                     'last_activity_at' => $lastActivityAt ? $lastActivityAt->format('d/m/Y H:i') : 'N/A',
                     'agent_name' => $agentName,
                     'messages' => $conversation->messages->map(function ($message) use ($agentName) {
-                        $createdAt = is_string($message->created_at)
-                            ? Carbon::parse($message->created_at)
-                            : $message->created_at;
+                        // Tratar created_at
+                        $createdAt = null;
+                        if ($message->created_at) {
+                            try {
+                                $createdAt = is_string($message->created_at)
+                                    ? Carbon::parse($message->created_at)
+                                    : $message->created_at;
+                            } catch (\Exception $e) {
+                                Log::warning('Erro ao parsear created_at', [
+                                    'message_id' => $message->message_id,
+                                    'created_at' => $message->created_at,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
+                        }
 
                         return [
                             'message_id' => $message->message_id,
-                            'content' => $message->content,
+                            'content' => $message->content ?? 'Mensagem vazia',
                             'created_at' => $createdAt ? $createdAt->format('d/m/Y H:i') : 'N/A',
                             'is_sent' => $message->message_type === 'outgoing',
                             'sender_name' => $message->message_type === 'outgoing'
