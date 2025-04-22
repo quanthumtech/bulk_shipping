@@ -32,6 +32,12 @@ class WebhookZohoController extends Controller
      */
     protected function formatPhoneNumber($number)
     {
+        // Se o número já estiver no padrão exigido, retorna sem alterações
+        if (preg_match('/^\+55\d{10,11}$/', $number)) {
+            Log::info("Número já está no padrão: {$number}");
+            return $number;
+        }
+
         if (empty($number) || $number === 'Não fornecido') {
             Log::info("Número não fornecido ou vazio: {$number}");
             return 'Não fornecido';

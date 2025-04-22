@@ -10,7 +10,7 @@
  * https://api-console.zoho.com/
  *
  * Url para obter o access token:
- * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
+ * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL,ZohoCRM.users.ALL,ZohoCRM.users.READ&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
  *
  * Exemplo de retorno:
  * https://bulkship.plataformamundo.com.br/login?code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&state=state
@@ -122,7 +122,7 @@ class ZohoCrmService
         }
     }
 
-    /**
+   /**
      * Obtém o e-mail do usuário pelo ID do proprietário no Zoho CRM.
      *
      * @param string $ownerId ID do proprietário do negócio
@@ -141,15 +141,20 @@ class ZohoCrmService
 
             $userData = json_decode($response->getBody(), true);
 
-            if (isset($userData['users'][0]['email'])) {
+            if (isset($userData['users'][0]['email']) && !empty($userData['users'][0]['email'])) {
                 Log::info("E-mail encontrado para o usuário ID {$ownerId}: {$userData['users'][0]['email']}");
                 return $userData['users'][0]['email'];
             } else {
-                Log::warning("E-mail não encontrado para o usuário ID {$ownerId}");
+                Log::warning("E-mail não encontrado para o usuário ID {$ownerId}. Resposta: " . json_encode($userData));
                 return null;
             }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            $errorBody = $e->getResponse()->getBody()->getContents();
+            Log::error("Erro ao buscar e-mail do usuário ID {$ownerId}: Status {$statusCode}, Mensagem: {$errorBody}");
+            return null;
         } catch (\Exception $e) {
-            Log::error("Erro ao buscar e-mail do usuário ID {$ownerId}: {$e->getMessage()}");
+            Log::error("Exceção ao buscar e-mail do usuário ID {$ownerId}: {$e->getMessage()}");
             return null;
         }
     }
