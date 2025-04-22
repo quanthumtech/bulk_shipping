@@ -25,7 +25,7 @@ class WebhookZohoController extends Controller
     }
 
     /**
-     * Formata o número de telefone para o padrão +55 (ex: +5512988784433).
+     * Formata o número de telefone para o padrão +55 (ex: +5512988...).
      *
      * @param string|null $number Número de telefone a ser formatado
      * @return string Número formatado ou 'Não fornecido' se inválido
@@ -40,7 +40,7 @@ class WebhookZohoController extends Controller
         // Remove todos os caracteres não numéricos
         $cleanNumber = preg_replace('/[^0-9]/', '', $number);
 
-        // Verifica se o número tem 10 ou 11 dígitos (DDD + número)
+        // Verifica o comprimento do número limpo (10 ou 11 dígitos para DDD + número)
         $length = strlen($cleanNumber);
         if ($length < 10 || $length > 11) {
             Log::warning("Número inválido, comprimento incorreto: {$number} (limpo: {$cleanNumber}, {$length} dígitos)");
@@ -50,20 +50,14 @@ class WebhookZohoController extends Controller
         // Remove o 0 inicial, se presente (ex: 012988784433)
         if ($length === 11 && substr($cleanNumber, 0, 1) === '0') {
             $cleanNumber = substr($cleanNumber, 1);
-            $length = 10;
         }
 
         // Adiciona o código +55
         $formattedNumber = '+55' . $cleanNumber;
 
-        // Verifica se o número formatado tem 12 ou 13 dígitos
-        if (strlen($formattedNumber) === 12 || strlen($formattedNumber) === 13) {
-            Log::info("Número formatado com sucesso: {$number} -> {$formattedNumber}");
-            return $formattedNumber;
-        }
-
-        Log::warning("Número inválido após formatação: {$number} -> {$formattedNumber}");
-        return 'Não fornecido';
+        // Loga o sucesso da formatação
+        Log::info("Número formatado com sucesso: {$number} -> {$formattedNumber}");
+        return $formattedNumber;
     }
 
     public function createFromWebhook(Request $request)
