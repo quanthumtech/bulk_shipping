@@ -39,15 +39,10 @@ class WebhookZohoController extends Controller
         // Remove todos os caracteres não numéricos
         $cleanNumber = preg_replace('/[^0-9]/', '', $number);
 
-        // Verifica se o número tem pelo menos 10 dígitos (DDD + número)
-        if (strlen($cleanNumber) < 10) {
-            Log::warning("Número inválido, muito curto: {$number}");
+        // Verifica se o número tem 10 ou 11 dígitos (DDD + número)
+        if (strlen($cleanNumber) < 10 || strlen($cleanNumber) > 11) {
+            Log::warning("Número inválido, comprimento incorreto: {$number} (limpo: {$cleanNumber})");
             return 'Não fornecido';
-        }
-
-        // Se o número já começa com +55, retorna como está (após limpeza)
-        if (strpos($number, '+55') === 0 && strlen($cleanNumber) >= 12) {
-            return '+' . $cleanNumber;
         }
 
         // Remove o 0 inicial, se presente (ex: 012988784433)
@@ -58,8 +53,9 @@ class WebhookZohoController extends Controller
         // Adiciona o código +55
         $formattedNumber = '+55' . $cleanNumber;
 
-        // Verifica se o número formatado tem o comprimento esperado (ex: +5512988784433 = 13 dígitos)
-        if (strlen($formattedNumber) === 13) {
+        // Verifica se o número formatado tem 12 ou 13 dígitos (ex: +551288784433 ou +5512988784433)
+        if (strlen($formattedNumber) === 12 || strlen($formattedNumber) === 13) {
+            Log::info("Número formatado com sucesso: {$number} -> {$formattedNumber}");
             return $formattedNumber;
         }
 
