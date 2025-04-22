@@ -23,24 +23,28 @@ class LeadConversationHistory extends Component
 
     public function loadConversations()
     {
-        $this->lead = SyncFlowLeads::with(['chatwootConversations.messages' => function ($query) {
-            $query->orderBy('created_at', 'asc');
-        }])->find($this->leadId);
+        $this->lead = SyncFlowLeads::with([
+            'chatwootConversations.agent',
+            'chatwootConversations.messages' => function ($query) {
+                $query->orderBy('created_at', 'asc');
+            }
+        ])->find($this->leadId);
 
         if ($this->lead) {
             $this->conversations = $this->lead->chatwootConversations->map(function ($conversation) {
-                // Converter last_activity_at para Carbon, se não for uma instância de Carbon
-                $lastActivityAt = !($conversation->last_activity_at instanceof Carbon)
-                    ? Carbon::parse($conversation->last_activity_at)
-                    : $conversation->last_activity_at;
+                if (is_numeric($conversation->last_activity_at)) {
+                    $lastActivityAt = Carbon::createFromTimestamp($conversation->last_activity_at);
+                } elseif (is_string($conversation->last_activity_at)) {
+                    $lastActivityAt = Carbon::parse($conversation->last_activity_at);
+                } else {
+                    $lastActivityAt = $conversation->last_activity_at;
+                }
 
                 return [
                     'id' => $conversation->conversation_id,
-                    'status' => $conversation->status,
-                    'last_activity_at' => $lastActivityAt ? $lastActivityAt->format('d/m/Y H:i') : 'N/A',
-                    'messages' => $conversation->messages->map(function ($message) {
-                        // created_at já deve ser Carbon, mas verificamos por segurança
-                        $createdAt = !($message->created_at instanceof Carbon)
+                    'last_activity_at' => $lastActivityAt,
+                    'messages' => $conversation->messages->map(function ($message) use ($conversation) {
+                        $createdAt = is_string($message->created_at)
                             ? Carbon::parse($message->created_at)
                             : $message->created_at;
 
@@ -48,7 +52,10 @@ class LeadConversationHistory extends Component
                             'message_id' => $message->message_id,
                             'content' => $message->content,
                             'created_at' => $createdAt ? $createdAt->format('d/m/Y H:i') : 'N/A',
-                            'is_sent' => $message->message_type === 'outgoing', // Ajuste conforme necessário
+                            'is_sent' => $message->message_type === 'outgoing',
+                            'sender_name' => $message->message_type === 'outgoing'
+                                ? ($conversation->agent ? $conversation->agent->name ?? $conversation->agent->email : 'Agente Desconhecido')
+                                : ($this->lead->contact_name ?? 'Lead Desconhecido'),
                         ];
                     })->toArray(),
                 ];
