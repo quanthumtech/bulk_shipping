@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\CadenceMessage;
@@ -8,35 +9,94 @@ use App\Models\User;
 use App\Models\Etapas;
 use App\Models\Evolution;
 use App\Services\ChatwootService;
+use App\Services\ZohoCrmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class WebhookZohoController extends Controller
 {
     protected $chatwootService;
+    protected $zohoCrmService;
+
+    public function __construct(ChatwootService $chatwootService, ZohoCrmService $zohoCrmService)
+    {
+        $this->chatwootService = $chatwootService;
+        $this->zohoCrmService = $zohoCrmService;
+    }
+
+    /**
+     * Formata o número de telefone para o padrão +55 (ex: +5512988784433).
+     *
+     * @param string|null $number Número de telefone a ser formatado
+     * @return string Número formatado ou 'Não fornecido' se inválido
+     */
+    protected function formatPhoneNumber($number)
+    {
+        if (empty($number) || $number === 'Não fornecido') {
+            return 'Não fornecido';
+        }
+
+        // Remove todos os caracteres não numéricos
+        $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+
+        // Verifica se o número tem pelo menos 10 dígitos (DDD + número)
+        if (strlen($cleanNumber) < 10) {
+            Log::warning("Número inválido, muito curto: {$number}");
+            return 'Não fornecido';
+        }
+
+        // Se o número já começa com +55, retorna como está (após limpeza)
+        if (strpos($number, '+55') === 0 && strlen($cleanNumber) >= 12) {
+            return '+' . $cleanNumber;
+        }
+
+        // Remove o 0 inicial, se presente (ex: 012988784433)
+        if (strlen($cleanNumber) === 11 && substr($cleanNumber, 0, 1) === '0') {
+            $cleanNumber = substr($cleanNumber, 1);
+        }
+
+        // Adiciona o código +55
+        $formattedNumber = '+55' . $cleanNumber;
+
+        // Verifica se o número formatado tem o comprimento esperado (ex: +5512988784433 = 13 dígitos)
+        if (strlen($formattedNumber) === 13) {
+            return $formattedNumber;
+        }
+
+        Log::warning("Número inválido após formatação: {$number} -> {$formattedNumber}");
+        return 'Não fornecido';
+    }
 
     public function createFromWebhook(Request $request)
     {
         if ($request->isMethod('post') && $request->getContent()) {
-            // Inicializa o serviço Chatwoot
-            $this->chatwootService = app(ChatwootService::class);
-
             // Busca lead existente pelo id_card
             $idCard = $request->id_card ?? 'Não fornecido';
             $sync_emp = SyncFlowLeads::where('id_card', $idCard)->first();
+
+            // Formata os números de contato
+            $contactNumber = $this->formatPhoneNumber($request->contact_number);
+            $contactNumberEmpresa = $this->formatPhoneNumber($request->contact_number_empresa);
+
+            // Busca o e-mail do vendedor com base no id_vendedor
+            $emailVendedor = 'Não fornecido';
+            if ($request->id_vendedor && $request->id_vendedor !== 'Não fornecido') {
+                $emailVendedor = $this->zohoCrmService->getUserEmailById($request->id_vendedor) ?? 'Não fornecido';
+            }
 
             if ($sync_emp) {
                 // Lead existe, atualiza as informações
                 $oldEstagio = $sync_emp->estagio; // Guarda o estágio antigo para comparação
                 $sync_emp->contact_name = $request->contact_name ?? $sync_emp->contact_name;
-                $sync_emp->contact_number = $request->contact_number ?? $sync_emp->contact_number;
-                $sync_emp->contact_number_empresa = $request->contact_number_empresa ?? $sync_emp->contact_number_empresa;
+                $sync_emp->contact_number = $contactNumber;
+                $sync_emp->contact_number_empresa = $contactNumberEmpresa;
                 $sync_emp->contact_email = $request->contact_email ?? $sync_emp->contact_email;
                 $sync_emp->estagio = $request->estagio ?? $sync_emp->estagio;
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $sync_emp->chatwoot_accoumts;
-                $sync_emp->cadencia_id = $request->id_cadencia ?? $sync_emp->cadencia_id; // Mantém o valor atual se não vier id_cadencia
+                $sync_emp->cadencia_id = $request->id_cadencia ?? $sync_emp->cadencia_id;
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
-                $sync_emp->email_vendedor = $request->email_vendedor ?? $sync_emp->email_vendedor;
+                $sync_emp->email_vendedor = $emailVendedor;
+                $sync_emp->id_vendedor = $request->id_vendedor ?? $sync_emp->id_vendedor;
                 $sync_emp->updated_at = now();
 
                 // Se o estágio mudou e não veio cadencia_id, atualiza a cadência com base no novo estágio
@@ -48,7 +108,6 @@ class WebhookZohoController extends Controller
                         $sync_emp->cadencia_id = $cadencia->id;
                         Log::info("Cadência ID {$cadencia->id} atualizada para o lead ID {$sync_emp->id} com base no novo estágio: {$sync_emp->estagio}");
                     } else {
-                        // Se não houver cadência, define cadencia_id como null
                         $sync_emp->cadencia_id = null;
                         Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio} do lead ID {$sync_emp->id}, cadencia_id definido como null");
                     }
@@ -62,14 +121,15 @@ class WebhookZohoController extends Controller
                 $sync_emp = new SyncFlowLeads();
                 $sync_emp->id_card = $idCard;
                 $sync_emp->contact_name = $request->contact_name ?? 'Não fornecido';
-                $sync_emp->contact_number = $request->contact_number ?? 'Não fornecido';
-                $sync_emp->contact_number_empresa = $request->contact_number_empresa ?? 'Não fornecido';
+                $sync_emp->contact_number = $contactNumber;
+                $sync_emp->contact_number_empresa = $contactNumberEmpresa;
                 $sync_emp->contact_email = $request->contact_email ?? 'Não fornecido';
                 $sync_emp->estagio = $request->estagio ?? 'Não fornecido';
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
-                $sync_emp->cadencia_id = $request->id_cadencia ?? null; // Pode vir do request ou ser null
+                $sync_emp->cadencia_id = $request->id_cadencia ?? null;
                 $sync_emp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
-                $sync_emp->email_vendedor = $request->email_vendedor ?? 'Não fornecido';
+                $sync_emp->email_vendedor = $emailVendedor;
+                $sync_emp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
                 $sync_emp->created_at = now();
 
                 // Se não veio cadencia_id mas tem estágio, busca a cadência pelo estágio
@@ -81,7 +141,6 @@ class WebhookZohoController extends Controller
                         $sync_emp->cadencia_id = $cadencia->id;
                         Log::info("Cadência ID {$cadencia->id} atribuída ao lead com base no estágio: {$sync_emp->estagio}");
                     } else {
-                        // Se não houver cadência, define cadencia_id como null
                         $sync_emp->cadencia_id = null;
                         Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio}, cadencia_id definido como null");
                     }

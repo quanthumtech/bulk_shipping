@@ -121,4 +121,36 @@ class ZohoCrmService
             throw $e;
         }
     }
+
+    /**
+     * Obtém o e-mail do usuário pelo ID do proprietário no Zoho CRM.
+     *
+     * @param string $ownerId ID do proprietário do negócio
+     * @return string|null E-mail do usuário ou null se não encontrado
+     */
+    public function getUserEmailById($ownerId)
+    {
+        $accessToken = $this->getAccessToken();
+
+        try {
+            $response = $this->client->get("{$this->config['api_url']}/users/{$ownerId}", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                ],
+            ]);
+
+            $userData = json_decode($response->getBody(), true);
+
+            if (isset($userData['users'][0]['email'])) {
+                Log::info("E-mail encontrado para o usuário ID {$ownerId}: {$userData['users'][0]['email']}");
+                return $userData['users'][0]['email'];
+            } else {
+                Log::warning("E-mail não encontrado para o usuário ID {$ownerId}");
+                return null;
+            }
+        } catch (\Exception $e) {
+            Log::error("Erro ao buscar e-mail do usuário ID {$ownerId}: {$e->getMessage()}");
+            return null;
+        }
+    }
 }
