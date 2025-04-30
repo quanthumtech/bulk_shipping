@@ -96,6 +96,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
                 $sync_emp->email_vendedor = $emailVendedor;
                 $sync_emp->id_vendedor = $request->id_vendedor ?? $sync_emp->id_vendedor;
+                $sync_emp->msg_content = $request->msg_content ?? $sync_emp->msg_content;
                 $sync_emp->updated_at = now();
 
                 // Se o estágio mudou e não veio cadencia_id, atualiza a cadência com base no novo estágio
@@ -164,11 +165,18 @@ class WebhookZohoController extends Controller
                     if (!empty($Evolution->api_post) && !empty($Evolution->apikey)) {
                         // Envia mensagem padrão apenas para novos leads
                         if (!$sync_emp->wasRecentlyCreated) {
-                            Log::info("Lead {$sync_emp->id} já existia, mensagem padrão não enviada.");
+                            Log::info("Lead, ID: {$sync_emp->id}, Nome: {$sync_emp->name}. Já existia, mensagem padrão não enviada.");
                         } else {
+                            Log::info("Mensagem recebida webhook: {$request->msg_content}");
+                            $message = $sync_emp->msg_content ?? $request->msg_content ?? 'Olá, recebemos sua mensagem e entraremos em contato em breve.';
+                            $message = str_replace(
+                                ['#nome', '#email'],
+                                [$sync_emp->contact_name ?? 'Não fornecido', $sync_emp->contact_email ?? 'Não fornecido'],
+                                $message
+                            );
                             $this->chatwootService->sendMessage(
                                 $sync_emp->contact_number,
-                                "Olá, recebemos seu contato!",
+                                $message,
                                 $Evolution->api_post,
                                 $Evolution->apikey
                             );
