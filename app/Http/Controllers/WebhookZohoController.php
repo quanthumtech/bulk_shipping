@@ -167,7 +167,12 @@ class WebhookZohoController extends Controller
                         if (!$sync_emp->wasRecentlyCreated) {
                             Log::info("Lead, ID: {$sync_emp->id}, Nome: {$sync_emp->name}. Já existia, mensagem padrão não enviada.");
                         } else {
-                            Log::info("Mensagem recebida webhook: {$request->msg_content}");
+                            /**
+                             * O Envio da mensagem padrão para o Lead novo será feita na cadência.
+                             * Esse recurso vai ficar desativado por enquanto, pois a mensagem padrão já é enviada na etapa imediata.
+                             */
+
+                            /*Log::info("Mensagem recebida webhook: {$request->msg_content}");
                             $message = $sync_emp->msg_content ?? $request->msg_content ?? 'Olá, recebemos sua mensagem e entraremos em contato em breve.';
                             $message = str_replace(
                                 ['#nome', '#email'],
@@ -179,7 +184,7 @@ class WebhookZohoController extends Controller
                                 $message,
                                 $Evolution->api_post,
                                 $Evolution->apikey
-                            );
+                            );*/
                         }
 
                         // Verifica se há cadência e etapa imediata
@@ -195,7 +200,9 @@ class WebhookZohoController extends Controller
                                     $sync_emp->contact_number,
                                     $etapaImediata->message_content,
                                     $Evolution->api_post,
-                                    $Evolution->apikey
+                                    $Evolution->apikey,
+                                    $sync_emp->contact_name,
+                                    $sync_emp->contact_email
                                 );
 
                                 $this->registrarEnvio($sync_emp, $etapaImediata);

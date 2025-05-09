@@ -29,7 +29,7 @@ Class a_WebhookZohoControllerTest extends TestCase
                     return $number === '123456789';
                 }
 
-                public function sendMessage($number = null, $message = null, $apiPost = null, $apiKey = null)
+                public function sendMessage($number = null, $message = null, $apiPost = null, $apiKey = null, $nameLead = null, $emailLead = null)
                 {
                     Log::info("Mensagem simulada enviada: $message para $number");
                 }

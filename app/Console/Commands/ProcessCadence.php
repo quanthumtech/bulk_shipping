@@ -194,7 +194,9 @@ class ProcessCadence extends Command
                         $numeroWhatsapp,
                         $etapa->message_content,
                         $evolution->api_post,
-                        $evolution->apikey
+                        $evolution->apikey,
+                        $lead->contact_name,
+                        $lead->contact_email,
                     );
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");

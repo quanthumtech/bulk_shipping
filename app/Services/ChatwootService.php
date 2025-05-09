@@ -291,11 +291,13 @@ class ChatwootService
      *
      * @param string $phoneNumber - O número de telefone do destinatário.
      * @param string $messageContent - O conteúdo da mensagem a ser enviada (texto ou URL da imagem).
+     * @param string|null $nameLead - Nome do lead (opcional).
+     * @param string|null $emailLead - Email do lead (opcional).
      * @param string|null $apiPost - URL da API para onde enviar a mensagem (opcional).
      * @param string|null $Apikey - Chave de API se não for obtida do usuário (opcional).
      * @return array|null - Resposta da API ou null em caso de erro.
      */
-    public function sendMessage($phoneNumber, $messageContent, $apiPost = null, $Apikey = null)
+    public function sendMessage($phoneNumber, $messageContent, $apiPost = null, $Apikey = null, $nameLead = null, $emailLead = null)
     {
         $phoneNumber = (string) $phoneNumber;
         $messageContent = (string) $messageContent;
@@ -321,9 +323,13 @@ class ChatwootService
             $baseUrl = $api_post;
         }
 
+        Log::info("Base URL extraída: {$baseUrl}");
+
         // Verifica a versão ativa da API com base na parte extraída da URL
         $activeVersion = Versions::where('url_evolution', $baseUrl)
             ->value('name');
+
+        Log::info("Versão ativa da API: {$activeVersion}");
 
         if (!$activeVersion) {
             Log::error("Nenhuma versão ativa da API encontrada.");
@@ -395,6 +401,14 @@ class ChatwootService
 
                 Log::info("Payload sendo enviado para a API Evolution v1 (Imagem): " . json_encode($payload));
             } else {
+
+                $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
+                $messageContentFormat = str_replace(
+                    ['#nome', '#email'],
+                    [ $nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    $messageContentFormat
+                );
+
                 $payload = [
                     "number" => $phoneNumber,
                     "options" => [
@@ -403,14 +417,14 @@ class ChatwootService
                         "linkPreview" => false
                     ],
                     "textMessage" => [
-                        "text" => $messageContent
+                        "text" => $messageContentFormat
                     ]
                 ];
                 $endpoint = $api_post;
 
                 Log::info("Payload sendo enviado para a API Evolution v1 (Text): " . json_encode($payload));
             }
-        } elseif ($activeVersion === 'Evolution v2') {
+        } elseif ($activeVersion === 'Evolution v2' || $activeVersion === 'Evolution v2 PM') {
             if ($isImage) {
                 $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
@@ -427,9 +441,17 @@ class ChatwootService
                 ];
                 $endpoint = str_replace('sendText', 'sendMedia', $api_post);
             } else {
+
+                $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
+                $messageContentFormat = str_replace(
+                    ['#nome', '#email'],
+                    [ $nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    $messageContentFormat
+                );
+
                 $payload = [
                     "number" => $phoneNumber,
-                    "text" => $messageContent,
+                    "text" => $messageContentFormat,
                     // "delay" => 1200, // Descomente e ajuste se necessário
                     // "quoted" => [...], // Descomente e ajuste se necessário
                     // "linkPreview" => false, // Descomente e ajuste se necessário
@@ -438,6 +460,8 @@ class ChatwootService
                 ];
                 $endpoint = $api_post;
             }
+
+            Log::info("Payload sendo enviado para a API Evolution v2: " . json_encode($payload));
         } else {
             Log::error("Versão da API desconhecida: {$activeVersion}");
             return null;

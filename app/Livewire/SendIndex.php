@@ -88,7 +88,9 @@ class SendIndex extends Component
                     $phoneNumber,
                     $this->form->menssage_content,
                     $evolution->api_post,
-                    $evolution->apikey
+                    $evolution->apikey,
+                    $contactName,
+                    null,
                 );
 
                 if ($index < count($this->form->phone_number) - 1) {
