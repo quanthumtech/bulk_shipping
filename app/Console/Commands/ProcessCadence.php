@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -23,22 +24,17 @@ class ProcessCadence extends Command
             $this->info("Horário atual: " . $now);
 
             // Verificar se há cadências com etapas pendentes
-            if (!$this->hasPendingCadences($now)) {
+            if (!$this->hasPendingCadences($now)->exists()) {
                 $this->info("Nenhuma cadência pendente. Aguardando 5 segundos...");
                 sleep(5);
                 continue;
             }
 
-            SyncFlowLeads::whereNotNull('cadencia_id')
-                ->whereHas('cadencia.etapas', function ($query) use ($now) {
-                    $query->where('active', true)
-                          ->whereRaw('DATE_ADD(created_at, INTERVAL dias DAY) <= ?', [$now]);
-                })
-                ->with(['cadencia.etapas' => function ($query) {
-                    $query->where('active', true)->orderBy('id');
-                }])
+            $this->hasPendingCadences($now)
                 ->chunk(100, function ($leads) use ($now) {
                     foreach ($leads as $lead) {
+                        Log::info("Processando lead {$lead->id} com cadência ID {$lead->cadencia_id}");
+
                         if (!$lead->cadencia) {
                             Log::warning("Cadência não encontrada para o lead {$lead->id}");
                             continue;
@@ -55,13 +51,30 @@ class ProcessCadence extends Command
                         }
 
                         $etapas = $lead->cadencia->etapas;
+                        if ($etapas->isEmpty()) {
+                            Log::info("Nenhuma etapa ativa encontrada para a cadência {$lead->cadencia_id} do lead {$lead->id}. Pulando...");
+                            continue;
+                        }
+
                         $lastSentEtapa = CadenceMessage::where('sync_flow_leads_id', $lead->id)
                             ->orderBy('etapa_id', 'desc')
                             ->first();
 
-                        $currentEtapaIndex = $lastSentEtapa ? $etapas->search(function ($etapa) use ($lastSentEtapa) {
-                            return $etapa->id === $lastSentEtapa->etapa_id;
-                        }) + 1 : 0;
+                        // Verificar se a cadência mudou
+                        if ($lastSentEtapa && $lastSentEtapa->etapa->cadencia_id !== $lead->cadencia_id) {
+                            Log::info("Cadência mudou para o lead {$lead->id}. Reiniciando etapas...");
+                            $currentEtapaIndex = 0; // Reinicia o fluxo para a nova cadência
+                        } else {
+                            $currentEtapaIndex = $lastSentEtapa ? $etapas->search(function ($etapa) use ($lastSentEtapa) {
+                                return $etapa->id === $lastSentEtapa->etapa_id;
+                            }) + 1 : 0;
+                        }
+
+                        // Verificar se todas as etapas foram concluídas
+                        if (!isset($etapas[$currentEtapaIndex])) {
+                            Log::info("Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Pulando...");
+                            continue;
+                        }
 
                         while (isset($etapas[$currentEtapaIndex])) {
                             $etapa = $etapas[$currentEtapaIndex];
@@ -119,11 +132,17 @@ class ProcessCadence extends Command
     protected function hasPendingCadences(Carbon $now)
     {
         return SyncFlowLeads::whereNotNull('cadencia_id')
+            ->where('situacao_contato', '!=', 'Contato Efetivo')
+            ->whereHas('cadencia', function ($query) {
+                $query->where('active', true);
+            })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
                       ->whereRaw('DATE_ADD(created_at, INTERVAL dias DAY) <= ?', [$now]);
             })
-            ->exists();
+            ->with(['cadencia.etapas' => function ($query) {
+                $query->where('active', true)->orderBy('id');
+            }]);
     }
 
     protected function isValidTime($time)
@@ -152,6 +171,9 @@ class ProcessCadence extends Command
     protected function getBaseDate($lead, $etapa, $now)
     {
         $lastMessage = CadenceMessage::where('sync_flow_leads_id', $lead->id)
+            ->whereHas('etapa', function ($query) use ($lead) {
+                $query->where('cadencia_id', $lead->cadencia_id);
+            })
             ->orderBy('enviado_em', 'desc')
             ->first();
 
@@ -162,6 +184,9 @@ class ProcessCadence extends Command
     {
         return CadenceMessage::where('sync_flow_leads_id', $lead->id)
             ->where('etapa_id', $etapa->id)
+            ->whereHas('etapa', function ($query) use ($lead) {
+                $query->where('cadencia_id', $lead->cadencia_id);
+            })
             ->exists();
     }
 
@@ -196,7 +221,7 @@ class ProcessCadence extends Command
                         $evolution->api_post,
                         $evolution->apikey,
                         $lead->contact_name,
-                        $lead->contact_email,
+                        $lead->contact_email
                     );
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");

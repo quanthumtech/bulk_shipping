@@ -158,4 +158,43 @@ class ZohoCrmService
             return null;
         }
     }
+
+    /**
+     * Atualiza o campo Status_WhatsApp de um lead no Zoho CRM.
+     *
+     * @param string $leadId ID do lead no Zoho CRM (id_card)
+     * @param string $status Novo valor para o campo Status_WhatsApp
+     * @return bool Sucesso ou falha na atualização
+     */
+    public function updateLeadStatusWhatsApp($leadId, $status)
+    {
+        $accessToken = $this->getAccessToken();
+
+        try {
+            $response = $this->client->put("{$this->config['api_url']}/Leads/{$leadId}", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        [
+                            'Status_WhatsApp' => $status,
+                        ],
+                    ],
+                ],
+            ]);
+
+            if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+                Log::info("Campo Status_WhatsApp atualizado para '{$status}' no lead ID {$leadId}");
+                return true;
+            } else {
+                Log::error('Erro ao atualizar Status_WhatsApp no Zoho CRM: ' . $response->getBody());
+                return false;
+            }
+        } catch (\Exception $e) {
+            Log::error('Exceção ao atualizar Status_WhatsApp no Zoho CRM: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

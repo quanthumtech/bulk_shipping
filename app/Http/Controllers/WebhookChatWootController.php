@@ -10,18 +10,24 @@ use App\Models\ChatwootMessage;
 use App\Models\ChatwootsAgents;
 use App\Models\User;
 use App\Services\ChatwootService;
+use App\Services\ZohoCrmService;
 use Illuminate\Support\Facades\Log;
 
 class WebhookChatWootController extends Controller
 {
     protected $chatwootServices;
+    protected $zohoCrmService;
+
+    public function __construct(ChatwootService $chatwootService, ZohoCrmService $zohoCrmService)
+    {
+        $this->chatwootServices = $chatwootService;
+        $this->zohoCrmService = $zohoCrmService;
+    }
 
     public function handleWebhook(Request $request)
     {
         try {
             $payload = $request->all();
-
-            $this->chatwootServices = new ChatwootService();
 
             // Registrar o webhook recebido
             Log::info('Chatwoot Webhook Received', ['payload' => $payload]);
@@ -49,15 +55,18 @@ class WebhookChatWootController extends Controller
                     $contactPhone = $payload['messages'][0]['sender']['phone_number'];
                 }
 
-                // Extrair o conteúdo da mensagem e messageId com base no tipo de evento
+                // Extrair o conteúdo da mensagem, messageId e verificar se é uma mensagem incoming
                 $content = null;
                 $messageId = null;
+                $isIncoming = false;
                 if ($payload['event'] === 'message_created') {
                     $content = $payload['content'] ?? null;
                     $messageId = $payload['id'] ?? null;
+                    $isIncoming = ($payload['message_type'] ?? '') === 'incoming';
                 } elseif ($payload['event'] === 'conversation_updated' && isset($payload['messages'][0]['content'])) {
                     $content = $payload['messages'][0]['content'];
                     $messageId = $payload['messages'][0]['id'] ?? null;
+                    $isIncoming = ($payload['messages'][0]['message_type'] ?? '') === 'incoming';
                 }
 
                 if (!$accountId) {
@@ -80,7 +89,8 @@ class WebhookChatWootController extends Controller
                     'phone' => $contactPhone,
                     'account_id' => $accountId,
                     'content' => $content,
-                    'message_id' => $messageId
+                    'message_id' => $messageId,
+                    'is_incoming' => $isIncoming
                 ]);
 
                 // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
@@ -97,14 +107,23 @@ class WebhookChatWootController extends Controller
                         'email' => $contactEmail,
                         'phone' => $contactPhone
                     ]);
-                    // Continuar o processamento mesmo sem lead
-                    // return response()->json(['status' => 'lead_not_found'], 404);
                 } else {
                     Log::info('Lead encontrado', [
                         'id_do_lead' => $lead->id,
                         'email' => $contactEmail,
                         'telefone' => $contactPhone
                     ]);
+
+                    // Se a mensagem é uma resposta do cliente, interromper a cadência e atualizar o CRM
+                    if ($isIncoming) {
+                        $lead->situacao_contato = 'Contato Efetivo';
+                        $lead->save();
+                        Log::info("Lead {$lead->id} marcado como 'Contato Efetivo' devido à resposta do cliente.");
+
+                        // Atualizar o campo Status_WhatsApp no Zoho CRM
+                        $this->zohoCrmService->updateLeadStatusWhatsApp($lead->id_card, 'Contato Respondido');
+                        Log::info("Campo Status_WhatsApp atualizado no Zoho CRM para o lead {$lead->id_card}.");
+                    }
                 }
 
                 // Encontrar o agente associado ao email_vendedor (se houver lead)
@@ -117,8 +136,6 @@ class WebhookChatWootController extends Controller
                             'email_vendedor' => $lead->email_vendedor,
                             'conversation_id' => $conversationId
                         ]);
-                        // Continuar o processamento mesmo sem agente
-                        // return response()->json(['status' => 'chatwoot_agent_not_found'], 404);
                     } elseif ($chatWootAgent->chatwoot_account_id != $accountId) {
                         Log::warning('accountId do agente não corresponde ao accountId do payload', [
                             'email_vendedor' => $lead->email_vendedor,
@@ -138,8 +155,6 @@ class WebhookChatWootController extends Controller
                         'chatwoot_account_id' => $accountId,
                         'conversation_id' => $conversationId
                     ]);
-                    // Continuar o processamento mesmo sem token
-                    // return response()->json(['status' => 'user_or_token_not_found'], 404);
                 }
 
                 $apiToken = $user ? $user->token_acess : null;
@@ -165,8 +180,6 @@ class WebhookChatWootController extends Controller
                             'conversation_id' => $conversationId,
                             'account_id' => $accountId
                         ]);
-                        // Continuar o processamento mesmo sem agente correspondente
-                        // return response()->json(['status' => 'agent_not_found'], 404);
                     } elseif (!isset($matchingAgent['agent_id'])) {
                         Log::error('agent_id não encontrado no matchingAgent', [
                             'email_vendedor' => $lead->email_vendedor,
