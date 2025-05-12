@@ -55,18 +55,18 @@ class WebhookChatWootController extends Controller
                     $contactPhone = $payload['messages'][0]['sender']['phone_number'];
                 }
 
-                // Extrair o conteúdo da mensagem, messageId e verificar se é uma mensagem incoming
+                // Extrair o conteúdo da mensagem, messageId e verificar se é message_type 0 (resposta)
                 $content = null;
                 $messageId = null;
-                $isIncoming = false;
+                $isClientResponse = false;
                 if ($payload['event'] === 'message_created') {
                     $content = $payload['content'] ?? null;
                     $messageId = $payload['id'] ?? null;
-                    $isIncoming = ($payload['message_type'] ?? '') === 'incoming';
+                    $isClientResponse = ($payload['message_type'] ?? '') === 0;
                 } elseif ($payload['event'] === 'conversation_updated' && isset($payload['messages'][0]['content'])) {
                     $content = $payload['messages'][0]['content'];
                     $messageId = $payload['messages'][0]['id'] ?? null;
-                    $isIncoming = ($payload['messages'][0]['message_type'] ?? '') === 'incoming';
+                    $isClientResponse = ($payload['messages'][0]['message_type'] ?? '') === 0;
                 }
 
                 if (!$accountId) {
@@ -90,7 +90,7 @@ class WebhookChatWootController extends Controller
                     'account_id' => $accountId,
                     'content' => $content,
                     'message_id' => $messageId,
-                    'is_incoming' => $isIncoming
+                    'is_client_response' => $isClientResponse
                 ]);
 
                 // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
@@ -114,8 +114,8 @@ class WebhookChatWootController extends Controller
                         'telefone' => $contactPhone
                     ]);
 
-                    // Se a mensagem é uma resposta do cliente, interromper a cadência e atualizar o CRM
-                    if ($isIncoming) {
+                    // Se a mensagem é uma resposta do cliente (message_type = 0), interromper a cadência e atualizar o CRM
+                    if ($isClientResponse) {
                         $lead->situacao_contato = 'Contato Efetivo';
                         $lead->save();
                         Log::info("Lead {$lead->id} marcado como 'Contato Efetivo' devido à resposta do cliente.");
