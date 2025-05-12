@@ -159,6 +159,26 @@ class ZohoCrmService
         }
     }
 
+    public function checkLeadExists($leadId)
+    {
+        $accessToken = $this->getAccessToken();
+        try {
+            $response = $this->client->get("{$this->config['api_url']}/Deals/{$leadId}", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                ],
+            ]);
+            Log::info("Lead encontrado: ID {$leadId}");
+            return true;
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            Log::error("Erro ao verificar lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Exceção ao verificar lead ID {$leadId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
     /**
      * Atualiza o campo Status_WhatsApp de um lead no Zoho CRM.
      *
@@ -168,10 +188,14 @@ class ZohoCrmService
      */
     public function updateLeadStatusWhatsApp($leadId, $status)
     {
-        $accessToken = $this->getAccessToken();
+        if (!$this->checkLeadExists($leadId)) {
+            Log::error("Lead ID {$leadId} não encontrado no Zoho CRM. Atualização abortada.");
+            return false;
+        }
 
+        $accessToken = $this->getAccessToken();
         try {
-            $response = $this->client->put("{$this->config['api_url']}/Leads/{$leadId}", [
+            $response = $this->client->put("{$this->config['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                     'Content-Type' => 'application/json',
@@ -184,16 +208,13 @@ class ZohoCrmService
                     ],
                 ],
             ]);
-
-            if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
-                Log::info("Campo Status_WhatsApp atualizado para '{$status}' no lead ID {$leadId}");
-                return true;
-            } else {
-                Log::error('Erro ao atualizar Status_WhatsApp no Zoho CRM: ' . $response->getBody());
-                return false;
-            }
+            Log::info("Campo Status_WhatsApp atualizado para '{$status}' no lead ID {$leadId}");
+            return true;
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            Log::error("Erro ao atualizar Status_WhatsApp para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            return false;
         } catch (\Exception $e) {
-            Log::error('Exceção ao atualizar Status_WhatsApp no Zoho CRM: ' . $e->getMessage());
+            Log::error("Exceção ao atualizar Status_WhatsApp para lead ID {$leadId}: " . $e->getMessage());
             return false;
         }
     }
