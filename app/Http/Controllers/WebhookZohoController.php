@@ -96,7 +96,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
                 $sync_emp->email_vendedor = $emailVendedor;
                 $sync_emp->id_vendedor = $request->id_vendedor ?? $sync_emp->id_vendedor;
-                $sync_emp->msg_content = $request->msg_content ?? $sync_emp->msg_content;
+                //$sync_emp->msg_content = $request->msg_content ?? $sync_emp->msg_content;
                 $sync_emp->updated_at = now();
 
                 // Se o estágio mudou e não veio cadencia_id, atualiza a cadência com base no novo estágio
