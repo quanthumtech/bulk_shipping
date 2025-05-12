@@ -115,7 +115,7 @@ class WebhookChatWootController extends Controller
                     ]);
 
                     // Se a mensagem é uma resposta do cliente (message_type = 0), interromper a cadência e atualizar o CRM
-                    if ($isClientResponse) {
+                    if ($isClientResponse && $lead->id) {
                         $lead->situacao_contato = 'Contato Efetivo';
                         $lead->save();
                         Log::info("Lead {$lead->id} marcado como 'Contato Efetivo' devido à resposta do cliente.");
