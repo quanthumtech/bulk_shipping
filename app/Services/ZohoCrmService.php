@@ -218,4 +218,77 @@ class ZohoCrmService
             return false;
         }
     }
+
+    /**
+     * Obtém o valor de um campo específico de um lead no Zoho CRM.
+     *
+     * @param string $leadId ID do lead no Zoho CRM
+     * @param string $field Nome do campo a recuperar
+     * @return string|null Valor do campo ou null se não encontrado
+     */
+    public function getLeadField($leadId, $field)
+    {
+        if (!$this->checkLeadExists($leadId)) {
+            Log::error("Lead ID {$leadId} não encontrado no Zoho CRM.");
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        try {
+            $response = $this->client->get("{$this->config['api_url']}/Deals/{$leadId}", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                ],
+            ]);
+
+            $leadData = json_decode($response->getBody(), true);
+            $fieldValue = $leadData['data'][0][$field] ?? null;
+
+            Log::info("Campo {$field} recuperado para lead ID {$leadId}: " . ($fieldValue ?? 'Nulo'));
+            return $fieldValue;
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            Log::error("Erro ao recuperar campo {$field} para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            return null;
+        } catch (\Exception $e) {
+            Log::error("Exceção ao recuperar campo {$field} para lead ID {$leadId}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Registrar hisotrico de mensagens no Zoho CRM.
+     * Campo Hist_rico_Atendimento
+     */
+    public function registerHistory($leadId, $message)
+    {
+        if (!$this->checkLeadExists($leadId)) {
+            Log::error("Lead ID {$leadId} não encontrado no Zoho CRM. Atualização abortada.");
+            return false;
+        }
+
+        $accessToken = $this->getAccessToken();
+        try {
+            $response = $this->client->put("{$this->config['api_url']}/Deals/{$leadId}", [
+                'headers' => [
+                    'Authorization' => "Zoho-oauthtoken {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        [
+                            'Hist_rico_Atendimento' => $message,
+                        ],
+                    ],
+                ],
+            ]);
+            Log::info("Campo Hist_rico_Atendimento atualizado para '{$message}' no lead ID {$leadId}");
+            return true;
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            Log::error("Erro ao atualizar Hist_rico_Atendimento para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Exceção ao atualizar Hist_rico_Atendimento para lead ID {$leadId}: " . $e->getMessage());
+            return false;
+        }
+    }
 }

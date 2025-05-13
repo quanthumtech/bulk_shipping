@@ -243,11 +243,53 @@ class WebhookChatWootController extends Controller
             }
 
             if ($content && $messageId && $conversation) {
+                // Armazenar a mensagem na tabela ChatwootMessage
                 ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
                     'content' => $content,
                     'message_id' => $messageId,
                 ]);
+
+                // Obter o payload completo para extrair o autor
+                $payload = request()->all();
+
+                // Determinar o autor da mensagem
+                $author = 'Sistema'; // Padrão para mensagens automáticas
+                if ($payload['event'] === 'message_created') {
+                    if ($payload['message_type'] === 0) {
+                        // Mensagem do cliente
+                        $author = $payload['meta']['sender']['name'] ?? $payload['meta']['sender']['email'] ?? $payload['meta']['sender']['phone_number'] ?? 'Cliente';
+                    } elseif ($payload['message_type'] === 1) {
+                        // Mensagem do agente
+                        $author = $payload['sender']['name'] ?? $payload['sender']['email'] ?? 'Agente';
+                    }
+                }
+
+                // Formatar a mensagem para o histórico
+                $formattedMessage = sprintf(
+                    "[%s] %s: %s\n",
+                    now()->format('Y-m-d H:i:s'),
+                    $author,
+                    $content
+                );
+
+                // Obter o lead para recuperar o id_card
+                $lead = SyncFlowLeads::find($leadId);
+                if ($lead && $lead->id_card) {
+                    // Recuperar o histórico existente no Zoho CRM
+                    $existingHistory = $this->zohoCrmService->getLeadField($lead->id_card, 'Hist_rico_Atendimento') ?? '';
+
+                    // Concatenar a nova mensagem ao histórico existente
+                    $updatedHistory = $existingHistory . $formattedMessage;
+
+                    // Atualizar o campo Hist_rico_Atendimento no Zoho CRM
+                    $this->zohoCrmService->registerHistory($lead->id_card, $updatedHistory);
+                } else {
+                    Log::warning('Lead ou id_card não encontrado para registrar histórico', [
+                        'lead_id' => $leadId,
+                        'conversation_id' => $conversationId
+                    ]);
+                }
             }
 
             Log::info('Conversa armazenada com sucesso', [
@@ -257,7 +299,7 @@ class WebhookChatWootController extends Controller
                 'message_id' => $messageId
             ]);
         } catch (\Exception $exception) {
-            Log::error('Falha ao armazenar conversa', [
+            Log::error('Falha ao armazenar conversa ou registrar histórico', [
                 'sync_flow_lead_id' => $leadId,
                 'conversation_id' => $conversationId,
                 'content' => $content,
