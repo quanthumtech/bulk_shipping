@@ -93,11 +93,16 @@ class WebhookZohoController extends Controller
                 } elseif ($sync_emp->estagio !== $oldEstagio && $sync_emp->estagio !== 'Não fornecido') {
                     $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
                         ->where('active', 1)
-                        ->orderBy('priority', 'desc') // Prioridade para múltiplas cadências
                         ->first();
                     if ($cadencia) {
-                        $sync_emp->cadencia_id = $cadencia->id;
-                        Log::info("Cadência ID {$cadencia->id} atualizada para o lead ID {$sync_emp->id} com base no estágio: {$sync_emp->estagio}");
+                        // Se existe uma cadência específica definida no modelo
+                        if ($cadencia->ordem > 0) {
+                            $sync_emp->cadencia_id = $cadencia->id;
+                            Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao lead ID {$sync_emp->id}");
+                        } else {
+                            // Se não tem ordem definida, mantém a cadência atual
+                            Log::info("Cadência sem ordem definida para o estágio: {$sync_emp->estagio}. Mantendo cadência atual.");
+                        }
                     } else {
                         $sync_emp->cadencia_id = null;
                         Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio} do lead ID {$sync_emp->id}");
@@ -128,11 +133,17 @@ class WebhookZohoController extends Controller
                 } elseif ($sync_emp->estagio !== 'Não fornecido') {
                     $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
                         ->where('active', 1)
-                        ->orderBy('priority', 'desc')
                         ->first();
                     if ($cadencia) {
-                        $sync_emp->cadencia_id = $cadencia->id;
-                        Log::info("Cadência ID {$cadencia->id} atribuída ao novo lead com base no estágio: {$sync_emp->estagio}");
+                        // Se existe uma cadência específica definida no modelo
+                        if ($cadencia->ordem > 0) {
+                            $sync_emp->cadencia_id = $cadencia->id;
+                            Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao novo lead");
+                        } else {
+                            // Se não tem ordem definida, não atribui cadência
+                            $sync_emp->cadencia_id = null;
+                            Log::info("Cadência encontrada mas sem ordem definida para o estágio: {$sync_emp->estagio}");
+                        }
                     } else {
                         $sync_emp->cadencia_id = null;
                         Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio}");
