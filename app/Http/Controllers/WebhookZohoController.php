@@ -87,9 +87,9 @@ class WebhookZohoController extends Controller
                 $sync_emp->updated_at = now();
 
                 // Atribuição de cadência
-                if ($request->id_cadencia) {
-                    $sync_emp->cadencia_id = $request->id_cadencia;
-                    Log::info("Cadência ID {$request->id_cadencia} atribuída diretamente ao lead ID {$sync_emp->id}");
+                if ($request->cadencia_id) {
+                    $sync_emp->cadencia_id = $request->cadencia_id;
+                    Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$sync_emp->id}");
                 } elseif ($sync_emp->estagio !== $oldEstagio && $sync_emp->estagio !== 'Não fornecido') {
                     $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
                         ->where('active', 1)
@@ -127,9 +127,9 @@ class WebhookZohoController extends Controller
                 $sync_emp->created_at = now();
 
                 // Atribuição de cadência
-                if ($request->id_cadencia) {
-                    $sync_emp->cadencia_id = $request->id_cadencia;
-                    Log::info("Cadência ID {$request->id_cadencia} atribuída ao novo lead");
+                if ($request->cadencia_id) {
+                    $sync_emp->cadencia_id = $request->cadencia_id;
+                    Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead");
                 } elseif ($sync_emp->estagio !== 'Não fornecido') {
                     $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
                         ->where('active', 1)
