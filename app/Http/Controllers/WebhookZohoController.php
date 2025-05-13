@@ -164,7 +164,7 @@ class WebhookZohoController extends Controller
 
                 if ($user && !empty($Evolution->api_post) && !empty($Evolution->apikey)) {
                     // Verifica status_whatsapp
-                    if ($sync_emp->status_whatsapp === 'Contato Respondido') {
+                    if ($request->status_whatsapp === 'Contato Respondido') {
                         Log::info("Lead ID {$sync_emp->id} com status_whatsapp 'Contato Respondido'. Nenhuma etapa será executada.");
                         return response('Webhook received successfully', 200);
                     }
