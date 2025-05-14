@@ -44,13 +44,16 @@ class WebhookZohoController extends Controller
 
         $cleanNumber = preg_replace('/[^0-9]/', '', $number);
         $length = strlen($cleanNumber);
+
+        // Remove o prefixo 0 no início do número
+        if (substr($cleanNumber, 0, 1) === '0') {
+            $cleanNumber = substr($cleanNumber, 1);
+            $length = strlen($cleanNumber);
+        }
+
         if ($length < 10 || $length > 11) {
             Log::warning("Número inválido, comprimento incorreto: {$number} (limpo: {$cleanNumber}, {$length} dígitos)");
             return 'Não fornecido';
-        }
-
-        if ($length === 11 && substr($cleanNumber, 0, 1) === '0') {
-            $cleanNumber = substr($cleanNumber, 1);
         }
 
         $formattedNumber = '+55' . $cleanNumber;
