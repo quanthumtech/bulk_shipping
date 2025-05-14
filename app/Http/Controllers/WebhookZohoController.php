@@ -61,7 +61,7 @@ class WebhookZohoController extends Controller
     public function createFromWebhook(Request $request)
     {
         // Log the incoming webhook request immediately
-        Log::info('Webhook request received', [
+        Log::info('Webhook request Zoho / Bulkship', [
             'method' => $request->method(),
             'content' => $request->getContent(),
             'headers' => $request->headers->all()

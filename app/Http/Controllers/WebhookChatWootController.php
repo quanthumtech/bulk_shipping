@@ -53,7 +53,7 @@ class WebhookChatWootController extends Controller
             $payload = $request->all();
 
             // Registrar o webhook recebido
-            Log::info('Chatwoot Webhook Received', ['payload' => $payload]);
+            Log::info('Chatwoot Webhook Chatwoot / Bulkship', ['payload' => $payload]);
 
             // Verifica se é um evento suportado
             if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created', 'conversation_status_updated'])) {
