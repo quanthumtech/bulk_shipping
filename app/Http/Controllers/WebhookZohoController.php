@@ -193,6 +193,7 @@ class WebhookZohoController extends Controller
             }
 
             // Verifica se o número é WhatsApp
+            /*
             if ($this->chatwootService->isWhatsappNumber($sync_emp->contact_number)) {
                 // Processa etapa imediata
                 if ($sync_emp->cadencia_id) {
@@ -258,7 +259,7 @@ class WebhookZohoController extends Controller
                 }
             } else {
                 Log::info("Número {$sync_emp->contact_number} não é um WhatsApp válido.");
-            }
+            }*/
 
             return response('Webhook received successfully', 200);
         } else {
