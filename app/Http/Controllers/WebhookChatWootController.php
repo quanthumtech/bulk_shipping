@@ -243,6 +243,16 @@ class WebhookChatWootController extends Controller
             }
 
             if ($content && $messageId && $conversation) {
+                // Verificar se a mensagem já foi processada
+                $existingMessage = ChatwootMessage::where('message_id', $messageId)->first();
+                if ($existingMessage) {
+                    Log::info('Mensagem já processada, ignorando', [
+                        'message_id' => $messageId,
+                        'conversation_id' => $conversationId
+                    ]);
+                    return;
+                }
+
                 // Armazenar a mensagem na tabela ChatwootMessage
                 ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
@@ -256,17 +266,14 @@ class WebhookChatWootController extends Controller
                 // Determinar o autor da mensagem
                 $author = 'Sistema';
                 if ($payload['event'] === 'message_created') {
-                    if ($payload['sender_type'] === 'User') {
-                        // Mensagem do agente
-                        $author = $payload['sender']['name'] ?? $payload['sender']['email'] ?? 'Agente';
-                    } elseif ($payload['sender_type'] === 'Contact') {
-                        // Mensagem do cliente
-                        $author = $payload['sender']['name'] ?? $payload['meta']['sender']['name'] ?? $payload['meta']['sender']['phone_number'] ?? 'Cliente';
-                        // Evitar usar número de telefone como nome
-                        if ($author === $payload['meta']['sender']['phone_number']) {
-                            $author = 'Cliente';
-                        }
-                    }
+                    $author = $payload['sender']['name'] ?? ($payload['sender_type'] === 'User' ? ($payload['sender']['email'] ?? 'Agente') : ($payload['meta']['sender']['name'] ?? 'Cliente'));
+                } elseif ($payload['event'] === 'conversation_updated' && isset($payload['messages'][0])) {
+                    $author = $payload['messages'][0]['sender']['name'] ?? ($payload['messages'][0]['sender_type'] === 'User' ? ($payload['messages'][0]['sender']['email'] ?? 'Agente') : ($payload['meta']['sender']['name'] ?? 'Cliente'));
+                }
+
+                // Evitar usar número de telefone como nome
+                if ($author === $payload['meta']['sender']['phone_number']) {
+                    $author = 'Cliente';
                 }
 
                 // Formatar a mensagem para o histórico
