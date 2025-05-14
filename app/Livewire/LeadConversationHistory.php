@@ -107,6 +107,62 @@ class LeadConversationHistory extends Component
         }
     }
 
+    public function downloadConversationHistory()
+    {
+        try {
+            if (empty($this->conversations)) {
+                $this->error('Nenhuma conversa disponível para download.', position: 'toast-top');
+                return;
+            }
+
+            // Coletar todas as mensagens de todas as conversas
+            $messages = collect($this->conversations)
+                ->flatMap(function ($conversation) {
+                    return collect($conversation['messages'])->map(function ($message) {
+                        return [
+                            'created_at' => $message['created_at'],
+                            'sender_name' => $message['sender_name'],
+                            'content' => $message['content'],
+                            'timestamp' => Carbon::createFromFormat('d/m/Y H:i', $message['created_at'])->format('Y-m-d H:i:s'),
+                        ];
+                    });
+                })
+                ->sortBy('timestamp')
+                ->map(function ($message) {
+                    return sprintf(
+                        "[%s] %s: %s\n",
+                        $message['timestamp'],
+                        $message['sender_name'],
+                        $message['content']
+                    );
+                })
+                ->implode('');
+
+            // Gerar o nome do arquivo
+            $fileName = 'conversation_history_lead_' . $this->leadId . '_' . now()->format('Ymd_His') . '.txt';
+
+            // Log para depuração
+            Log::info('Gerando arquivo de histórico de conversa para download', [
+                'lead_id' => $this->leadId,
+                'file_name' => $fileName,
+                'message_count' => substr_count($messages, "\n"),
+            ]);
+
+            // Retornar a resposta de download
+            return response()->streamDownload(function () use ($messages) {
+                echo $messages;
+            }, $fileName, [
+                'Content-Type' => 'text/plain',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao gerar arquivo de histórico de conversa', [
+                'lead_id' => $this->leadId,
+                'error' => $e->getMessage(),
+            ]);
+            $this->error('Erro ao gerar o arquivo de download.', position: 'toast-top');
+        }
+    }
+
     public function render()
     {
         return view('livewire.lead-conversation-history');

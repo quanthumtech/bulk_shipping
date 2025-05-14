@@ -1,6 +1,7 @@
 <div>
     <x-mary-header title="Histórico de Conversas" subtitle="Visualize todas as conversas do lead {{ $lead->contact_name ?? 'Não definido' }}" separator>
-        <x-slot:middle class="!justify-end">
+        <x-slot:middle class="!justify-end space-x-2">
+            <x-mary-button label="Download Histórico" icon="o-download" wire:click="downloadConversationHistory" class="btn-outline" />
             <x-mary-button label="Voltar" icon="o-arrow-left" link="{{ route('sync-flow.index') }}" class="btn-outline" />
         </x-slot:middle>
     </x-mary-header>
