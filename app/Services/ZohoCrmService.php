@@ -277,7 +277,7 @@ class ZohoCrmService
 
     /**
      * Registrar hisotrico de mensagens no Zoho CRM.
-     * Campo Hist_rico_Atendimento
+     * Campo Historic_WhatsApp
      */
     public function registerHistory($leadId, $message)
     {
@@ -296,7 +296,7 @@ class ZohoCrmService
                 'json' => [
                     'data' => [
                         [
-                            'Hist_rico_Atendimento' => $message,
+                            'Historic_WhatsApp' => $message,
                         ],
                     ],
                 ],
