@@ -244,11 +244,11 @@ class WebhookChatWootController extends Controller
 
             if ($content && $messageId && $conversation) {
                 // Armazenar a mensagem na tabela ChatwootMessage
-                ChatwootMessage::create([
+                /*ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
                     'content' => $content,
                     'message_id' => $messageId,
-                ]);
+                ]);*/
 
                 // Obter o payload completo para extrair o autor
                 $payload = request()->all();

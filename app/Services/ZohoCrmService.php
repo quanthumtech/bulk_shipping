@@ -38,6 +38,7 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ZohoCrmService
@@ -62,6 +63,14 @@ class ZohoCrmService
      */
     public function getAccessToken()
     {
+        $cacheKey = 'zoho_access_token';
+        $token = Cache::get($cacheKey);
+
+        if ($token) {
+            Log::info('Access Token recuperado do cache');
+            return $token;
+        }
+
         try {
             $response = $this->client->post($this->config['token_url'], [
                 'form_params' => [
@@ -75,12 +84,23 @@ class ZohoCrmService
             $responseData = json_decode($response->getBody(), true);
 
             if (isset($responseData['access_token'])) {
-                Log::info('Novo Access Token obtido com sucesso: ' . $responseData['access_token']);
-                return $responseData['access_token'];
+                $token = $responseData['access_token'];
+                $expiresIn = $responseData['expires_in'] ?? 3600;
+                Cache::put($cacheKey, $token, $expiresIn - 60); // Cache for token lifetime minus 1 minute
+                Log::info('Novo Access Token obtido e armazenado no cache: ' . $token);
+                return $token;
             } else {
                 Log::error('Erro ao obter o access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
                 throw new \Exception('Erro ao obter o access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
             }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 400 && strpos($e->getMessage(), 'You have made too many requests') !== false) {
+                Log::warning('Limite de taxa atingido ao obter access token. Aguardando retry...');
+                sleep(10); // Espera 10 segundos antes de tentar novamente
+                return $this->getAccessToken(); // Retry
+            }
+            Log::error('Exceção ao obter access token: ' . $e->getMessage());
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Exceção ao obter access token: ' . $e->getMessage());
             throw $e;
