@@ -190,47 +190,67 @@ class WebhookZohoController extends Controller
 
             // Verifica se o número é WhatsApp
             if ($this->chatwootService->isWhatsappNumber($sync_emp->contact_number)) {
-                $user = User::where('chatwoot_accoumts', $sync_emp->chatwoot_accoumts)->first();
+                // Processa etapa imediata
+                if ($sync_emp->cadencia_id) {
+                    $etapaImediata = Etapas::where('cadencia_id', $sync_emp->cadencia_id)
+                        ->where('imediat', 1)
+                        ->where('active', 1)
+                        ->first();
 
-                $Evolution = Evolution::where('user_id', $user->id)
-                    ->where('active', 1)
-                    ->first();
+                    if ($etapaImediata) {
+                        $cadencia = Cadencias::find($sync_emp->cadencia_id);
 
-                if ($user && !empty($Evolution->api_post) && !empty($Evolution->apikey)) {
-                    // Verifica status_whatsapp
-                    if ($request->status_whatsapp === 'Contato Respondido') {
-                        Log::info("Lead ID {$sync_emp->id} com status_whatsapp 'Contato Respondido'. Nenhuma etapa será executada.");
-                        return response('Webhook received successfully', 200);
-                    }
+                        if ($cadencia) {
+                            $evolution = Evolution::where('id', $cadencia->evolution_id)
+                                ->where('active', 1)
+                                ->first();
 
-                    // Processa etapa imediata
-                    if ($sync_emp->cadencia_id) {
-                        $etapaImediata = Etapas::where('cadencia_id', $sync_emp->cadencia_id)
-                            ->where('imediat', 1)
-                            ->where('active', 1)
-                            ->first();
+                            if ($evolution && $evolution->api_post && $evolution->apikey) {
+                                // Verifica status_whatsapp
+                                if ($request->status_whatsapp === 'Contato Respondido') {
+                                    Log::info("Lead ID {$sync_emp->id} com status_whatsapp 'Contato Respondido'. Nenhuma etapa será executada.");
+                                    return response('Webhook received successfully', 200);
+                                }
 
-                        if ($etapaImediata) {
-                            Log::info("Etapa imediata encontrada: ID {$etapaImediata->id} para cadência {$sync_emp->cadencia_id}");
-                            $this->chatwootService->sendMessage(
-                                $sync_emp->contact_number,
-                                $etapaImediata->message_content,
-                                $Evolution->api_post,
-                                $Evolution->apikey,
-                                $sync_emp->contact_name,
-                                $sync_emp->contact_email
-                            );
+                                Log::info("Etapa imediata encontrada: ID {$etapaImediata->id} para cadência {$sync_emp->cadencia_id}");
 
-                            $this->registrarEnvio($sync_emp, $etapaImediata);
-                            Log::info("Mensagem da etapa imediata enviada para o lead {$sync_emp->id}");
+                                $maxAttempts = 3;
+                                $attempt = 1;
+
+                                while ($attempt <= $maxAttempts) {
+                                    try {
+                                        $this->chatwootService->sendMessage(
+                                            $sync_emp->contact_number,
+                                            $etapaImediata->message_content,
+                                            $evolution->api_post,
+                                            $evolution->apikey,
+                                            $sync_emp->contact_name,
+                                            $sync_emp->contact_email
+                                        );
+                                        $this->registrarEnvio($sync_emp, $etapaImediata);
+                                        Log::info("Mensagem da etapa imediata enviada para o lead {$sync_emp->id}");
+                                        break;
+                                    } catch (\Exception $e) {
+                                        Log::error("Tentativa {$attempt} falhou para lead {$sync_emp->id}: " . $e->getMessage());
+                                        if ($attempt === $maxAttempts) {
+                                            Log::error("Falha definitiva ao enviar mensagem para lead {$sync_emp->id}");
+                                            break;
+                                        }
+                                        sleep(5);
+                                        $attempt++;
+                                    }
+                                }
+                            } else {
+                                Log::error("Caixa Evolution ou credenciais não encontradas para evolution_id: {$cadencia->evolution_id}");
+                            }
                         } else {
-                            Log::info("Nenhuma etapa imediata ativa encontrada para a cadência {$sync_emp->cadencia_id}");
+                            Log::error("Cadência não encontrada para ID: {$sync_emp->cadencia_id}");
                         }
                     } else {
-                        Log::info("Nenhuma cadência associada ao lead {$sync_emp->id}");
+                        Log::info("Nenhuma etapa imediata ativa encontrada para a cadência {$sync_emp->cadencia_id}");
                     }
                 } else {
-                    Log::error("Usuário ou configurações de API ausentes para a conta Chatwoot: {$sync_emp->chatwoot_accoumts}");
+                    Log::info("Nenhuma cadência associada ao lead {$sync_emp->id}");
                 }
             } else {
                 Log::info("Número {$sync_emp->contact_number} não é um WhatsApp válido.");
