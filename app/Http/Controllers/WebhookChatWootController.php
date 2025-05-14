@@ -244,24 +244,28 @@ class WebhookChatWootController extends Controller
 
             if ($content && $messageId && $conversation) {
                 // Armazenar a mensagem na tabela ChatwootMessage
-                /*ChatwootMessage::create([
+                ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
                     'content' => $content,
                     'message_id' => $messageId,
-                ]);*/
+                ]);
 
-                // Obter o payload completo para extrair o autor
+                // Obter o payload completo
                 $payload = request()->all();
 
                 // Determinar o autor da mensagem
-                $author = 'Sistema'; // Padrão para mensagens automáticas
+                $author = 'Sistema';
                 if ($payload['event'] === 'message_created') {
-                    if ($payload['message_type'] === 0) {
-                        // Mensagem do cliente
-                        $author = $payload['meta']['sender']['name'] ?? $payload['meta']['sender']['email'] ?? $payload['meta']['sender']['phone_number'] ?? 'Cliente';
-                    } elseif ($payload['message_type'] === 1) {
+                    if ($payload['sender_type'] === 'User') {
                         // Mensagem do agente
                         $author = $payload['sender']['name'] ?? $payload['sender']['email'] ?? 'Agente';
+                    } elseif ($payload['sender_type'] === 'Contact') {
+                        // Mensagem do cliente
+                        $author = $payload['sender']['name'] ?? $payload['meta']['sender']['name'] ?? $payload['meta']['sender']['phone_number'] ?? 'Cliente';
+                        // Evitar usar número de telefone como nome
+                        if ($author === $payload['meta']['sender']['phone_number']) {
+                            $author = 'Cliente';
+                        }
                     }
                 }
 
@@ -287,7 +291,8 @@ class WebhookChatWootController extends Controller
                 } else {
                     Log::warning('Lead ou id_card não encontrado para registrar histórico', [
                         'lead_id' => $leadId,
-                        'conversation_id' => $conversationId
+                        'conversation_id' => $conversationId,
+                        'message_id' => $messageId
                     ]);
                 }
             }
