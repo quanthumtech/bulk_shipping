@@ -288,6 +288,15 @@ class ZohoCrmService
 
         $accessToken = $this->getAccessToken();
         try {
+            // First, get the current history
+            $currentHistory = $this->getLeadField($leadId, 'Historic_WhatsApp') ?? '';
+
+            // Add timestamp and new message to the history
+            $timestamp = date('Y-m-d H:i:s');
+            $newHistory = $currentHistory
+                ? $currentHistory . "\n[{$timestamp}] " . $message
+                : "[{$timestamp}] " . $message;
+
             $response = $this->client->put("{$this->config['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
@@ -296,18 +305,18 @@ class ZohoCrmService
                 'json' => [
                     'data' => [
                         [
-                            'Historic_WhatsApp' => $message,
+                            'Historic_WhatsApp' => $newHistory,
                         ],
                     ],
                 ],
             ]);
-            Log::info("Campo Hist_rico_Atendimento atualizado para '{$message}' no lead ID {$leadId}");
+            Log::info("Histórico atualizado para lead ID {$leadId}");
             return true;
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-            Log::error("Erro ao atualizar Hist_rico_Atendimento para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            Log::error("Erro ao atualizar histórico para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
             return false;
         } catch (\Exception $e) {
-            Log::error("Exceção ao atualizar Hist_rico_Atendimento para lead ID {$leadId}: " . $e->getMessage());
+            Log::error("Exceção ao atualizar histórico para lead ID {$leadId}: " . $e->getMessage());
             return false;
         }
     }
