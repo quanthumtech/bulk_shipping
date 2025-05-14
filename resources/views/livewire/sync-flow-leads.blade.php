@@ -64,7 +64,7 @@
     <div class="grid lg:grid-cols-3 gap-5 mt-4">
         @foreach ($syncFlowLeads as $sync)
             <x-mary-card
-                title="{{ $sync->contact_name ?? 'Não definido' }}"
+                title="{{ Str::limit($sync->contact_name ?? 'Não definido', 40) }}"
                 class="shadow-lg {{ empty($sync->contact_email) || empty($sync->contact_number) ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
                 subtitle="Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }}"
                 separator

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ListContatos;
+use App\Models\SyncFlowLeads;
 use App\Models\Versions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -365,8 +366,9 @@ class ChatwootService
             return null;
         }
 
-        // Dados da API
-        //$user = Auth::user();
+        $user = Auth::user();
+        $chatwootAccountId = $user->chatwoot_accoumts;
+        $tokenAcesso = $user->token_acess;
 
         $apikey = $Apikey ?? null;
         $api_post = $apiPost ?? null;
@@ -394,6 +396,20 @@ class ChatwootService
             return null;
         }
 
+        // Busca o email do vendedor no modelo SyncFlowLeads
+        $lead = SyncFlowLeads::where('contact_number', $phoneNumber)->first();
+        $emailVendedor = $lead ? $lead->email_vendedor : null;
+        $agentName = 'Não fornecido';
+
+        if ($emailVendedor) {
+            // Busca o agente pelo email
+            $agents = $this->getAgents($chatwootAccountId, $tokenAcesso);
+            $agent = collect($agents)->firstWhere('email', $emailVendedor);
+            $agentName = $agent ? $agent['name'] : 'Não fornecido';
+        }
+
+        Log::info("Nome do agente encontrado: {$agentName} para o email: {$emailVendedor}");
+
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
                 preg_match('/!\[.*?\]\((https?:\/\/.*?)\)/', $messageContent, $matches);
@@ -404,8 +420,8 @@ class ChatwootService
                 $imageUrl = $matches[1] ?? trim($messageContent);
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
 
-                // Determina o domínio base da aplicação (funciona em local e produção)
-                $appUrl = config('app.url'); // Ex.: http://localhost ou https://seudominio.com
+                // Determina o domínio base da aplicação
+                $appUrl = config('app.url');
                 $storagePrefix = $appUrl . '/storage/markdown/';
 
                 // Verifica se é uma URL do storage local
@@ -418,7 +434,6 @@ class ChatwootService
                         return null;
                     }
 
-                    // Limite de tamanho (ex.: 5MB)
                     $fileSize = filesize($filePath);
                     if ($fileSize > 5 * 1024 * 1024) {
                         Log::error("Arquivo muito grande: {$fileSize} bytes em {$filePath}");
@@ -431,7 +446,6 @@ class ChatwootService
                         return null;
                     }
                 } else {
-                    // Para URLs externas, faz o download
                     $imgContent = file_get_contents($imageUrl);
                     if ($imgContent === false) {
                         Log::error("Falha ao baixar a imagem: {$imageUrl}");
@@ -459,11 +473,10 @@ class ChatwootService
 
                 Log::info("Payload sendo enviado para a API Evolution v1 (Imagem): " . json_encode($payload));
             } else {
-
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email'],
-                    [ $nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    ['#nome', '#email', '#nomeAgente'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
 
@@ -484,37 +497,28 @@ class ChatwootService
             }
         } elseif ($activeVersion === 'Evolution v2' || $activeVersion === 'Evolution v2 PM') {
             if ($isImage) {
-                $imageUrl = $matches[1] ?? trim($messageContent); // Usa URL do Markdown ou direta
+                $imageUrl = $matches[1] ?? trim($messageContent);
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
 
                 $payload = [
                     "number" => $phoneNumber,
-                    "mediatype" => "image", // Altere para o tipo de mídia correto, se necessário
-                    "mimetype" => "image/jpeg", // Altere para o MIME type correto
+                    "mediatype" => "image",
+                    "mimetype" => "image/jpeg",
                     "caption" => $caption,
                     "media" => base64_encode(file_get_contents($imageUrl)),
-                    // "fileName" => "nome_do_arquivo.jpg", // Descomente e ajuste se necessário
-                    // "delay" => 1200, // Descomente e ajuste se necessário
-                    // "quoted" => [...], // Descomente e ajuste se necessário
                 ];
                 $endpoint = str_replace('sendText', 'sendMedia', $api_post);
             } else {
-
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email'],
-                    [ $nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    ['#nome', '#email', '#nomeAgente'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
 
                 $payload = [
                     "number" => $phoneNumber,
                     "text" => $messageContentFormat,
-                    // "delay" => 1200, // Descomente e ajuste se necessário
-                    // "quoted" => [...], // Descomente e ajuste se necessário
-                    // "linkPreview" => false, // Descomente e ajuste se necessário
-                    // "mentionsEveryOne" => false, // Descomente e ajuste se necessário
-                    // "mentioned" => [], // Descomente e ajuste se necessário
                 ];
                 $endpoint = $api_post;
             }
