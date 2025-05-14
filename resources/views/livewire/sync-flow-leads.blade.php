@@ -65,16 +65,18 @@
         @foreach ($syncFlowLeads as $sync)
             <x-mary-card
                 title="{{ $sync->contact_name ?? 'Não definido' }}"
-                class="bg-base-100 shadow-lg"
-                subtitle="Telefone: {{ $sync->contact_number }} | Email: {{ $sync->contact_email }} | Cadência: {{ $sync->cadencia->name ?? 'Não definido' }}"
+                class="shadow-lg {{ empty($sync->contact_email) || empty($sync->contact_number) ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
+                subtitle="Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }}"
                 separator
             >
                 <x-slot:menu>
-                    <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge-primary" />
+                    <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
+                    @if (empty($sync->contact_email) || empty($sync->contact_number))
+                        <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
+                    @endif
                 </x-slot:menu>
-                <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" />
+                <x-mary-button label="Atribuir cadência" class="btn btn-sm btn-outline" @click="$wire.cadence({{ $sync->id }})" />
                 <x-mary-dropdown>
-                   {{-- <x-mary-menu-item title="Ver Histórico" icon="o-envelope" @click="$wire.viewHistory({{ $sync->id }})" /> --}}
                     <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
                     <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
                     <x-mary-menu-item title="Ver Histórico" icon="o-envelope" link="{{ route('lead.conversation.history', ['leadId' => $sync->id]) }}" />
@@ -87,4 +89,19 @@
     <div class="mt-4">
         {{ $syncFlowLeads->links() }}
     </div>
+
+    <style>
+        .bg-orange-100 {
+            background-color: #ffedd5 !important;
+        }
+        .border-orange-500 {
+            border-color: #f97316 !important;
+        }
+        .badge-warning {
+            background-color: #f97316 !important;
+            color: white !important;
+        }
+    </style>
 </div>
+
+

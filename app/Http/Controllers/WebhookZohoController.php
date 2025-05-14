@@ -60,6 +60,13 @@ class WebhookZohoController extends Controller
 
     public function createFromWebhook(Request $request)
     {
+        // Log the incoming webhook request immediately
+        Log::info('Webhook request received', [
+            'method' => $request->method(),
+            'content' => $request->getContent(),
+            'headers' => $request->headers->all()
+        ]);
+
         if ($request->isMethod('post') && $request->getContent()) {
             $idCard = $request->id_card ?? 'Não fornecido';
             $sync_emp = SyncFlowLeads::where('id_card', $idCard)->first();
