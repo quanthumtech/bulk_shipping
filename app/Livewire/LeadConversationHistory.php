@@ -70,11 +70,11 @@ class LeadConversationHistory extends Component
                 ]);
 
                 return [
-                    'id' => $conversation->conversation_id, // Adicionado para corresponder à view
+                    'id' => $conversation->conversation_id,
                     'status' => $conversation->status ?? 'N/A',
                     'last_activity_at' => $lastActivityAt ? $lastActivityAt->format('d/m/Y H:i') : 'N/A',
                     'agent_name' => $agentName,
-                    'messages' => $conversation->messages->map(function ($message) use ($agentName) {
+                    'messages' => $conversation->messages->map(function ($message) {
                         // Tratar created_at
                         $createdAt = null;
                         if ($message->created_at) {
@@ -96,9 +96,7 @@ class LeadConversationHistory extends Component
                             'content' => $message->content ?? 'Mensagem vazia',
                             'created_at' => $createdAt ? $createdAt->format('d/m/Y H:i') : 'N/A',
                             'is_sent' => $message->message_type === 'outgoing',
-                            'sender_name' => $message->message_type === 'outgoing'
-                                ? $agentName
-                                : ($this->lead->contact_name ?? 'Lead Desconhecido'),
+                            'sender_name' => $message->sender_name ?? ($message->message_type === 'outgoing' ? 'Agente Desconhecido' : ($this->lead->contact_name ?? 'Cliente')),
                         ];
                     })->toArray(),
                 ];

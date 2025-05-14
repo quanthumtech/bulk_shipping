@@ -253,13 +253,6 @@ class WebhookChatWootController extends Controller
                     return;
                 }
 
-                // Armazenar a mensagem na tabela ChatwootMessage
-                ChatwootMessage::create([
-                    'chatwoot_conversation_id' => $conversation->id,
-                    'content' => $content,
-                    'message_id' => $messageId,
-                ]);
-
                 // Obter o payload completo
                 $payload = request()->all();
 
@@ -276,7 +269,15 @@ class WebhookChatWootController extends Controller
                     $author = 'Cliente';
                 }
 
-                // Formatar a mensagem para o histórico
+                // Armazenar a mensagem na tabela ChatwootMessage
+                ChatwootMessage::create([
+                    'chatwoot_conversation_id' => $conversation->id,
+                    'content' => $content,
+                    'message_id' => $messageId,
+                    'sender_name' => $author,
+                ]);
+
+                // Formatar a mensagem para o histórico com newline
                 $formattedMessage = sprintf(
                     "[%s] %s: %s\n",
                     now()->format('Y-m-d H:i:s'),
@@ -290,7 +291,7 @@ class WebhookChatWootController extends Controller
                     // Recuperar o histórico existente no Zoho CRM
                     $existingHistory = $this->zohoCrmService->getLeadField($lead->id_card, 'Hist_rico_Atendimento') ?? '';
 
-                    // Concatenar a nova mensagem ao histórico existente
+                    // Concatenar a nova mensagem ao histórico existente com newline
                     $updatedHistory = $existingHistory . $formattedMessage;
 
                     // Atualizar o campo Hist_rico_Atendimento no Zoho CRM
