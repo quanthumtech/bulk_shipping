@@ -152,6 +152,10 @@ class WebhookZohoController extends Controller
 
                 $sync_emp->save();
                 Log::info("Novo lead salvo com ID: {$sync_emp->id}");
+
+                // Setar o campo de Status WhatsApp como: Não respondido
+                $this->zohoCrmService->updateLeadStatusWhatsApp($sync_emp->id, 'Não respondido');
+                Log::info("Status WhatsApp atualizado para 'Não respondido' para o lead ID {$sync_emp->id}");
             }
 
             // Criar contato no Chatwoot se o número for válido
@@ -187,9 +191,6 @@ class WebhookZohoController extends Controller
             } else {
                 Log::info("Número de contato inválido ou conta Chatwoot não fornecida para o lead ID {$sync_emp->id}");
             }
-
-            // Setar o campo de Status WhatsApp como: Não respondido
-            $this->zohoCrmService->updateLeadStatusWhatsApp($sync_emp->id, 'Não respondido');
 
             // Verifica se o número é WhatsApp
             if ($this->chatwootService->isWhatsappNumber($sync_emp->contact_number)) {
