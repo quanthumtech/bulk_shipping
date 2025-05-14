@@ -154,12 +154,16 @@ class WebhookZohoController extends Controller
                 Log::info("Novo lead salvo com ID: {$sync_emp->id}");
             }
 
-             // Criar contato no Chatwoot se o número for válido
+            // Criar contato no Chatwoot se o número for válido
             if ($contactNumber !== 'Não fornecido' && $sync_emp->chatwoot_accoumts) {
                 $user = User::where('chatwoot_accoumts', $sync_emp->chatwoot_accoumts)->first();
                 if ($user && $user->token_acess) {
                     // Verificar se o contato já existe
-                    $existingContact = $this->chatwootService->searchContatosApi($contactNumber);
+                    $existingContact = $this->chatwootService->searchContatosApi(
+                        $contactNumber,
+                        $sync_emp->chatwoot_accoumts,
+                        $user->token_acess
+                    );
                     if (empty($existingContact)) {
                         // Criar novo contato
                         $contactData = $this->chatwootService->createContact(

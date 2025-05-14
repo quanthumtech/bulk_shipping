@@ -69,16 +69,30 @@ class ChatwootService
         }
     }
 
-    public function searchContatosApi($searchTerm)
+    /**
+     * Pesquisa contatos na API do Chatwoot.
+     *
+     * @param string $searchTerm Termo de busca (ex.: número de telefone, nome)
+     * @param string|null $chatwootAccountId ID da conta no Chatwoot (opcional)
+     * @param string|null $tokenAcesso Token de acesso da API (opcional)
+     * @return array Lista de contatos encontrados
+     */
+    public function searchContatosApi($searchTerm, $chatwootAccountId = null, $tokenAcesso = null)
     {
         $searchTerm = (string) $searchTerm;
-        $user = Auth::user();
-        $chatwootAccountId = $user->chatwoot_accoumts;
-        $tokenAcesso = $user->token_acess;
 
-        // URL correta para busca
+        // Se chatwootAccountId ou tokenAcesso não forem fornecidos, tente obter do usuário autenticado
+        if ($chatwootAccountId === null || $tokenAcesso === null) {
+            $user = Auth::user();
+            if (!$user) {
+                Log::error('Nenhum usuário autenticado e nenhum chatwootAccountId/tokenAcesso fornecido.');
+                return [];
+            }
+            $chatwootAccountId = $chatwootAccountId ?? $user->chatwoot_accoumts;
+            $tokenAcesso = $tokenAcesso ?? $user->token_acess;
+        }
+
         $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$chatwootAccountId}/contacts/search?q=" . urlencode($searchTerm);
-
         $headers = [
             'api_access_token' => $tokenAcesso,
         ];
@@ -100,7 +114,6 @@ class ChatwootService
                     'name' => $contact['name'] ?? $contact['phone_number'],
                 ];
             })->toArray();
-
         } catch (\Exception $e) {
             Log::error('Erro ao pesquisar contatos: ' . $e->getMessage());
             return [];
