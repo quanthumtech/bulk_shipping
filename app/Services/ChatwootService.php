@@ -475,7 +475,7 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email', '#nomeAgente'],
+                    ['#nome', '#email', '#agente'],
                     [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
@@ -511,7 +511,7 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email', '#nomeAgente'],
+                    ['#nome', '#email', '#agente'],
                     [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
