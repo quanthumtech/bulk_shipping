@@ -95,10 +95,12 @@ class WebhookZohoController extends Controller
                         ->where('active', 1)
                         ->first();
                     if ($cadencia) {
+                        // Se existe uma cadência específica definida no modelo
                         if ($cadencia->ordem > 0) {
                             $sync_emp->cadencia_id = $cadencia->id;
                             Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao lead ID {$sync_emp->id}");
                         } else {
+                            // Se não tem ordem definida, mantém a cadência atual
                             Log::info("Cadência sem ordem definida para o estágio: {$sync_emp->estagio}. Mantendo cadência atual.");
                         }
                     } else {
@@ -133,10 +135,12 @@ class WebhookZohoController extends Controller
                         ->where('active', 1)
                         ->first();
                     if ($cadencia) {
+                        // Se existe uma cadência específica definida no modelo
                         if ($cadencia->ordem > 0) {
                             $sync_emp->cadencia_id = $cadencia->id;
                             Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao novo lead");
                         } else {
+                            // Se não tem ordem definida, não atribui cadência
                             $sync_emp->cadencia_id = null;
                             Log::info("Cadência encontrada mas sem ordem definida para o estágio: {$sync_emp->estagio}");
                         }
@@ -150,7 +154,7 @@ class WebhookZohoController extends Controller
                 Log::info("Novo lead salvo com ID: {$sync_emp->id}");
             }
 
-            // Criar contato no Chatwoot se o número for válido
+             // Criar contato no Chatwoot se o número for válido
             if ($contactNumber !== 'Não fornecido' && $sync_emp->chatwoot_accoumts) {
                 $user = User::where('chatwoot_accoumts', $sync_emp->chatwoot_accoumts)->first();
                 if ($user && $user->token_acess) {
