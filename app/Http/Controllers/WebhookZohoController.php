@@ -95,12 +95,10 @@ class WebhookZohoController extends Controller
                         ->where('active', 1)
                         ->first();
                     if ($cadencia) {
-                        // Se existe uma cadência específica definida no modelo
                         if ($cadencia->ordem > 0) {
                             $sync_emp->cadencia_id = $cadencia->id;
                             Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao lead ID {$sync_emp->id}");
                         } else {
-                            // Se não tem ordem definida, mantém a cadência atual
                             Log::info("Cadência sem ordem definida para o estágio: {$sync_emp->estagio}. Mantendo cadência atual.");
                         }
                     } else {
@@ -135,12 +133,10 @@ class WebhookZohoController extends Controller
                         ->where('active', 1)
                         ->first();
                     if ($cadencia) {
-                        // Se existe uma cadência específica definida no modelo
                         if ($cadencia->ordem > 0) {
                             $sync_emp->cadencia_id = $cadencia->id;
                             Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao novo lead");
                         } else {
-                            // Se não tem ordem definida, não atribui cadência
                             $sync_emp->cadencia_id = null;
                             Log::info("Cadência encontrada mas sem ordem definida para o estágio: {$sync_emp->estagio}");
                         }
@@ -152,6 +148,36 @@ class WebhookZohoController extends Controller
 
                 $sync_emp->save();
                 Log::info("Novo lead salvo com ID: {$sync_emp->id}");
+            }
+
+            // Criar contato no Chatwoot se o número for válido
+            if ($contactNumber !== 'Não fornecido' && $sync_emp->chatwoot_accoumts) {
+                $user = User::where('chatwoot_accoumts', $sync_emp->chatwoot_accoumts)->first();
+                if ($user && $user->token_acess) {
+                    // Verificar se o contato já existe
+                    $existingContact = $this->chatwootService->searchContatosApi($contactNumber);
+                    if (empty($existingContact)) {
+                        // Criar novo contato
+                        $contactData = $this->chatwootService->createContact(
+                            $sync_emp->chatwoot_accoumts,
+                            $user->token_acess,
+                            $sync_emp->contact_name,
+                            $contactNumber,
+                            $sync_emp->contact_email !== 'Não fornecido' ? $sync_emp->contact_email : null
+                        );
+                        if ($contactData) {
+                            Log::info("Contato criado no Chatwoot para o lead ID {$sync_emp->id}: " . json_encode($contactData));
+                        } else {
+                            Log::error("Falha ao criar contato no Chatwoot para o lead ID {$sync_emp->id}");
+                        }
+                    } else {
+                        Log::info("Contato já existe no Chatwoot para o número {$contactNumber}");
+                    }
+                } else {
+                    Log::error("Usuário ou token de acesso não encontrado para a conta Chatwoot: {$sync_emp->chatwoot_accoumts}");
+                }
+            } else {
+                Log::info("Número de contato inválido ou conta Chatwoot não fornecida para o lead ID {$sync_emp->id}");
             }
 
             // Verifica se o número é WhatsApp

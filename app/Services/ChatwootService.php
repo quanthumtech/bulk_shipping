@@ -273,6 +273,51 @@ class ChatwootService
         Log::info("Sincronização finalizada. Total de contatos sincronizados: $totalContacts.");
     }
 
+    /**
+     * Cria um novo contato no Chatwoot.
+     *
+     * @param string $accountId ID da conta no Chatwoot
+     * @param string $apiToken Token de acesso da API
+     * @param string $name Nome do contato
+     * @param string $phoneNumber Número de telefone do contato
+     * @param string|null $email Email do contato (opcional)
+     * @return array|null Dados do contato criado ou null em caso de erro
+     */
+    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null)
+    {
+        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$accountId}/contacts";
+        $headers = [
+            'api_access_token' => $apiToken,
+            'Content-Type' => 'application/json',
+        ];
+
+        $payload = [
+            'name' => $name ?? 'Não fornecido',
+            'phone_number' => $phoneNumber,
+        ];
+
+        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $payload['email'] = $email;
+        }
+
+        try {
+            $response = Http::withHeaders($headers)->post($url, $payload);
+
+            if (!$response->successful()) {
+                Log::error("Erro ao criar contato no Chatwoot: Status {$response->status()} - Resposta: {$response->body()}");
+                return null;
+            }
+
+            $data = $response->json();
+            Log::info("Contato criado com sucesso no Chatwoot: " . json_encode($data));
+
+            return $data['payload'] ?? null;
+        } catch (\Exception $e) {
+            Log::error("Erro ao criar contato no Chatwoot: {$e->getMessage()}");
+            return null;
+        }
+    }
+
     public function isWhatsappNumber($phoneNumber)
     {
         // Remove todos os caracteres que não sejam dígitos
