@@ -71,7 +71,7 @@
             >
                 <x-slot:menu>
                     <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
-                    @if (empty($sync->contact_email) || empty($sync->contact_number))
+                    @if (empty($sync->contact_email) || empty($sync->contact_number) || $sync->contact_email === 'Não fornecido' || $sync->contact_number === 'Não fornecido')
                         <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
                     @endif
                 </x-slot:menu>
