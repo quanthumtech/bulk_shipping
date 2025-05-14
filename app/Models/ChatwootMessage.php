@@ -10,6 +10,7 @@ class ChatwootMessage extends Model
         'chatwoot_conversation_id',
         'content',
         'message_id',
+        'sender_name',
     ];
 
     public function conversation()
