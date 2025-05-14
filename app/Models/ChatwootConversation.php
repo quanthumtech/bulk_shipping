@@ -16,6 +16,7 @@ class ChatwootConversation extends Model
         'status',
         'content',
         'last_activity_at',
+        'agent_assigned_once',
     ];
 
     public function lead()

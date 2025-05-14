@@ -1,5 +1,27 @@
 <?php
 
+/**
+ * Chatwoot Webhook Controller
+ *
+ * Eventos suportados:
+ *
+ * Conversa Criada (conversation_created)
+ * Conversa Atualizada (conversation_updated)
+ * Status da Conversa Atualizado (conversation_status_updated)
+ * Mensagem Criada (message_created)
+ * Mensagem Atualizada (message_updated)
+ *
+ * Regras desse Webhook:
+ *
+ * - Se o evento for conversation_updated ou message_created, o webhook irá processar a conversa e armazenar os dados.
+ * - Se o evento for message_created, o webhook irá verificar se a mensagem é uma resposta do cliente (message_type = 0).
+ * - Se for uma resposta do cliente, o webhook irá interromper a cadência e atualizar o CRM.
+ * - O webhook irá registrar o histórico de atendimento no Zoho CRM.
+ * - O webhook irá atribuir o agente à conversa, se necessário.
+ * - O webhook irá abrir a conversa se necessário.
+ * - O webhook irá armazenar os dados da conversa na tabela pivot.
+ */
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -11,6 +33,7 @@ use App\Models\ChatwootsAgents;
 use App\Models\User;
 use App\Services\ChatwootService;
 use App\Services\ZohoCrmService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class WebhookChatWootController extends Controller
@@ -32,8 +55,8 @@ class WebhookChatWootController extends Controller
             // Registrar o webhook recebido
             Log::info('Chatwoot Webhook Received', ['payload' => $payload]);
 
-            // Verifica se é um evento de atualização de conversa ou mensagem criada
-            if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created'])) {
+            // Verifica se é um evento suportado
+            if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created', 'conversation_status_updated'])) {
                 // Extrair o ID da conversa
                 $conversationId = $payload['event'] === 'message_created' ? ($payload['conversation']['id'] ?? null) : ($payload['id'] ?? null);
 
@@ -44,18 +67,17 @@ class WebhookChatWootController extends Controller
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
                 $contactPhone = $payload['meta']['sender']['phone_number'] ?? null;
 
-                // Se contactPhone for null, tentar extrair de meta.sender.identifier ou messages[0].sender.phone_number
+                // Extrair telefone de outros campos, se necessário
                 if (!$contactPhone && isset($payload['meta']['sender']['identifier'])) {
-                    // Extrair número de telefone de identifier (ex: 5512988784433@s.whatsapp.net)
                     $identifier = $payload['meta']['sender']['identifier'];
                     if (preg_match('/^(\d+)@s\.whatsapp\.net$/', $identifier, $matches)) {
-                        $contactPhone = '+' . $matches[1]; // Adiciona o "+" para formato internacional
+                        $contactPhone = '+' . $matches[1];
                     }
                 } elseif (!$contactPhone && isset($payload['messages'][0]['sender']['phone_number'])) {
                     $contactPhone = $payload['messages'][0]['sender']['phone_number'];
                 }
 
-                // Extrair o conteúdo da mensagem, messageId e verificar se é message_type 0 (resposta)
+                // Extrair conteúdo da mensagem e verificar se é resposta do cliente
                 $content = null;
                 $messageId = null;
                 $isClientResponse = false;
@@ -70,30 +92,16 @@ class WebhookChatWootController extends Controller
                 }
 
                 if (!$accountId) {
-                    Log::error('accountId não encontrado no payload', [
-                        'conversation_id' => $conversationId
-                    ]);
+                    Log::error('accountId não encontrado no payload', ['conversation_id' => $conversationId]);
                     return response()->json(['status' => 'account_id_missing'], 400);
                 }
 
                 if (!$conversationId) {
-                    Log::error('conversationId não encontrado no payload', [
-                        'payload' => $payload
-                    ]);
+                    Log::error('conversationId não encontrado no payload', ['payload' => $payload]);
                     return response()->json(['status' => 'conversation_id_missing'], 400);
                 }
 
-                Log::info('Processando atualização da conversa', [
-                    'conversation_id' => $conversationId,
-                    'email' => $contactEmail,
-                    'phone' => $contactPhone,
-                    'account_id' => $accountId,
-                    'content' => $content,
-                    'message_id' => $messageId,
-                    'is_client_response' => $isClientResponse
-                ]);
-
-                // Encontrar o lead em SyncFlowLeads com base no e-mail ou telefone de contato
+                // Encontrar o lead
                 $lead = null;
                 if ($contactEmail || $contactPhone) {
                     $lead = SyncFlowLeads::where('contact_email', $contactEmail)
@@ -108,106 +116,76 @@ class WebhookChatWootController extends Controller
                         'phone' => $contactPhone
                     ]);
                 } else {
-                    Log::info('Lead encontrado', [
-                        'id_do_lead' => $lead->id,
-                        'email' => $contactEmail,
-                        'telefone' => $contactPhone
-                    ]);
-
-                    // Se a mensagem é uma resposta do cliente (message_type = 0), interromper a cadência e atualizar o CRM
+                    // Atualizar lead se for resposta do cliente
                     if ($isClientResponse && $lead->id) {
                         $lead->situacao_contato = 'Contato Efetivo';
                         $lead->save();
-                        Log::info("Lead {$lead->id} marcado como 'Contato Efetivo' devido à resposta do cliente.");
-
-                        // Atualizar o campo Status_WhatsApp no Zoho CRM
                         $this->zohoCrmService->updateLeadStatusWhatsApp($lead->id_card, 'Contato Respondido');
-                        Log::info("Campo Status_WhatsApp atualizado no Zoho CRM para o lead {$lead->id_card}.");
+                        Log::info("Lead {$lead->id} atualizado como 'Contato Efetivo'.");
                     }
                 }
 
-                // Encontrar o agente associado ao email_vendedor (se houver lead)
+                // Encontrar o agente associado
                 $chatWootAgent = null;
                 if ($lead) {
                     $chatWootAgent = ChatwootsAgents::where('email', $lead->email_vendedor)->first();
-
-                    if (!$chatWootAgent || !$chatWootAgent->chatwoot_account_id) {
-                        Log::warning('Agente Chatwoot não encontrado', [
+                    if (!$chatWootAgent || $chatWootAgent->chatwoot_account_id != $accountId) {
+                        Log::warning('Agente Chatwoot inválido ou accountId não corresponde', [
                             'email_vendedor' => $lead->email_vendedor,
                             'conversation_id' => $conversationId
                         ]);
-                    } elseif ($chatWootAgent->chatwoot_account_id != $accountId) {
-                        Log::warning('accountId do agente não corresponde ao accountId do payload', [
-                            'email_vendedor' => $lead->email_vendedor,
-                            'agent_account_id' => $chatWootAgent->chatwoot_account_id,
-                            'payload_account_id' => $accountId,
-                            'conversation_id' => $conversationId
-                        ]);
-                        return response()->json(['status' => 'account_id_mismatch'], 400);
+                        $chatWootAgent = null;
                     }
                 }
 
-                // Obter o token de acesso do usuário
+                // Obter token de acesso
                 $user = User::where('chatwoot_accoumts', $accountId)->first();
-
-                if (!$user || !$user->token_acess) {
-                    Log::warning('Usuário ou token de acesso não encontrado', [
-                        'chatwoot_account_id' => $accountId,
-                        'conversation_id' => $conversationId
-                    ]);
-                }
-
                 $apiToken = $user ? $user->token_acess : null;
 
-                // Obter lista de agentes (se houver token)
-                $agents = [];
-                if ($apiToken) {
-                    $agents = $this->chatwootServices->getAgents($accountId, $apiToken);
-                    Log::info('Lista de agentes obtida', [
-                        'account_id' => $accountId,
-                        'agents_count' => count($agents)
-                    ]);
+                if (!$apiToken) {
+                    Log::warning('Token de acesso não encontrado', ['account_id' => $accountId]);
                 }
 
-                // Encontrar agente com email_vendedor correspondente (se houver lead e agente)
+                // Verificar se a conversa já existe e se o agente foi atribuído
+                $conversation = ChatwootConversation::where('conversation_id', $conversationId)->first();
+                $agentAssignedOnce = $conversation ? $conversation->agent_assigned_once : false;
+
+                // Obter lista de agentes
+                $agents = $apiToken ? $this->chatwootServices->getAgents($accountId, $apiToken) : [];
                 $matchingAgent = null;
                 if ($lead && $chatWootAgent) {
                     $matchingAgent = collect($agents)->firstWhere('email', $lead->email_vendedor);
-
-                    if (!$matchingAgent) {
-                        Log::info('Nenhum agente correspondente encontrado', [
-                            'email_vendedor' => $lead->email_vendedor,
-                            'conversation_id' => $conversationId,
-                            'account_id' => $accountId
-                        ]);
-                    } elseif (!isset($matchingAgent['agent_id'])) {
-                        Log::error('agent_id não encontrado no matchingAgent', [
-                            'email_vendedor' => $lead->email_vendedor,
-                            'conversation_id' => $conversationId,
-                            'matching_agent' => $matchingAgent
-                        ]);
-                        return response()->json(['status' => 'invalid_agent_data'], 400);
-                    }
                 }
 
-                // Atribuir agente à conversa (se houver agente e token)
-                if ($matchingAgent && $apiToken) {
+                // Atribuir agente apenas se não foi atribuído antes
+                if ($matchingAgent && $apiToken && !$agentAssignedOnce) {
                     $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
+                    Log::info('Agente atribuído à conversa', [
+                        'conversation_id' => $conversationId,
+                        'agent_id' => $matchingAgent['agent_id']
+                    ]);
                 }
 
-                // Abrir conversa se necessário (se houver token)
-                if ($apiToken && ($payload['status'] ?? 'open') !== 'open') {
+                // Lidar com status da conversa
+                $currentStatus = $payload['status'] ?? 'open';
+                if ($payload['event'] === 'conversation_status_updated' && $currentStatus === 'resolved') {
+                    Log::info('Conversa marcada como resolvida, nenhuma ação automática será tomada', [
+                        'conversation_id' => $conversationId
+                    ]);
+                } elseif ($apiToken && $currentStatus !== 'open' && $currentStatus !== 'resolved') {
                     $this->chatwootServices->toggleConversationStatus($accountId, $apiToken, $conversationId);
+                    Log::info('Conversa reaberta', ['conversation_id' => $conversationId]);
                 }
 
-                // Armazenar dados da conversa na tabela pivot
+                // Armazenar dados da conversa
                 $this->storeConversationData(
                     $lead ? $lead->id : null,
                     $conversationId,
                     $accountId,
                     $matchingAgent ? $matchingAgent['agent_id'] : null,
                     $content,
-                    $messageId
+                    $messageId,
+                    !$agentAssignedOnce // Passar flag para marcar agent_assigned_once
                 );
 
                 return response()->json(['status' => 'ok']);
@@ -223,7 +201,7 @@ class WebhookChatWootController extends Controller
         }
     }
 
-    private function storeConversationData($leadId, $conversationId, $accountId, $agentId, $content = null, $messageId = null)
+    private function storeConversationData($leadId, $conversationId, $accountId, $agentId, $content = null, $messageId = null, $markAgentAssigned = false)
     {
         try {
             $conversation = null;
@@ -237,13 +215,13 @@ class WebhookChatWootController extends Controller
                         'account_id' => $accountId,
                         'agent_id' => $agentId,
                         'status' => 'open',
-                        'last_activity_at' => now()
+                        'last_activity_at' => now(),
+                        'agent_assigned_once' => $markAgentAssigned ? true : DB::raw('agent_assigned_once') // Atualiza apenas se markAgentAssigned for true
                     ]
                 );
             }
 
             if ($content && $messageId && $conversation) {
-                // Verificar se a mensagem já foi processada
                 $existingMessage = ChatwootMessage::where('message_id', $messageId)->first();
                 if ($existingMessage) {
                     Log::info('Mensagem já processada, ignorando', [
@@ -253,10 +231,7 @@ class WebhookChatWootController extends Controller
                     return;
                 }
 
-                // Obter o payload completo
                 $payload = request()->all();
-
-                // Determinar o autor da mensagem
                 $author = 'Sistema';
                 if ($payload['event'] === 'message_created') {
                     $author = $payload['sender']['name'] ?? ($payload['sender_type'] === 'User' ? ($payload['sender']['email'] ?? 'Agente') : ($payload['meta']['sender']['name'] ?? 'Cliente'));
@@ -264,12 +239,10 @@ class WebhookChatWootController extends Controller
                     $author = $payload['messages'][0]['sender']['name'] ?? ($payload['messages'][0]['sender_type'] === 'User' ? ($payload['messages'][0]['sender']['email'] ?? 'Agente') : ($payload['meta']['sender']['name'] ?? 'Cliente'));
                 }
 
-                // Evitar usar número de telefone como nome
                 if ($author === $payload['meta']['sender']['phone_number']) {
                     $author = 'Cliente';
                 }
 
-                // Armazenar a mensagem na tabela ChatwootMessage
                 ChatwootMessage::create([
                     'chatwoot_conversation_id' => $conversation->id,
                     'content' => $content,
@@ -277,7 +250,6 @@ class WebhookChatWootController extends Controller
                     'sender_name' => $author,
                 ]);
 
-                // Formatar a mensagem para o histórico com newline
                 $formattedMessage = sprintf(
                     "[%s] %s: %s\n",
                     now()->format('Y-m-d H:i:s'),
@@ -285,16 +257,10 @@ class WebhookChatWootController extends Controller
                     $content
                 );
 
-                // Obter o lead para recuperar o id_card
                 $lead = SyncFlowLeads::find($leadId);
                 if ($lead && $lead->id_card) {
-                    // Recuperar o histórico existente no Zoho CRM
                     $existingHistory = $this->zohoCrmService->getLeadField($lead->id_card, 'Hist_rico_Atendimento') ?? '';
-
-                    // Concatenar a nova mensagem ao histórico existente com newline
                     $updatedHistory = $existingHistory . $formattedMessage;
-
-                    // Atualizar o campo Hist_rico_Atendimento no Zoho CRM
                     $this->zohoCrmService->registerHistory($lead->id_card, $updatedHistory);
                 } else {
                     Log::warning('Lead ou id_card não encontrado para registrar histórico', [
