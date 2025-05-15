@@ -402,8 +402,12 @@ class ChatwootService
         $agentName = 'Não fornecido';
 
         if ($emailVendedor) {
+            Log::info("Email do vendedor encontrado: {$emailVendedor}");
+
             // Busca o agente pelo email
             $agents = $this->getAgents($chatwootAccountId, $tokenAcesso);
+            Log::info("Agentes recuperados: " . json_encode($agents));
+
             $agent = collect($agents)->firstWhere('email', $emailVendedor);
             $agentName = $agent ? $agent['name'] : 'Não fornecido';
         }
@@ -476,7 +480,7 @@ class ChatwootService
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
                     ['#nome', '#email', '#agente'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName ?? 'Não fornecido'],
                     $messageContentFormat
                 );
 
@@ -512,7 +516,7 @@ class ChatwootService
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
                     ['#nome', '#email', '#agente'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName ?? 'Não fornecido'],
                     $messageContentFormat
                 );
 
