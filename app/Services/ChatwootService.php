@@ -366,6 +366,7 @@ class ChatwootService
             return null;
         }
 
+        // Revisar esse trecho Depois
         $user = Auth::user();
         $chatwootAccountId = $user->chatwoot_accoumts;
         $tokenAcesso = $user->token_acess;
@@ -397,6 +398,7 @@ class ChatwootService
         }
 
         // Busca o email do vendedor no modelo SyncFlowLeads
+        /*
         $lead = SyncFlowLeads::where('contact_number', $phoneNumber)->first();
         $emailVendedor = $lead ? $lead->email_vendedor : null;
         $agentName = 'Não fornecido';
@@ -409,6 +411,7 @@ class ChatwootService
         }
 
         Log::info("Nome do agente encontrado: {$agentName} para o email: {$emailVendedor}");
+        */
 
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
@@ -475,8 +478,8 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email', '#agente'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
+                    ['#nome', '#email'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
                     $messageContentFormat
                 );
 
@@ -511,8 +514,8 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email', '#agente'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
+                    ['#nome', '#email'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
                     $messageContentFormat
                 );
 
