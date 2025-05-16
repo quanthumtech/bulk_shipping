@@ -226,9 +226,9 @@ class ProcessCadence extends Command
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
 
-                    // Adiciona um delay de 30 segundos após o envio bem-sucedido
-                    Log::info("Aguardando 30 segundos antes do próximo envio...");
-                    sleep(9);
+                    // Adiciona um delay de 15 segundos após o envio bem-sucedido
+                    Log::info("Aguardando 15 segundos antes do próximo envio...");
+                    sleep(15);
 
                     return;
                 } catch (\Exception $e) {
