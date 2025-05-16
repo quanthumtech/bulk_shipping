@@ -228,7 +228,7 @@ class ProcessCadence extends Command
 
                     // Adiciona um delay de 30 segundos após o envio bem-sucedido
                     Log::info("Aguardando 30 segundos antes do próximo envio...");
-                    //sleep(10);
+                    sleep(9);
 
                     return;
                 } catch (\Exception $e) {
