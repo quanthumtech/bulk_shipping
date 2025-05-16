@@ -367,9 +367,11 @@ class ChatwootService
         }
 
         // Revisar esse trecho Depois
+        /*
         $user = Auth::user();
         $chatwootAccountId = $user->chatwoot_accoumts;
         $tokenAcesso = $user->token_acess;
+        */
 
         $apikey = $Apikey ?? null;
         $api_post = $apiPost ?? null;
