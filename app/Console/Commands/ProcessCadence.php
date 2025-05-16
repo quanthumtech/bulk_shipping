@@ -232,8 +232,7 @@ class ProcessCadence extends Command
 
                     return;
                 } catch (\Exception $e) {
-                    Log::error("Tentativa {$attempt} falhou para lead {$lead->contact_name}: " . $e->getMessage());
-                    if ($attempt === $maxAttempts) {
+                        Log::error("Tentativa {$attempt} falhou para lead {$lead->contact_name}: " . $e->getMessage() . "\nStack trace: " . $e->getTraceAsString());                    if ($attempt === $maxAttempts) {
                         Log::error("Falha definitiva ao enviar mensagem para lead {$lead->contact_name}");
                         return;
                     }
