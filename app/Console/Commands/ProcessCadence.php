@@ -88,8 +88,10 @@ class ProcessCadence extends Command
                                 continue;
                             }
 
-                            if (!$this->isValidTime($etapa->hora) || !is_numeric($etapa->dias) || (int)$etapa->dias < 0) {
-                                Log::error("Etapa {$etapa->id} do lead {$lead->id} com horário ou dias inválidos. Pulando...");
+                            // Validação: pelo menos hora ou intervalo deve ser válido
+                            if (!$this->isValidTime($etapa->hora) && !$this->isValidTime($etapa->intervalo)) {
+                                Log::error("Etapa {$etapa->id} do lead {$lead->id} deve ter pelo menos hora ou intervalo definido. Pulando...");
+                                Log::error("Detalhes: hora={$etapa->hora}, intervalo={$etapa->intervalo}, dias={$etapa->dias}");
                                 $currentEtapaIndex++;
                                 continue;
                             }
@@ -100,9 +102,10 @@ class ProcessCadence extends Command
                                 ->setDate($now->year, $now->month, $now->day);
 
                             $dataAgendada = $this->calcularDataAgendada($lead, $etapa, $now);
+                            Log::info("Etapa {$etapa->id} do lead {$lead->id} agendada para {$dataAgendada}");
 
                             if ($dataAgendada->isFuture()) {
-                                Log::info("Etapa {$etapa->id} do lead {$lead->id} agendada para {$dataAgendada}. Aguardando...");
+                                Log::info("Etapa {$etapa->id} do lead {$lead->id} ainda no futuro. Aguardando...");
                                 break;
                             }
 
@@ -132,10 +135,10 @@ class ProcessCadence extends Command
             })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
-                      ->whereRaw('DATE_ADD(created_at, INTERVAL dias DAY) <= ?', [$now])
+                      ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
                       ->where(function ($query) use ($now) {
                           $query->whereNull('intervalo')
-                                ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL dias DAY), INTERVAL TIME_TO_SEC(intervalo) SECOND) <= ?', [$now]);
+                                ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY), INTERVAL TIME_TO_SEC(COALESCE(intervalo, "00:00:00")) SECOND) <= ?', [$now]);
                       });
             })
             ->with(['cadencia.etapas' => function ($query) {
@@ -161,26 +164,36 @@ class ProcessCadence extends Command
     protected function calcularDataAgendada($lead, $etapa, $now)
     {
         $baseDate = $this->getBaseDate($lead, $etapa, $now);
-        $dias = (int) $etapa->dias;
+        $dias = (int) ($etapa->dias ?? 0);
+
+        Log::info("Calculando data agendada para etapa {$etapa->id}: baseDate={$baseDate}, dias={$dias}, intervalo={$etapa->intervalo}, hora={$etapa->hora}");
 
         $dataAgendada = $baseDate->copy()->addDays($dias);
 
         if ($etapa->imediat && $etapa->id === $lead->cadencia->etapas->first()->id) {
-            return $dataAgendada->setTimeFromTimeString($etapa->hora ?: '00:00:00');
+            Log::info("Etapa {$etapa->id} é imediata, usando hora definida ou atual");
+            return $dataAgendada->setTimeFromTimeString($etapa->hora ?: $baseDate->toTimeString());
         }
 
-        if ($etapa->intervalo && $this->isValidTime($etapa->intervalo)) {
+        if ($this->isValidTime($etapa->intervalo)) {
             try {
                 $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
                 $dataAgendada->addHours($intervalo->hour)
                              ->addMinutes($intervalo->minute)
                              ->addSeconds($intervalo->second);
+                Log::info("Intervalo aplicado: {$etapa->intervalo}, nova data={$dataAgendada}");
             } catch (\Exception $e) {
                 Log::error("Erro ao processar intervalo da etapa {$etapa->id}: {$e->getMessage()}");
             }
         }
 
-        return $dataAgendada->setTimeFromTimeString($etapa->hora ?: '00:00:00');
+        // Se hora estiver definida, usa-a; caso contrário, mantém o horário da data agendada
+        if ($this->isValidTime($etapa->hora)) {
+            $dataAgendada->setTimeFromTimeString($etapa->hora);
+            Log::info("Hora definida aplicada: {$etapa->hora}, data final={$dataAgendada}");
+        }
+
+        return $dataAgendada;
     }
 
     protected function getBaseDate($lead, $etapa, $now)
@@ -192,7 +205,9 @@ class ProcessCadence extends Command
             ->orderBy('enviado_em', 'desc')
             ->first();
 
-        return $lastMessage ? Carbon::parse($lastMessage->enviado_em) : ($lead->created_at ?? $now);
+        $baseDate = $lastMessage ? Carbon::parse($lastMessage->enviado_em) : ($lead->created_at ?? $now);
+        Log::info("Base date para lead {$lead->id}, etapa {$etapa->id}: {$baseDate}");
+        return $baseDate;
     }
 
     protected function etapaEnviada($lead, $etapa)
@@ -242,8 +257,8 @@ class ProcessCadence extends Command
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
 
-                    Log::info("Aguardando 15 segundos antes do próximo envio...");
-                    sleep(15);
+                    Log::info("Aguardando 5 segundos antes do próximo envio...");
+                    sleep(5);
 
                     return;
                 } catch (\Exception $e) {
