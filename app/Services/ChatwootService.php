@@ -400,20 +400,18 @@ class ChatwootService
         }
 
         // Busca o email do vendedor no modelo SyncFlowLeads
-        /*
         $lead = SyncFlowLeads::where('contact_number', $phoneNumber)->first();
         $emailVendedor = $lead ? $lead->email_vendedor : null;
         $agentName = 'Não fornecido';
 
         if ($emailVendedor) {
             // Busca o agente pelo email
-            $agents = $this->getAgents($chatwootAccountId, $tokenAcesso);
+            $agents = $this->getAgents(5, 'cAGByrB3Hqm9NZDt1DUE6FsP');
             $agent = collect($agents)->firstWhere('email', $emailVendedor);
             $agentName = $agent ? $agent['name'] : 'Não fornecido';
         }
 
         Log::info("Nome do agente encontrado: {$agentName} para o email: {$emailVendedor}");
-        */
 
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
@@ -480,8 +478,8 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    ['#nome', '#email', '#agente'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
 
@@ -516,8 +514,8 @@ class ChatwootService
             } else {
                 $messageContentFormat = $messageContent ?? 'Olá, Recebemos sua mensagem. Estamos verificando e logo entraremos em contato.';
                 $messageContentFormat = str_replace(
-                    ['#nome', '#email'],
-                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido'],
+                    ['#nome', '#email', '#agente'],
+                    [$nameLead ?? 'Não fornecido', $emailLead ?? 'Não fornecido', $agentName],
                     $messageContentFormat
                 );
 
