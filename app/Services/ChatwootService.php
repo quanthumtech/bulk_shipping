@@ -404,6 +404,8 @@ class ChatwootService
         $emailVendedor = $lead ? $lead->email_vendedor : null;
         $agentName = 'Não fornecido';
 
+        Log::info("Email do vendedor encontrado: {$emailVendedor}");
+
         if ($emailVendedor) {
             // Busca o agente pelo email
             $agents = $this->getAgents(5, 'cAGByrB3Hqm9NZDt1DUE6FsP');
