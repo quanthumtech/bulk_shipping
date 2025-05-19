@@ -412,7 +412,7 @@ class ChatwootService
             $agentName = $agent ? $agent['name'] : 'Não fornecido';
         }*/
 
-        Log::info("Nome do agente encontrado: {$agentName}");
+        Log::info("Nome do agente/vendedor encontrado: {$agentName}");
 
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||
