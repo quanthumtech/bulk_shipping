@@ -221,7 +221,8 @@ class ProcessCadence extends Command
                         $evolution->api_post,
                         $evolution->apikey,
                         $lead->contact_name,
-                        $lead->contact_email
+                        $lead->contact_email,
+                        $lead->nome_vendedor,
                     );
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
