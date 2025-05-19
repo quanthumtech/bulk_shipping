@@ -23,7 +23,6 @@ class ProcessCadence extends Command
             $now = Carbon::now();
             $this->info("Horário atual: " . $now);
 
-            // Verificar se há cadências com etapas pendentes
             if (!$this->hasPendingCadences($now)->exists()) {
                 $this->info("Nenhuma cadência pendente. Aguardando 5 segundos...");
                 sleep(5);
@@ -60,17 +59,15 @@ class ProcessCadence extends Command
                             ->orderBy('etapa_id', 'desc')
                             ->first();
 
-                        // Verificar se a cadência mudou
                         if ($lastSentEtapa && $lastSentEtapa->etapa->cadencia_id !== $lead->cadencia_id) {
                             Log::info("Cadência mudou para o lead {$lead->id}. Reiniciando etapas...");
-                            $currentEtapaIndex = 0; // Reinicia o fluxo para a nova cadência
+                            $currentEtapaIndex = 0;
                         } else {
                             $currentEtapaIndex = $lastSentEtapa ? $etapas->search(function ($etapa) use ($lastSentEtapa) {
                                 return $etapa->id === $lastSentEtapa->etapa_id;
                             }) + 1 : 0;
                         }
 
-                        // Verificar se todas as etapas foram concluídas
                         if (!isset($etapas[$currentEtapaIndex])) {
                             Log::info("Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Pulando...");
                             continue;
@@ -126,9 +123,6 @@ class ProcessCadence extends Command
         }
     }
 
-    /**
-     * Verifica se há cadências com etapas pendentes para execução
-     */
     protected function hasPendingCadences(Carbon $now)
     {
         return SyncFlowLeads::whereNotNull('cadencia_id')
@@ -138,7 +132,11 @@ class ProcessCadence extends Command
             })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
-                      ->whereRaw('DATE_ADD(created_at, INTERVAL dias DAY) <= ?', [$now]);
+                      ->whereRaw('DATE_ADD(created_at, INTERVAL dias DAY) <= ?', [$now])
+                      ->where(function ($query) use ($now) {
+                          $query->whereNull('intervalo')
+                                ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL dias DAY), INTERVAL TIME_TO_SEC(intervalo) SECOND) <= ?', [$now]);
+                      });
             })
             ->with(['cadencia.etapas' => function ($query) {
                 $query->where('active', true)->orderBy('id');
@@ -165,7 +163,24 @@ class ProcessCadence extends Command
         $baseDate = $this->getBaseDate($lead, $etapa, $now);
         $dias = (int) $etapa->dias;
 
-        return $baseDate->copy()->addDays($dias)->setTimeFromTimeString($etapa->hora);
+        $dataAgendada = $baseDate->copy()->addDays($dias);
+
+        if ($etapa->imediat && $etapa->id === $lead->cadencia->etapas->first()->id) {
+            return $dataAgendada->setTimeFromTimeString($etapa->hora ?: '00:00:00');
+        }
+
+        if ($etapa->intervalo && $this->isValidTime($etapa->intervalo)) {
+            try {
+                $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
+                $dataAgendada->addHours($intervalo->hour)
+                             ->addMinutes($intervalo->minute)
+                             ->addSeconds($intervalo->second);
+            } catch (\Exception $e) {
+                Log::error("Erro ao processar intervalo da etapa {$etapa->id}: {$e->getMessage()}");
+            }
+        }
+
+        return $dataAgendada->setTimeFromTimeString($etapa->hora ?: '00:00:00');
     }
 
     protected function getBaseDate($lead, $etapa, $now)
@@ -227,13 +242,13 @@ class ProcessCadence extends Command
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
 
-                    // Adiciona um delay de 15 segundos após o envio bem-sucedido
                     Log::info("Aguardando 15 segundos antes do próximo envio...");
                     sleep(15);
 
                     return;
                 } catch (\Exception $e) {
-                        Log::error("Tentativa {$attempt} falhou para lead {$lead->contact_name}: " . $e->getMessage() . "\nStack trace: " . $e->getTraceAsString());                    if ($attempt === $maxAttempts) {
+                    Log::error("Tentativa {$attempt} falhou para lead {$lead->contact_name}: " . $e->getMessage());
+                    if ($attempt === $maxAttempts) {
                         Log::error("Falha definitiva ao enviar mensagem para lead {$lead->contact_name}");
                         return;
                     }

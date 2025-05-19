@@ -8,7 +8,7 @@ class Etapas extends Model
 {
     protected $table = 'etapas';
 
-    protected $fillable = ['cadencia_id', 'titulo', 'tempo', 'unidade_tempo', 'type_send', 'message_content', 'dias', 'hora', 'active', 'imediat'];
+    protected $fillable = ['cadencia_id', 'titulo', 'tempo', 'unidade_tempo', 'type_send', 'message_content', 'dias', 'hora', 'intervalo', 'active', 'imediat'];
 
     public function cadencia()
     {

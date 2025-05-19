@@ -34,6 +34,12 @@
             </h3>
         @endscope
 
+        @scope('header_intervalo', $header)
+            <h3 class="text-xl font-bold text-base-content">
+                {{ $header['label'] }}
+            </h3>
+        @endscope
+
         @scope('header_imediat_format', $header)
             <h3 class="text-xl font-bold text-base-content">
                 {{ $header['label'] }}
@@ -82,12 +88,23 @@
                 <div class="space-y-2">
                     <x-mary-datetime label="Hora" wire:model="form.hora" icon="o-clock" type="time" />
                 </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4">
                 <div class="space-y-2">
                     <x-mary-checkbox
                         label="Envio imediato"
                         wire:model="form.imediat"
                         hint="Opção para envio imediato (Checkbox que, quando marcado, faz com que a mensagem seja enviada assim que entrar no SyncFlow, ex: mensagem de boas-vindas)"
                         right
+                    />
+                </div>
+                <div class="space-y-2">
+                    <x-mary-datetime
+                        label="Intervalo de tempo"
+                        hint="Define o intervalo em horas, minutos ou segundos após a etapa anterior (ex: 01:30:00 para 1 hora e 30 minutos)"
+                        wire:model="form.intervalo"
+                        icon="o-clock"
+                        type="time"
                     />
                 </div>
             </div>

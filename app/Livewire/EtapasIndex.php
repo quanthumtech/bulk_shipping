@@ -101,6 +101,7 @@ class EtapasIndex extends Component
             //['key' => 'tempo', 'label' => 'Tempo'],
             ['key' => 'dias', 'label' => 'Dias'],
             ['key' => 'hora', 'label' => 'Hora'],
+            ['key' => 'intervalo', 'label' => 'Intervalo'], // Nova coluna
             ['key' => 'imediat_format', 'label' => 'Envio imediato'],
             ['key' => 'active_format', 'label' => 'Ativo'],
             ['key' => 'message_status', 'label' => 'Mensagem enviada'],

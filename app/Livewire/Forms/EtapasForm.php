@@ -27,6 +27,8 @@ class EtapasForm extends Form
 
     public $hora;
 
+    public $intervalo;
+
     public $message_content;
 
     public $cadenciaId;
@@ -41,8 +43,10 @@ class EtapasForm extends Form
         //'unidade_tempo' => 'required|in:dias,horas,minutos',
         'type_send' => 'required|in:email,sms,whatsapp',
         'message_content' => 'required|string',
-        'dias' => 'required|integer|min:0|max:30',
-        'hora' => 'required',
+        'dias' => 'nullable|integer|min:0|max:30',
+        'hora' => 'nullable',
+        'intervalo' => 'nullable',
+
     ];
 
     public function setEtapas(Etapas $etapas)
@@ -56,6 +60,7 @@ class EtapasForm extends Form
         $this->cadenciaId         = $etapas->cadencia_id;
         $this->dias               = $etapas->dias;
         $this->hora               = $etapas->hora;
+        $this->intervalo          = $etapas->intervalo;
         $this->imediat            = (bool) $etapas->imediat;
         $this->active             = (bool) $etapas->active;
 
@@ -74,6 +79,7 @@ class EtapasForm extends Form
             'cadencia_id'     => $this->cadenciaId,
             'dias'            => $this->dias,
             'hora'            => $this->hora,
+            'intervalo'       => $this->intervalo,
             'imediat'         => $this->imediat,
             'active'          => $this->active,
         ];
@@ -97,6 +103,7 @@ class EtapasForm extends Form
             'cadencia_id'     => $this->cadenciaId,
             'dias'            => $this->dias,
             'hora'            => $this->hora,
+            'intervalo'       => $this->intervalo,
             'imediat'         => $this->imediat,
             'active'          => $this->active,
         ];
