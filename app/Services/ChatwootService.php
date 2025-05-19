@@ -401,19 +401,18 @@ class ChatwootService
 
         // Busca o email do vendedor no modelo SyncFlowLeads
         $lead = SyncFlowLeads::where('contact_number', $phoneNumber)->first();
-        $emailVendedor = $lead ? $lead->email_vendedor : null;
-        $agentName = 'Não fornecido';
+        $agentName = $lead ? $lead->nome_vendedor : null;
 
-        Log::info("Email do vendedor encontrado: {$emailVendedor}");
+        /*Log::info("Email do vendedor encontrado: {$emailVendedor}");
 
         if ($emailVendedor) {
             // Busca o agente pelo email
             $agents = $this->getAgents(5, 'cAGByrB3Hqm9NZDt1DUE6FsP');
             $agent = collect($agents)->firstWhere('email', $emailVendedor);
             $agentName = $agent ? $agent['name'] : 'Não fornecido';
-        }
+        }*/
 
-        Log::info("Nome do agente encontrado: {$agentName} para o email: {$emailVendedor}");
+        Log::info("Nome do agente encontrado: {$agentName}");
 
         // Verifica se é uma URL de imagem diretamente ou Markdown
         $isImage = preg_match('/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i', trim($messageContent)) ||

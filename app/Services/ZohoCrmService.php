@@ -161,20 +161,26 @@ class ZohoCrmService
 
             $userData = json_decode($response->getBody(), true);
 
-            if (isset($userData['users'][0]['email']) && !empty($userData['users'][0]['email'])) {
-                Log::info("E-mail encontrado para o usuário ID {$ownerId}: {$userData['users'][0]['email']}");
-                return $userData['users'][0]['email'];
+            if (isset($userData['users'][0])) {
+                $user = $userData['users'][0];
+                $userInfo = [
+                    'email' => $user['email'] ?? null,
+                    'name' => $user['full_name'] ?? null
+                ];
+
+                Log::info("Informações encontradas para o usuário ID {$ownerId}: " . json_encode($userInfo));
+                return $userInfo;
             } else {
-                Log::warning("E-mail não encontrado para o usuário ID {$ownerId}. Resposta: " . json_encode($userData));
+                Log::warning("Informações não encontradas para o usuário ID {$ownerId}. Resposta: " . json_encode($userData));
                 return null;
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             $errorBody = $e->getResponse()->getBody()->getContents();
-            Log::error("Erro ao buscar e-mail do usuário ID {$ownerId}: Status {$statusCode}, Mensagem: {$errorBody}");
+            Log::error("Erro ao buscar informações do usuário ID {$ownerId}: Status {$statusCode}, Mensagem: {$errorBody}");
             return null;
         } catch (\Exception $e) {
-            Log::error("Exceção ao buscar e-mail do usuário ID {$ownerId}: {$e->getMessage()}");
+            Log::error("Exceção ao buscar informações do usuário ID {$ownerId}: {$e->getMessage()}");
             return null;
         }
     }

@@ -97,9 +97,15 @@ class WebhookZohoController extends Controller
             $contactNumber = $this->formatPhoneNumber($request->contact_number);
             $contactNumberEmpresa = $this->formatPhoneNumber($request->contact_number_empresa);
 
+            // Updated vendor information handling
             $emailVendedor = 'Não fornecido';
+            $nomeVendedor = 'Não fornecido';
             if ($request->id_vendedor && $request->id_vendedor !== 'Não fornecido') {
-                $emailVendedor = $this->zohoCrmService->getUserEmailById($request->id_vendedor) ?? 'Não fornecido';
+            $vendedorInfo = $this->zohoCrmService->getUserEmailById($request->id_vendedor);
+                if ($vendedorInfo) {
+                    $emailVendedor = $vendedorInfo['email'] ?? 'Não fornecido';
+                    $nomeVendedor = $vendedorInfo['name'] ?? 'Não fornecido';
+                }
             }
 
             if ($sync_emp) {
@@ -113,6 +119,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $sync_emp->chatwoot_accoumts;
                 $sync_emp->situacao_contato = $request->situacao_contato ?? $sync_emp->situacao_contato;
                 $sync_emp->email_vendedor = $emailVendedor;
+                $sync_emp->nome_vendedor = $nomeVendedor;
                 $sync_emp->id_vendedor = $request->id_vendedor ?? $sync_emp->id_vendedor;
                 $sync_emp->updated_at = now();
 
@@ -153,6 +160,7 @@ class WebhookZohoController extends Controller
                 $sync_emp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
                 $sync_emp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
                 $sync_emp->email_vendedor = $emailVendedor;
+                $sync_emp->nome_vendedor = $nomeVendedor;
                 $sync_emp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
                 $sync_emp->created_at = now();
 
