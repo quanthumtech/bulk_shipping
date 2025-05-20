@@ -20,6 +20,7 @@ class SyncFlowLeads extends Model
         'situacao_contato',
         'email_vendedor',
         'nome_vendedor',
+        'chatwoot_status',
     ];
 
     public function cadencia()

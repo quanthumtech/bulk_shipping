@@ -109,10 +109,13 @@ class ChatwootService
             $data = $response->json();
             $contacts = $data['payload'] ?? [];
 
+            Log::info("Contatos encontrados: " . json_encode($contacts));
+
             return collect($contacts)->map(function ($contact) {
                 return [
                     'id' => $contact['phone_number'],
                     'name' => $contact['name'] ?? $contact['phone_number'],
+                    'id_contact' => $contact['id'] ?? null,
                 ];
             })->toArray();
         } catch (\Exception $e) {
@@ -288,18 +291,18 @@ class ChatwootService
     }
 
     /**
-     * Cria um novo contato no Chatwoot.
+     * Cria um contato no Chatwoot.
      *
      * @param string $accountId ID da conta no Chatwoot
      * @param string $apiToken Token de acesso da API
      * @param string $name Nome do contato
-     * @param string $phoneNumber Número de telefone do contato
+     * @param string $phoneNumber Número de telefone
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato criado ou null em caso de erro
      */
     public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null)
     {
-        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$accountId}/contacts";
+        $url = "{$this->apiBaseUrl}{$accountId}/contacts";
         $headers = [
             'api_access_token' => $apiToken,
             'Content-Type' => 'application/json',
@@ -315,19 +318,20 @@ class ChatwootService
         }
 
         try {
-            $response = Http::withHeaders($headers)->post($url, $payload);
+            $response = Http::withHeaders($headers)
+                ->timeout(5) // Timeout de 5 segundos
+                ->post($url, $payload);
 
             if (!$response->successful()) {
-                Log::error("Erro ao criar contato no Chatwoot: Status {$response->status()} - Resposta: {$response->body()}");
+                Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: Status {$response->status()} - Resposta: {$response->body()}");
                 return null;
             }
 
             $data = $response->json();
-            Log::info("Contato criado com sucesso no Chatwoot: " . json_encode($data));
-
+            Log::info("Contato criado com sucesso no Chatwoot para {$phoneNumber}: " . json_encode($data));
             return $data['payload'] ?? null;
         } catch (\Exception $e) {
-            Log::error("Erro ao criar contato no Chatwoot: {$e->getMessage()}");
+            Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
             return null;
         }
     }
@@ -344,7 +348,7 @@ class ChatwootService
      */
     public function updateContact($accountId, $apiToken, $contactId, $name, $email = null)
     {
-        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$accountId}/contacts/{$contactId}";
+        $url = "{$this->apiBaseUrl}{$accountId}/contacts/{$contactId}";
         $headers = [
             'api_access_token' => $apiToken,
             'Content-Type' => 'application/json',
@@ -359,7 +363,9 @@ class ChatwootService
         }
 
         try {
-            $response = Http::withHeaders($headers)->put($url, $payload);
+            $response = Http::withHeaders($headers)
+                ->timeout(5) // Timeout de 5 segundos
+                ->put($url, $payload);
 
             if (!$response->successful()) {
                 Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): Status {$response->status()} - Resposta: {$response->body()}");
@@ -368,13 +374,13 @@ class ChatwootService
 
             $data = $response->json();
             Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
-
             return $data['payload'] ?? null;
         } catch (\Exception $e) {
             Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
             return null;
         }
     }
+
 
     public function isWhatsappNumber($phoneNumber)
     {

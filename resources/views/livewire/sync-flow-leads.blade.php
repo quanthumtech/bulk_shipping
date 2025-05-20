@@ -75,7 +75,7 @@
                         <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
                     @endif
                 </x-slot:menu>
-                <x-mary-button label="Atribuir cadência" class="btn btn-sm btn-outline" @click="$wire.cadence({{ $sync->id }})" />
+                <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" />
                 <x-mary-dropdown>
                     <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
                     <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
@@ -89,19 +89,6 @@
     <div class="mt-4">
         {{ $syncFlowLeads->links() }}
     </div>
-
-    <style>
-        .bg-orange-100 {
-            background-color: #ffedd5 !important;
-        }
-        .border-orange-500 {
-            border-color: #f97316 !important;
-        }
-        .badge-warning {
-            background-color: #f97316 !important;
-            color: white !important;
-        }
-    </style>
 </div>
 
 
