@@ -123,27 +123,10 @@ class WebhookZohoController extends Controller
                 $sync_emp->id_vendedor = $request->id_vendedor ?? $sync_emp->id_vendedor;
                 $sync_emp->updated_at = now();
 
-                // Atribuição de cadência
+                // Atribuição de cadência somente se o lead vier com cadencia_id
                 if ($request->cadencia_id) {
                     $sync_emp->cadencia_id = $request->cadencia_id;
                     Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$sync_emp->id}");
-                } elseif ($sync_emp->estagio !== $oldEstagio && $sync_emp->estagio !== 'Não fornecido') {
-                    $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
-                        ->where('active', 1)
-                        ->first();
-                    if ($cadencia) {
-                        // Se existe uma cadência específica definida no modelo
-                        if ($cadencia->ordem > 0) {
-                            $sync_emp->cadencia_id = $cadencia->id;
-                            Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao lead ID {$sync_emp->id}");
-                        } else {
-                            // Se não tem ordem definida, mantém a cadência atual
-                            Log::info("Cadência sem ordem definida para o estágio: {$sync_emp->estagio}. Mantendo cadência atual.");
-                        }
-                    } else {
-                        $sync_emp->cadencia_id = null;
-                        Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio} do lead ID {$sync_emp->id}");
-                    }
                 }
 
                 $sync_emp->save();
@@ -168,24 +151,8 @@ class WebhookZohoController extends Controller
                 if ($request->cadencia_id) {
                     $sync_emp->cadencia_id = $request->cadencia_id;
                     Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead");
-                } elseif ($sync_emp->estagio !== 'Não fornecido') {
-                    $cadencia = Cadencias::whereRaw('UPPER(stage) = ?', [strtoupper($sync_emp->estagio)])
-                        ->where('active', 1)
-                        ->first();
-                    if ($cadencia) {
-                        // Se existe uma cadência específica definida no modelo
-                        if ($cadencia->ordem > 0) {
-                            $sync_emp->cadencia_id = $cadencia->id;
-                            Log::info("Cadência ID {$cadencia->id} (ordem {$cadencia->ordem}) atribuída ao novo lead");
-                        } else {
-                            // Se não tem ordem definida, não atribui cadência
-                            $sync_emp->cadencia_id = null;
-                            Log::info("Cadência encontrada mas sem ordem definida para o estágio: {$sync_emp->estagio}");
-                        }
-                    } else {
-                        $sync_emp->cadencia_id = null;
-                        Log::info("Nenhuma cadência ativa encontrada para o estágio: {$sync_emp->estagio}");
-                    }
+                } else {
+                    Log::info("Nenhum cadência_id recebido; cadência não atribuída ao novo lead");
                 }
 
                 $sync_emp->save();
