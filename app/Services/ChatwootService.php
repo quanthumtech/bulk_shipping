@@ -332,6 +332,50 @@ class ChatwootService
         }
     }
 
+    /**
+     * Atualiza um contato existente no Chatwoot.
+     *
+     * @param string $accountId ID da conta no Chatwoot
+     * @param string $apiToken Token de acesso da API
+     * @param string $contactId ID do contato no Chatwoot
+     * @param string $name Nome do contato
+     * @param string|null $email Email do contato (opcional)
+     * @return array|null Dados do contato atualizado ou null em caso de erro
+     */
+    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null)
+    {
+        $url = "https://chatwoot.plataformamundo.com.br/api/v1/accounts/{$accountId}/contacts/{$contactId}";
+        $headers = [
+            'api_access_token' => $apiToken,
+            'Content-Type' => 'application/json',
+        ];
+
+        $payload = [
+            'name' => $name ?? 'Não fornecido',
+        ];
+
+        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $payload['email'] = $email;
+        }
+
+        try {
+            $response = Http::withHeaders($headers)->put($url, $payload);
+
+            if (!$response->successful()) {
+                Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): Status {$response->status()} - Resposta: {$response->body()}");
+                return null;
+            }
+
+            $data = $response->json();
+            Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
+
+            return $data['payload'] ?? null;
+        } catch (\Exception $e) {
+            Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
+            return null;
+        }
+    }
+
     public function isWhatsappNumber($phoneNumber)
     {
         // Remove todos os caracteres que não sejam dígitos
