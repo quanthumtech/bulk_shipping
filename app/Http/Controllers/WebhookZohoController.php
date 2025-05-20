@@ -87,7 +87,8 @@ class WebhookZohoController extends Controller
         Log::info('Webhook request Zoho / Bulkship', [
             'method' => $request->method(),
             'content' => $request->getContent(),
-            'headers' => $request->headers->all()
+            'headers' => $request->headers->all(),
+            'id_card' => $request->id_card ?? 'Não fornecido'
         ]);
 
         if (!$request->isMethod('post') || !$request->getContent()) {
@@ -116,6 +117,7 @@ class WebhookZohoController extends Controller
         // Processar integração com Chatwoot antes de salvar o lead
         $contactProcessed = false;
         $chatwootContactId = null;
+        $chatwootStatus = 'pending';
 
         if ($contactNumber !== 'Não fornecido' && $request->chatwoot_accoumts) {
             $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
@@ -144,11 +146,12 @@ class WebhookZohoController extends Controller
                             );
 
                             if ($contactData) {
-                                Log::info("Contato atualizado no Chatwoot: " . json_encode($contactData));
+                                Log::info("Contato atualizado no Chatwoot para id_card {$idCard}: " . json_encode($contactData));
                                 $contactProcessed = true;
                                 $chatwootContactId = $contactId;
+                                $chatwootStatus = 'success';
                             } else {
-                                Log::error("Falha ao atualizar contato no Chatwoot para o número {$contactNumber}");
+                                Log::error("Falha ao atualizar contato no Chatwoot para número {$contactNumber}, id_card {$idCard}");
                             }
                         } else {
                             // Criar novo contato
@@ -161,93 +164,102 @@ class WebhookZohoController extends Controller
                             );
 
                             if ($contactData) {
-                                Log::info("Contato criado no Chatwoot: " . json_encode($contactData));
+                                Log::info("Contato criado no Chatwoot para id_card {$idCard}: " . json_encode($contactData));
                                 $contactProcessed = true;
                                 $chatwootContactId = $contactData['id'] ?? null;
+                                $chatwootStatus = 'success';
                             } else {
-                                Log::error("Falha ao criar contato no Chatwoot para o número {$contactNumber}");
+                                Log::error("Falha ao criar contato no Chatwoot para número {$contactNumber}, id_card {$idCard}");
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error("Tentativa {$attempt} falhou ao processar contato no Chatwoot para número {$contactNumber}: {$e->getMessage()}");
-                        if ($attempt === $maxAttempts) {
-                            Log::error("Falha definitiva ao processar contato no Chatwoot para número {$contactNumber}");
-                            // Opcional: Enviar notificação para administrador
-                            return response('Failed to process contact in Chatwoot', 500);
+                        $errorMessage = $e->getMessage();
+                        $delay = min(5 * pow(2, $attempt - 1), 30); // Backoff exponencial (5s, 10s, 20s, máx 30s)
+                        Log::error("Tentativa {$attempt} falhou ao processar contato no Chatwoot para número {$contactNumber}, id_card {$idCard}: {$errorMessage}");
+
+                        if (strpos($errorMessage, '429') !== false) {
+                            Log::warning("Limite de taxa atingido (429). Aguardando {$delay} segundos antes da próxima tentativa.");
                         }
-                        sleep(2); // Aguarda 2 segundos antes da próxima tentativa
+
+                        if ($attempt === $maxAttempts) {
+                            Log::error("Falha definitiva ao processar contato no Chatwoot para número {$contactNumber}, id_card {$idCard}");
+                            $chatwootStatus = 'failed';
+                            // Opcional: Enviar notificação para administrador
+                            // Prosseguir com salvamento do lead mesmo em caso de falha
+                            $contactProcessed = true; // Alterar para false se quiser bloquear o salvamento
+                            break;
+                        }
+                        sleep($delay);
                         $attempt++;
                     }
                 }
             } else {
-                Log::error("Usuário ou token de acesso não encontrado para a conta Chatwoot: {$request->chatwoot_accoumts}");
-                return response('Invalid Chatwoot account or token', 400);
+                Log::error("Usuário ou token de acesso não encontrado para a conta Chatwoot: {$request->chatwoot_accoumts}, id_card {$idCard}");
+                $chatwootStatus = 'failed';
+                $contactProcessed = true; // Prosseguir com salvamento mesmo sem integração
             }
         } else {
-            Log::info("Número de contato inválido ou conta Chatwoot não fornecida: {$contactNumber}");
-            // Continuar mesmo que o Chatwoot não seja processado, se desejado
-            $contactProcessed = true; // Considerar como processado para não bloquear o salvamento
+            Log::info("Número de contato inválido ou conta Chatwoot não fornecida para id_card {$idCard}: {$contactNumber}");
+            $chatwootStatus = 'skipped';
+            $contactProcessed = true; // Prosseguir com salvamento
         }
 
-        // Prosseguir com o salvamento do lead apenas se o contato foi processado com sucesso
-        if ($contactProcessed) {
-            if ($syncEmp) {
-                // Lead existe, atualiza as informações
-                $oldEstagio = $syncEmp->estagio;
-                $syncEmp->contact_name = $request->contact_name ?? $syncEmp->contact_name;
-                $syncEmp->contact_number = $contactNumber;
-                $syncEmp->contact_number_empresa = $contactNumberEmpresa;
-                $syncEmp->contact_email = $request->contact_email ?? $syncEmp->contact_email;
-                $syncEmp->estagio = $request->estalho ?? $syncEmp->estagio;
-                $syncEmp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $syncEmp->chatwoot_accoumts;
-                $syncEmp->situacao_contato = $request->situacao_contato ?? $syncEmp->situacao_contato;
-                $syncEmp->email_vendedor = $emailVendedor;
-                $syncEmp->nome_vendedor = $nomeVendedor;
-                $syncEmp->id_vendedor = $request->id_vendedor ?? $syncEmp->id_vendedor;
-                $syncEmp->updated_at = now();
+        // Prosseguir com o salvamento do lead
+        if ($syncEmp) {
+            // Lead existe, atualiza as informações
+            $oldEstagio = $syncEmp->estagio;
+            $syncEmp->contact_name = $request->contact_name ?? $syncEmp->contact_name;
+            $syncEmp->contact_number = $contactNumber;
+            $syncEmp->contact_number_empresa = $contactNumberEmpresa;
+            $syncEmp->contact_email = $request->contact_email ?? $syncEmp->contact_email;
+            $syncEmp->estagio = $request->estagio ?? $syncEmp->estagio;
+            $syncEmp->chatwoot_accoumts = $request->chatwoot_accoumts ?? $syncEmp->chatwoot_accoumts;
+            $syncEmp->situacao_contato = $request->situacao_contato ?? $syncEmp->situacao_contato;
+            $syncEmp->email_vendedor = $emailVendedor;
+            $syncEmp->nome_vendedor = $nomeVendedor;
+            $syncEmp->id_vendedor = $request->id_vendedor ?? $syncEmp->id_vendedor;
+            $syncEmp->chatwoot_status = $chatwootStatus;
+            $syncEmp->updated_at = now();
 
-                // Atribuição de cadência somente se o lead vier com cadencia_id
-                if ($request->cadencia_id) {
-                    $syncEmp->cadencia_id = $request->cadencia_id;
-                    Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$syncEmp->id}");
-                }
-
-                $syncEmp->save();
-                Log::info("Lead existente atualizado com ID: {$syncEmp->id}");
-            } else {
-                // Novo lead
-                $syncEmp = new SyncFlowLeads();
-                $syncEmp->id_card = $idCard;
-                $syncEmp->contact_name = $request->contact_name ?? 'Não fornecido';
-                $syncEmp->contact_number = $contactNumber;
-                $syncEmp->contact_number_empresa = $contactNumberEmpresa;
-                $syncEmp->contact_email = $request->contact_email ?? 'Não fornecido';
-                $syncEmp->estagio = $request->estagio ?? 'Não fornecido';
-                $syncEmp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
-                $syncEmp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
-                $syncEmp->email_vendedor = $emailVendedor;
-                $syncEmp->nome_vendedor = $nomeVendedor;
-                $syncEmp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
-                $syncEmp->created_at = now();
-
-                // Atribuição de cadência
-                if ($request->cadencia_id) {
-                    $syncEmp->cadencia_id = $request->cadencia_id;
-                    Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead");
-                } else {
-                    Log::info("Nenhum cadência_id recebido; cadência não atribuída ao novo lead");
-                }
-
-                $syncEmp->save();
-                Log::info("Novo lead salvo com ID: {$syncEmp->id}");
-
-                // Setar o campo de Status WhatsApp como: Não respondido
-                $this->zohoCrmService->updateLeadStatusWhatsApp($syncEmp->id_card, 'Não respondido');
-                Log::info("Status WhatsApp atualizado para 'Não respondido' para o lead ID {$syncEmp->id}");
+            // Atribuição de cadência somente se o lead vier com cadencia_id
+            if ($request->cadencia_id) {
+                $syncEmp->cadencia_id = $request->cadencia_id;
+                Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$syncEmp->id}, id_card {$idCard}");
             }
+
+            $syncEmp->save();
+            Log::info("Lead existente atualizado com ID: {$syncEmp->id}, id_card {$idCard}");
         } else {
-            Log::error("Lead não salvo devido a falha na integração com o Chatwoot para número {$contactNumber}");
-            return response('Failed to save lead due to Chatwoot integration failure', 500);
+            // Novo lead
+            $syncEmp = new SyncFlowLeads();
+            $syncEmp->id_card = $idCard;
+            $syncEmp->contact_name = $request->contact_name ?? 'Não fornecido';
+            $syncEmp->contact_number = $contactNumber;
+            $syncEmp->contact_number_empresa = $contactNumberEmpresa;
+            $syncEmp->contact_email = $request->contact_email ?? 'Não fornecido';
+            $syncEmp->estagio = $request->estagio ?? 'Não fornecido';
+            $syncEmp->chatwoot_accoumts = $request->chatwoot_accoumts ?? null;
+            $syncEmp->situacao_contato = $request->situacao_contato ?? 'Não fornecido';
+            $syncEmp->email_vendedor = $emailVendedor;
+            $syncEmp->nome_vendedor = $nomeVendedor;
+            $syncEmp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
+            $syncEmp->chatwoot_status = $chatwootStatus;
+            $syncEmp->created_at = now();
+
+            // Atribuição de cadência
+            if ($request->cadencia_id) {
+                $syncEmp->cadencia_id = $request->cadencia_id;
+                Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead, id_card {$idCard}");
+            } else {
+                Log::info("Nenhum cadência_id recebido; cadência não atribuída ao novo lead, id_card {$idCard}");
+            }
+
+            $syncEmp->save();
+            Log::info("Novo lead salvo com ID: {$syncEmp->id}, id_card {$idCard}");
+
+            // Setar o campo de Status WhatsApp como: Não respondido
+            $this->zohoCrmService->updateLeadStatusWhatsApp($syncEmp->id_card, 'Não respondido');
+            Log::info("Status WhatsApp atualizado para 'Não respondido' para o lead ID {$syncEmp->id}, id_card {$idCard}");
         }
 
         // Verifica se o número é WhatsApp (mantendo a lógica comentada, caso queira reativar)
