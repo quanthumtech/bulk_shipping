@@ -8,6 +8,8 @@ use App\Models\SyncFlowLeads;
 use App\Models\User;
 use App\Models\Etapas;
 use App\Models\Evolution;
+use App\Models\ChatwootConversation;
+use App\Models\ChatwootsAgents;
 use App\Services\ChatwootService;
 use App\Services\ZohoCrmService;
 use Illuminate\Http\Request;
@@ -81,6 +83,7 @@ class WebhookZohoController extends Controller
 
     public function createFromWebhook(Request $request)
     {
+        // Log detalhado do webhook
         Log::info('Webhook request Zoho / Bulkship', [
             'method' => $request->method(),
             'content' => $request->getContent(),
@@ -88,15 +91,20 @@ class WebhookZohoController extends Controller
             'id_card' => $request->id_card ?? 'Não fornecido'
         ]);
 
+        // Verifica se o método é POST e se há conteúdo
         if (!$request->isMethod('post') || !$request->getContent()) {
             Log::error('Nenhum dado recebido no webhook');
             return response('No data received', 400);
         }
 
+        // Verifica se o id_card está presente
         $idCard = $request->id_card ?? 'Não fornecido';
+
+        // Formata os números de telefone
         $contactNumber = $this->formatPhoneNumber($request->contact_number);
         $contactNumberEmpresa = $this->formatPhoneNumber($request->contact_number_empresa);
 
+        // Obtém informações do vendedor, se fornecido.
         $emailVendedor = 'Não fornecido';
         $nomeVendedor = 'Não fornecido';
         if ($request->id_vendedor && $request->id_vendedor !== 'Não fornecido') {
@@ -107,10 +115,14 @@ class WebhookZohoController extends Controller
             }
         }
 
+        /**
+         * INFO: Verifica se o lead já existe no SyncFlowLeads e no Chatwoot.
+         * Se existir, atualiza os dados; se não, cria um novo registro.
+         * Usando o $chatwootStatus para rastrear o status do contato no Chatwoot.
+         */
         $syncEmp = SyncFlowLeads::where('id_card', $idCard)->first();
         $chatwootStatus = 'pending';
 
-        // Processar integração com Chatwoot antes de salvar o lead
         if ($contactNumber !== 'Não fornecido' && $request->chatwoot_accoumts) {
             $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
             if ($user && $user->token_acess) {
@@ -122,7 +134,7 @@ class WebhookZohoController extends Controller
                 // Log simplificado e seguro
                 $logContacts = is_array($contacts) ? array_map(function ($contact) {
                     return [
-                        'id' => $contact['id'] ?? 'N/A', // Usar id numérico (ex.: 211)
+                        'id' => $contact['id'] ?? 'N/A',
                         'name' => $contact['name'] ?? 'N/A',
                         'phone_number' => $contact['phone_number'] ?? 'N/A',
                         'email' => $contact['email'] ?? 'N/A'
@@ -137,7 +149,7 @@ class WebhookZohoController extends Controller
                         $contactData = $this->chatwootService->updateContact(
                             $request->chatwoot_accoumts,
                             $user->token_acess,
-                            $contact['id_contact'], // Usar id numérico (ex.: 211)
+                            $contact['id_contact'],
                             $request->contact_name ?? $contact['name'] ?? 'Não fornecido',
                             $request->contact_email !== 'Não fornecido' ? $request->contact_email : null
                         );
@@ -178,7 +190,9 @@ class WebhookZohoController extends Controller
             $chatwootStatus = 'skipped';
         }
 
-        // Salvar ou atualizar o lead
+        /**
+         * INFO: Atualiza ou cria o registro no SyncFlowLeads.
+         */
         if ($syncEmp) {
             $oldEstagio = $syncEmp->estagio;
             $syncEmp->contact_name = $request->contact_name ?? $syncEmp->contact_name;
@@ -245,9 +259,114 @@ class WebhookZohoController extends Controller
             }
         }
 
+        /**
+         * INFO: Verifica se o lead tem uma conversa aberta no Chatwoot e atribui o agente.
+         */
+        if ($syncEmp && $contactNumber !== 'Não fornecido' && $request->chatwoot_accoumts) {
+            try {
+                // Verificar se existe uma conversa aberta associada ao lead
+                $conversation = ChatwootConversation::where('sync_flow_lead_id', $syncEmp->id)
+                    ->where('status', 'open')
+                    ->first();
+
+                if ($conversation) {
+                    // Encontrar o agente associado
+                    $chatWootAgent = ChatwootsAgents::where('email', $syncEmp->email_vendedor)
+                        ->where('chatwoot_account_id', $request->chatwoot_accoumts)
+                        ->first();
+
+                    if ($chatWootAgent) {
+                        // Obter token de acesso
+                        $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
+                        $apiToken = $user ? $user->token_acess : null;
+
+                        if ($apiToken) {
+                            // Verificar se o agente já foi atribuído
+                            if (!$conversation->agent_assigned_once) {
+                                // Obter lista de agentes do Chatwoot
+                                $agents = $this->chatwootService->getAgents($request->chatwoot_accoumts, $apiToken);
+                                $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
+
+                                if ($matchingAgent) {
+                                    // Atribuir o agente à conversa
+                                    $this->chatwootService->assignAgentToConversation(
+                                        $request->chatwoot_accoumts,
+                                        $apiToken,
+                                        $conversation->conversation_id,
+                                        $matchingAgent['agent_id']
+                                    );
+                                    Log::info('Agente atribuído à conversa pelo webhook Zoho', [
+                                        'conversation_id' => $conversation->conversation_id,
+                                        'agent_id' => $matchingAgent['agent_id'],
+                                        'lead_id' => $syncEmp->id,
+                                        'id_card' => $idCard
+                                    ]);
+
+                                    // Atualizar a flag agent_assigned_once
+                                    $conversation->agent_assigned_once = true;
+                                    $conversation->agent_id = $matchingAgent['agent_id'];
+                                    $conversation->save();
+                                } else {
+                                    Log::warning('Agente não encontrado na lista de agentes do Chatwoot', [
+                                        'email_vendedor' => $syncEmp->email_vendedor,
+                                        'conversation_id' => $conversation->conversation_id,
+                                        'lead_id' => $syncEmp->id
+                                    ]);
+                                }
+                            } else {
+                                Log::info('Agente já foi atribuído anteriormente à conversa', [
+                                    'conversation_id' => $conversation->conversation_id,
+                                    'lead_id' => $syncEmp->id
+                                ]);
+                            }
+                        } else {
+                            Log::warning('Token de acesso não encontrado para atribuir agente', [
+                                'account_id' => $request->chatwoot_accoumts,
+                                'lead_id' => $syncEmp->id
+                            ]);
+                        }
+                    } else {
+                        Log::warning('Agente Chatwoot não encontrado ou account_id não corresponde', [
+                            'email_vendedor' => $syncEmp->email_vendedor,
+                            'conversation_id' => $conversation->conversation_id,
+                            'lead_id' => $syncEmp->id
+                        ]);
+                    }
+                } else {
+                    Log::info('Nenhuma conversa aberta encontrada para o lead', [
+                        'lead_id' => $syncEmp->id,
+                        'id_card' => $idCard,
+                        'contact_number' => $contactNumber
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Erro ao verificar ou atribuir agente à conversa no Chatwoot', [
+                    'lead_id' => $syncEmp->id,
+                    'id_card' => $idCard,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        } else {
+            Log::info('Não foi possível verificar conversas abertas: número inválido ou chatwoot_accoumts não fornecido', [
+                'id_card' => $idCard,
+                'contact_number' => $contactNumber
+            ]);
+        }
+        /**
+         * Fim: Verificação de conversa aberta e atribuição do agente.
+         */
+
         return response('Webhook received successfully', 200);
     }
 
+    /**
+     * Registra o envio de uma mensagem para o
+     * lead na etapa especificada.
+     *
+     * @param $lead
+     * @param $etapa
+     * @return void
+     */
     protected function registrarEnvio($lead, $etapa)
     {
         CadenceMessage::create([
