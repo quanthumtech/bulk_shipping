@@ -5,6 +5,7 @@ namespace App\Livewire\Notifications;
 use App\Models\SystemNotification;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class Notifications extends Component
 {
@@ -46,6 +47,20 @@ class Notifications extends Component
             if ($notification) {
                 $notification->markAsRead();
                 $this->loadNotifications();
+            }
+        }
+    }
+
+    public function deleteNotification($notificationId)
+    {
+        if (Auth::check()) {
+            $notification = SystemNotification::where('user_id', Auth::id())->find($notificationId);
+            if ($notification) {
+                $notification->delete();
+                $this->loadNotifications();
+                Log::info("Notificação excluída: ID {$notificationId}, Usuário ID " . Auth::id());
+            } else {
+                Log::warning("Tentativa de excluir notificação inexistente ou não autorizada: ID {$notificationId}, Usuário ID " . Auth::id());
             }
         }
     }
