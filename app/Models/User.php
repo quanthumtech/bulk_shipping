@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -56,5 +56,10 @@ class User extends Authenticatable
     public function evolutions()
     {
         return $this->hasMany(Evolution::class);
+    }
+
+    public function systemNotifications()
+    {
+        return $this->hasMany(SystemNotification::class);
     }
 }

@@ -88,8 +88,12 @@
 
         {{-- Right side actions --}}
         <x-slot:actions>
-            {{--<x-mary-button label="Messages" icon="o-envelope" link="###" class="btn-ghost btn-sm" responsive />--}}
-            <x-mary-button label="Notifications" icon="o-bell" link="###" class="btn-ghost btn-sm" responsive />
+            {{-- Componente Livewire para notificações --}}
+            @livewire('notifications.notifications')
+
+            {{-- Search --}}
+
+            {{-- Theme --}}
             <div class="flex items-center justify-end">
                 <x-mary-theme-toggle lightTheme="cupcake" darkTheme="dark" />
             </div>
@@ -160,5 +164,8 @@
 
     {{--  TOAST area --}}
     <x-mary-toast />
+
+    {{-- Spotlight --}}
+    <x-mary-spotlight /
 </body>
 </html>

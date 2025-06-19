@@ -10,11 +10,13 @@ use App\Models\Etapas;
 use App\Models\Evolution;
 use App\Models\ChatwootConversation;
 use App\Models\ChatwootsAgents;
+use App\Models\SystemNotification;
 use App\Services\ChatwootService;
 use App\Services\ZohoCrmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use App\Helpers\NotificationHelper; // Importar o helper
 
 class WebhookZohoController extends Controller
 {
@@ -104,6 +106,22 @@ class WebhookZohoController extends Controller
         $contactNumber = $this->formatPhoneNumber($request->contact_number);
         $contactNumberEmpresa = $this->formatPhoneNumber($request->contact_number_empresa);
 
+        // Notificar se o número do lead não pôde ser formatado
+        if ($contactNumber === 'Não fornecido' && !empty($request->contact_number)) {
+            $user = $request->chatwoot_accoumts ? User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first() : null;
+            if ($user) {
+                SystemNotification::create([
+                    'user_id' => $user->id,
+                    'title'   => 'Falha ao Formatar Número do Lead',
+                    'message' => "Não foi possível formatar o número do lead com ID Card: {$idCard}. Nome do Lead:  {$request->contact_name}. Número fornecido: {$request->contact_number}.",
+                    'read'    => false
+                ]);
+                Log::info("Notificação enviada para o usuário ID {$user->id} sobre falha na formatação do número do lead ID {$idCard}.");
+            } else {
+                Log::warning("Nenhum usuário encontrado para chatwoot_accoumts: {$request->chatwoot_accoumts}. Notificação de falha na formatação não enviada.");
+            }
+        }
+
         // Obtém informações do vendedor, se fornecido
         $emailVendedor = 'Não fornecido';
         $nomeVendedor = 'Não fornecido';
@@ -141,6 +159,17 @@ class WebhookZohoController extends Controller
                     ];
                 }, $contacts) : [];
                 Log::info("Busca por {$contactNumber} retornou " . count($contacts) . " contatos para id_card {$request->id_card}: " . json_encode($logContacts));
+
+                //Notificar se o contato já existe no Chatwoot
+                if (is_array($contacts) && !empty($contacts)) {
+                    SystemNotification::create([
+                        'user_id' => $user->id,
+                        'title' => 'Contato já existe no Chatwoot',
+                        'message' => "O contato com o número {$contactNumber} já existe no Chatwoot. Contato Atualizado!",
+                        'read' => false
+                    ]);
+                    Log::info("Notificação enviada para o usuário ID {$user->id} sobre contato existente no Chatwoot para id_card {$idCard}.");
+                }
 
                 try {
                     if (is_array($contacts) && !empty($contacts)) {
@@ -368,16 +397,12 @@ class WebhookZohoController extends Controller
                 'cadencia_id' => $syncEmp->cadencia_id ?? 'N/A'
             ]);
         }
-        /**
-         * Fim: Verificação de conversa aberta e atribuição do agente.
-         */
 
         return response('Webhook received successfully', 200);
     }
 
     /**
-     * Registra o envio de uma mensagem para o
-     * lead na etapa especificada.
+     * Registra o envio de uma mensagem para o lead na etapa especificada.
      *
      * @param $lead
      * @param $etapa
