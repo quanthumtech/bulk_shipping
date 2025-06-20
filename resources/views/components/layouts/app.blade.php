@@ -152,7 +152,7 @@
                     @endif
                 @endif
                 <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="/faq-info" />
-                <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="#" />
+                <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="https://quanthum.tec.br/" />
             </x-mary-menu>
         </x-slot:sidebar>
 

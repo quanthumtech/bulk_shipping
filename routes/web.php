@@ -9,6 +9,7 @@ use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
 use App\Livewire\LeadConversationHistory;
 use App\Livewire\ListContatosIndex;
+use App\Livewire\NotificationsIndex;
 use App\Livewire\PerfilIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\StatisticIndex;
@@ -94,5 +95,10 @@ Route::get('/faq-info', FaqIndex::class)
 
 Route::get('/leads/history/{leadId}', LeadConversationHistory::class)
     ->name('lead.conversation.history');
+
+// Notifications
+Route::get('/notifications-index', NotificationsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('notifications.index');
 
 require __DIR__.'/auth.php';
