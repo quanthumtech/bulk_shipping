@@ -1,20 +1,10 @@
-<style>
-    table.notifications-table {
-        @apply !static;
-    }
-    table.notifications-table details.dropdown {
-        @apply !static;
-    }
-</style>
-
 <div>
     <x-mary-header title="Notificações" subtitle="Todas as suas notificações" separator>
         <x-slot:middle class="!justify-end">
             <x-mary-input icon="o-magnifying-glass" wire:model.live="search" placeholder="Pesquisar notificações..." />
         </x-slot:middle>
         <x-slot:actions>
-            <x-mary-button icon="o-funnel" title="Filtrar" />
-            <x-mary-button label="Voltar" link="/dashboard" class="btn-primary" />
+            <x-mary-button icon="o-funnel" title="Filtrar" wire:click="$set('showDrawer', true)" />
         </x-slot:actions>
     </x-mary-header>
 
@@ -96,4 +86,49 @@
             </div>
         @endscope
     </x-mary-table>
+
+    <x-mary-drawer
+        wire:model="showDrawer"
+        title="Filtros de Notificações"
+        subtitle="Personalize a exibição das notificações"
+        separator
+        with-close-button
+        close-on-escape
+        class="w-11/12 lg:w-1/3"
+        right
+    >
+        <div class="p-4">
+            {{--<div class="mb-4">
+                <x-mary-select
+                    label="Status"
+                    wire:model.live="filterStatus"
+                    :options="[
+                        ['value' => 'all', 'label' => 'Todas'],
+                        ['value' => 'read', 'label' => 'Lidas'],
+                        ['value' => 'unread', 'label' => 'Não lidas']
+                    ]"
+                />
+            </div>--}}
+            <div class="mb-4">
+                <x-mary-input
+                    label="Data"
+                    type="date"
+                    wire:model.live="filterDate"
+                    placeholder="Selecione uma data"
+                />
+            </div>
+            <div class="flex justify-end space-x-2">
+                <x-mary-button
+                    label="Limpar Filtros"
+                    class="btn-outline"
+                    wire:click="$set('filterStatus', 'all'); $set('filterDate', null)"
+                />
+                <x-mary-button
+                    label="Aplicar"
+                    class="btn-primary"
+                    wire:click="$set('showDrawer', false)"
+                />
+            </div>
+        </div>
+    </x-mary-drawer>
 </div>
