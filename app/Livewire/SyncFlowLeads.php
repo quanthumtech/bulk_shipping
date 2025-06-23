@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Forms\SyncFlowLeadsForm;
 use App\Models\Cadencias;
 use App\Models\SyncFlowLeads as ModelsSyncFlowLeads;
+use App\Models\SystemNotification;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -32,6 +33,13 @@ class SyncFlowLeads extends Component
         $this->resetPage();
     }
 
+    public function showModal()
+    {
+        $this->form->reset();
+        $this->syncLeadsModal = true;
+        $this->title = 'Adicionar Lead';
+    }
+
     public function cadenceModal()
     {
         $this->form->reset();
@@ -49,6 +57,13 @@ class SyncFlowLeads extends Component
                 $this->success('Lead atualizado com sucesso!', position: 'toast-top');
             } else {
                 $this->form->store();
+                // Notificação lead cadastrado
+                SystemNotification::create([
+                    'user_id' => auth()->user()->id,
+                    'title'   => 'Lead Cadastrado Manual',
+                    'message' => 'Um novo lead foi cadastrado manualmente, nome: ' . $this->form->contact_name . ', número: ' . $this->form->contact_number,
+                    'read'    => false
+                ]);
                 $this->success('Lead cadastrado com sucesso!', position: 'toast-top');
             }
             $this->syncLeadsModal = false;
@@ -65,6 +80,7 @@ class SyncFlowLeads extends Component
             $this->form->setSyncFlowLeads($syncLeadsEdit);
             $this->editMode = true;
             $this->syncLeadsModal = true;
+            $this->title = 'Editar Lead';
         } else {
             $this->info('Etapa não encontrada.', position: 'toast-top');
         }
@@ -88,6 +104,15 @@ class SyncFlowLeads extends Component
     {
         try {
             $this->form->update();
+
+            // Notificação cadência atribuída manualmente
+            SystemNotification::create([
+                'user_id' => auth()->user()->id,
+                'title'   => 'Cadência Atribuída',
+                'message' => 'Uma cadência foi atribuída manualmente ao lead: ' . $this->form->contact_name . ', número: ' . $this->form->contact_number,
+                'read'    => false
+            ]);
+
             $this->success('Cadência atribuida com sucesso!', position: 'toast-top');
             $this->cadenceModal = false;
         } catch (\Exception $e) {

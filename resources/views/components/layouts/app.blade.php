@@ -91,8 +91,6 @@
             {{-- Componente Livewire para notificações --}}
             @livewire('notifications.notifications')
 
-            {{-- Search --}}
-
             {{-- Theme --}}
             <div class="flex items-center justify-end">
                 <x-mary-theme-toggle lightTheme="cupcake" darkTheme="dark" />
@@ -105,7 +103,11 @@
 
         {{-- This is a sidebar that works also as a drawer on small screens --}}
         {{-- Notice the `main-drawer` reference here --}}
-        <x-slot:sidebar drawer="main-drawer" collapsible class="bg-base-200">
+        <x-slot:sidebar
+            drawer="main-drawer"
+            collapsible
+            class="bg-base-200"
+        >
 
             {{-- User --}}
             @if($user = auth()->user())
@@ -166,6 +168,13 @@
     <x-mary-toast />
 
     {{-- Spotlight --}}
-    <x-mary-spotlight /
+    <x-mary-spotlight />
+
+    {{-- Custom Footer --}}
+    <footer class="w-full py-4 bg-base-200 text-center text-sm text-base-content/70">
+        <div>
+            BulkShip &copy; {{ date('Y') }} &mdash; v1.0.0
+        </div>
+    </footer>
 </body>
 </html>

@@ -3,17 +3,29 @@
         <x-slot:middle class="!justify-end">
             <x-mary-input icon="o-bolt" wire:model.live="search" placeholder="Buscar lead..." />
         </x-slot:middle>
+        <x-slot:actions>
+            <x-mary-button label="Criar Lead" icon="o-plus" class="btn-primary ml-2"  @click="$wire.showModal()" />
+        </x-slot:actions>
     </x-mary-header>
 
     {{-- Modal para edição/criação de leads --}}
-    <x-mary-modal wire:model="syncLeadsModal" class="backdrop-blur">
+    <x-mary-modal wire:model="syncLeadsModal" title="{{ $title }}" class="backdrop-blur">
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Name" wire:model="form.contact_name" />
-            <x-mary-input label="Number" wire:model="form.contact_number" />
-            <x-mary-input label="Email" wire:model="form.contact_email" />
-            <x-mary-input label="Contato empresa" wire:model="form.contact_number_empresa" />
-            <x-mary-input label="Stage" wire:model="form.estagio" />
-            <x-mary-select label="Cadência" wire:model="form.cadenciaId" :options="$cadencias" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <x-mary-input label="Name" wire:model="form.contact_name" :nullable="true" />
+                <x-mary-input label="Number" wire:model="form.contact_number" :nullable="true" />
+                <x-mary-input label="Email" wire:model="form.contact_email" :nullable="true" />
+                <x-mary-input label="Contato empresa" wire:model="form.contact_number_empresa" :nullable="true" />
+            </div>
+            <x-mary-input label="Stage" wire:model="form.estagio" :nullable="true" />
+            <x-mary-input
+                label="Situação de contato"
+                wire:model="form.situacao_contato"
+                hint="Este campo é atualizado automaticamente conforme o envio de mensagens. O valor padrão é 'Tentativa de Contato'."
+                :nullable="true"
+                disabled
+            />
+            <x-mary-select label="Cadência" wire:model="form.cadenciaId" :options="$cadencias" :nullable="true" />
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.syncLeadsModal = false" />

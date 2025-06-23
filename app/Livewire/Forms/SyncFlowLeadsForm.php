@@ -25,14 +25,16 @@ class SyncFlowLeadsForm extends Form
 
     public $estagio = '';
 
+    public $situacao_contato = 'Tentativa de Contato';
+
     public $cadenciaId;
 
     protected $rules = [
         'contact_name'             => 'required|string',
         'contact_number'           => 'required|string',
-        'contact_number_empresa'   => 'required|string',
-        'contact_email'            => 'required|string',
-        'estagio'                  => 'required|string',
+        'contact_number_empresa'   => 'string',
+        'contact_email'            => 'string',
+        'estagio'                  => 'string',
     ];
 
     public function setSyncFlowLeads(SyncFlowLeads $syncFlow)
@@ -44,6 +46,7 @@ class SyncFlowLeadsForm extends Form
         $this->contact_email            = $syncFlow->contact_email;
         $this->estagio                  = $syncFlow->estagio;
         $this->cadenciaId               = $syncFlow->cadencia_id;
+        $this->situacao_contato         = $syncFlow->situacao_contato;
 
     }
 
@@ -57,6 +60,8 @@ class SyncFlowLeadsForm extends Form
             'contact_number_empresa'   => $this->contact_number_empresa,
             'contact_email'            => $this->contact_email,
             'estagio'                  => $this->estagio,
+            'chatwoot_accoumts'        => auth()->user()->chatwoot_accoumts,
+            'situacao_contato'         => 'Tentativa de Contato',
         ];
 
        SyncFlowLeads::create($data);

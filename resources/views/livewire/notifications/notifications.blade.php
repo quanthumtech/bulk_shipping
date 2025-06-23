@@ -1,10 +1,9 @@
 <div>
     {{-- Botão de Notificações --}}
     <div wire:click="openNotifications" class="relative">
-        <x-mary-button class="indicator" icon="o-bell">
-            Notificações
+        <x-mary-button icon="o-bell" class="btn-circle relative">
             @if($unreadNotificationsCount > 0)
-            <x-mary-badge value="{{ $unreadNotificationsCount }}" class="badge-secondary badge-sm" />
+                <x-mary-badge value="{{ $unreadNotificationsCount }}" class="badge-error absolute -right-2 -top-2" />
             @endif
         </x-mary-button>
     </div>
