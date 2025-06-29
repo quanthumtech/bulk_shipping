@@ -12,5 +12,5 @@ Route::post('/webhook-bulkship', [WebhookZohoController::class, 'createFromWebho
 // Webhook Chatwoot
 Route::post('/chatwoot_webhook', [WebhookChatWootController::class, 'handleWebhook']);
 
-// Webhook Padrão Bulkship SyncFLOW (GEUPO WEB)
+// Webhook Padrão Bulkship SyncFlow
 Route::post('/webhook-bulkship-syncflow', [CreateFromWebhookSyncFlowController::class, 'createFromWebhookSyncFlow']);

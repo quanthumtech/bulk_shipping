@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CreateFromWebhookSyncFlowController;
 use App\Http\Controllers\WebhookZohoController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
@@ -18,6 +19,9 @@ use App\Livewire\SyncFlowLeads;
 use App\Livewire\UserConfigIndex;
 use App\Livewire\UsersIndex;
 use Illuminate\Support\Facades\Route;
+
+// Webhook Padrão Bulkship SyncFlow
+Route::post('/webhook-bulkship-syncflow', [CreateFromWebhookSyncFlowController::class, 'createFromWebhookSyncFlow']);
 
 Route::redirect('/', '/login');
 
