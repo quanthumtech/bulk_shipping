@@ -81,6 +81,32 @@
                 subtitle="Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }}"
                 separator
             >
+                <div class="mb-2 text-xs text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="flex items-center">
+                        <span class="font-semibold mr-1">ID Card:</span>
+                        <span>{{ $sync->id_card ?? 'Não informado' }}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="font-semibold mr-1">ID:</span>
+                        <span>{{ $sync->id ?? 'Não informado' }}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="font-semibold mr-1">Situação Contato:</span>
+                        <span>{{ $sync->situacao_contato ?? 'Não informado' }}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="font-semibold mr-1">Nome Vendedor:</span>
+                        <span>{{ $sync->nome_vendedor ?? 'Não informado' }}</span>
+                    </div>
+                    <div class="flex items-center md:col-span-2">
+                        <span class="font-semibold mr-1">Status Chatwoot:</span>
+                        @if(!empty($sync->chatwoot_status))
+                            <x-mary-badge value="{{ $sync->chatwoot_status }}" class="badge-primary" />
+                        @else
+                            <x-mary-badge value="Não informado" class="badge-secondary" />
+                        @endif
+                    </div>
+                </div>
                 <x-slot:menu>
                     <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
                     @if (empty($sync->contact_email) || empty($sync->contact_number) || $sync->contact_email === 'Não fornecido' || $sync->contact_number === 'Não fornecido')

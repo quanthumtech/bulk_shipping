@@ -11,6 +11,7 @@ use App\Livewire\LeadConversationHistory;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\NotificationsIndex;
 use App\Livewire\PerfilIndex;
+use App\Livewire\ScriptsIndex;
 use App\Livewire\SendIndex;
 use App\Livewire\StatisticIndex;
 use App\Livewire\SyncFlowLeads;
@@ -100,5 +101,10 @@ Route::get('/leads/history/{leadId}', LeadConversationHistory::class)
 Route::get('/notifications-index', NotificationsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('notifications.index');
+
+// Scripts
+Route::get('/scrpits-index', ScriptsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('scripts.index');
 
 require __DIR__.'/auth.php';

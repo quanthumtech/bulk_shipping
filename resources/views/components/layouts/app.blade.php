@@ -69,7 +69,6 @@
     {{--  Pirsch Analytics  --}}
     <script defer src="https://api.pirsch.io/pa.js" id="pianjs" data-code="rOVAXMnSEiydpyfzhgPnLVbX6iWcik7m"></script>
 
-
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen font-sans antialiased">
@@ -150,6 +149,7 @@
                     @if($user->type_user === '1' || $user->type_user === '2')
                         <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
                             <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
+                            <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
                         </x-mary-menu-sub>
                     @endif
                 @endif

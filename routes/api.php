@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Controllers\CreateFromWebhookSyncFlowController;
 use App\Http\Controllers\WebhookChatWootController;
 use App\Http\Controllers\WebhookZohoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+// Webhook Zoho CRM
 Route::post('/webhook-bulkship', [WebhookZohoController::class, 'createFromWebhook']);
 
+// Webhook Chatwoot
 Route::post('/chatwoot_webhook', [WebhookChatWootController::class, 'handleWebhook']);
+
+// Webhook Padrão Bulkship SyncFLOW (GEUPO WEB)
+Route::post('/webhook-bulkship-syncflow', [CreateFromWebhookSyncFlowController::class, 'createFromWebhookSyncFlow']);
