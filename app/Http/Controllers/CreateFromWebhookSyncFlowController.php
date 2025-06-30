@@ -121,7 +121,7 @@ class CreateFromWebhookSyncFlowController extends WebhookZohoController
             // NOTIFICAÇÃO: Cria um novo contato
              SystemNotification::create([
                 'user_id' => $user->id,
-                'title' => 'Contato já existe no Chatwoot',
+                'title' => 'Novo Contato Criado!',
                 'message' => "Novo contato criado com o número: {$contactNumber}, Nome: {$request->contact_name} no Chatwoot.",
                 'read' => false
             ]);
