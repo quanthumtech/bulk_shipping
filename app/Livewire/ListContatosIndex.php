@@ -1,10 +1,13 @@
 <?php
+
 namespace App\Livewire;
 
+use App\Events\GenericAudit;
 use App\Livewire\Forms\ListContatosForm;
 use App\Models\ListContatos;
 use App\Models\User;
 use App\Services\ChatwootService;
+use Illuminate\Support\Facades\Event;
 use Livewire\Component;
 use Mary\Traits\Toast;
 
@@ -17,9 +20,9 @@ class ListContatosIndex extends Component
     public $contatos = [];
     protected $chatwootService;
     public $search = '';
-    public int $page = 1; // Página atual
+    public int $page = 1;
     public $contatosPages;
-    public int $totalPages = 1; // Total de páginas
+    public int $totalPages = 1;
     public $nomeCompleto = '';
     public bool $contactModal = false;
     public $title = '';
@@ -29,7 +32,6 @@ class ListContatosIndex extends Component
     {
         $this->chatwootService = $chatwootService;
         $this->contatosPages = $this->chatwootService->getContatos();
-
         $this->iniciarSincronizacao();
         $this->updateContatos();
     }
@@ -50,8 +52,6 @@ class ListContatosIndex extends Component
 
         $result = $this->chatwootService->getContatos($this->page);
         $this->contatos = is_array($result) ? $result : [];
-
-        // Ajuste correto do total de páginas
         $this->totalPages = count($this->contatos) > 0 ? ceil(count($this->contatos) / 10) : 1;
     }
 
@@ -60,7 +60,7 @@ class ListContatosIndex extends Component
         if (!empty($this->search)) {
             $this->contatos = $this->chatwootService->searchContatosApi($this->search);
         } else {
-            $this->updateContatos(); // Volta para a listagem normal paginada
+            $this->updateContatos();
         }
     }
 
@@ -86,62 +86,75 @@ class ListContatosIndex extends Component
     public function save()
     {
         try {
-            $this->form->store();
+            // Capture form data before store()
+            $formData = [
+                'name' => $this->form->contact_name ?? 'N/A',
+                'phone_number' => $this->form->phone_number ?? 'N/A',
+            ];
+
+            // Normalize phone_number for consistency
+            $normalizedPhone = preg_replace('/\D/', '', $formData['phone_number']);
+            if (strlen($normalizedPhone) == 10 || strlen($normalizedPhone) == 11) {
+                $normalizedPhone = '+55' . $normalizedPhone;
+            }
+
+            // Call store() to create the contact
+            $contact = $this->form->store();
+
+            // Fallback to latest contact if store() doesn't return a model
+            if (!$contact instanceof ListContatos) {
+                $contact = ListContatos::where('phone_number', $normalizedPhone)
+                    ->where('chatwoot_id', auth()->user()->chatwoot_accoumts)
+                    ->latest()
+                    ->first();
+            }
+
+            // Ensure contact is valid
+            if (!$contact) {
+                throw new \Exception('No contact found after store(). Check ListContatos table or ChatwootService integration.');
+            }
+
+            // Notify success
             $this->success('Contato cadastrado com sucesso!', position: 'toast-top');
 
-            // Fechar o modal
-            $this->contactModal = false;
+            // Dispatch GenericAudit event
+            $auditData = [
+                'message' => 'Contato adicionado',
+                'contact_id' => $contact->id,
+                'contact_name' => $formData['name'],
+                'contact_phone' => $formData['phone_number'],
+                'auditable_type' => get_class($contact),
+                'auditable_id' => $contact->id,
+            ];
+            Event::dispatch(new GenericAudit('add.contact', $auditData));
 
+            // Close the modal
+            $this->contactModal = false;
         } catch (\Exception $e) {
-            $this->error('Erro ao salvar o grupo: ' . $e->getMessage(), position: 'toast-top');
+            $this->error('Erro ao cadastrar contato: ' . $e->getMessage(), position: 'toast-top');
+
+            // Dispatch GenericAudit for failure
+            $auditData = [
+                'message' => 'Falha ao adicionar contato',
+                'error' => $e->getMessage(),
+                'form_data' => $formData,
+                'auditable_type' => ListContatos::class,
+                'auditable_id' => 0,
+            ];
+            Event::dispatch(new GenericAudit('add.contact_failed', $auditData));
         }
     }
 
     public function render()
     {
-        /*if (!empty($this->search)) {
-            $this->chatwootService = app(ChatwootService::class);
-            $this->contatos = $this->chatwootService->searchContatosApi($this->search);
-        } else {
-            $this->updateContatos();
-        }
-
-        $contatos_table = collect($this->contatos)->map(function ($contato, $index) {
-            $phone = $contato['id'] ?? null;
-            if ($phone && preg_match('/^\+55\d{10,11}$/', $phone)) {
-                $displayPhone = $phone;
-            } else {
-                $displayPhone = '';
-            }
-            return [
-                'id'    => $index + 1,
-                'phone' => $displayPhone,
-                'name'  => $contato['name'] ?? '',
-            ];
-        })->filter(function($contato) {
-            return !empty($contato['phone']);
-        });
-
-        $hasValidPhone = $contatos_table->contains(function ($contato) {
-            return !empty($contato['phone']);
-        });
-
-        $headers = [
-            ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
-        ];
-
-        if ($hasValidPhone) {
-            $headers[] = ['key' => 'phone', 'label' => 'Tel de Contato'];
-        }
-
-        $headers[] = ['key' => 'name', 'label' => 'Nome do Contato'];
-        */
         $userId = User::find(auth()->id());
-
-        $contatos_table = ListContatos::where('chatwoot_id', $userId->chatwoot_accoumts)->where(function ($query) {
-            $query->where('phone_number', 'like', '%' . $this->search . '%')
-                ->orWhere('contact_name', 'like', '%' . $this->search . '%');
-            })->orderBy('created_at', 'desc')->paginate($this->perPage);
+        $contatos_table = ListContatos::where('chatwoot_id', $userId->chatwoot_accoumts)
+            ->where(function ($query) {
+                $query->where('phone_number', 'like', '%' . $this->search . '%')
+                    ->orWhere('contact_name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate($this->perPage);
 
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
@@ -156,10 +169,9 @@ class ListContatosIndex extends Component
                             só enviar suas campanhas com os contatos do Chatwoot.';
 
         return view('livewire.list-contatos-index', [
-            'headers'         => $headers,
-            'contatos_table'  => $contatos_table,
+            'headers' => $headers,
+            'contatos_table' => $contatos_table,
             'descriptionCard' => $descriptionCard
         ]);
     }
-
 }

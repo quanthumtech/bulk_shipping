@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SyncFlowLeads extends Model
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'sync_flow_leads';
 
     protected $fillable = [

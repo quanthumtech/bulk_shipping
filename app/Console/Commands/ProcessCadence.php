@@ -9,7 +9,10 @@ use App\Services\ChatwootService;
 use App\Models\CadenceMessage;
 use App\Models\Cadencias;
 use App\Models\Evolution;
+use App\Events\GenericAudit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use App\Models\System;
 
 class ProcessCadence extends Command
 {
@@ -24,7 +27,11 @@ class ProcessCadence extends Command
             $this->info("Horário atual: " . $now);
 
             if (!$this->hasPendingCadences($now)->exists()) {
-                $this->info("Nenhuma cadência pendente. Aguardando 5 segundos...");
+                Event::dispatch(new GenericAudit('cadence.no_pending', [
+                    'message' => 'Nenhuma cadência pendente. Aguardando 5 segundos...',
+                    'auditable_type' => System::class,
+                    'auditable_id' => 0,
+                ]));
                 sleep(5);
                 continue;
             }
@@ -32,26 +39,53 @@ class ProcessCadence extends Command
             $this->hasPendingCadences($now)
                 ->chunk(100, function ($leads) use ($now) {
                     foreach ($leads as $lead) {
-                        Log::info("Processando lead {$lead->id} com cadência ID {$lead->cadencia_id}");
+                        Event::dispatch(new GenericAudit('cadence.processing_lead', [
+                            'lead_id' => $lead->id,
+                            'cadencia_id' => $lead->cadencia_id,
+                            'message' => "Processando lead {$lead->id} com cadência ID {$lead->cadencia_id}",
+                            'auditable_type' => get_class($lead),
+                            'auditable_id' => $lead->id,
+                        ]));
 
                         if (!$lead->cadencia) {
-                            Log::warning("Cadência não encontrada para o lead {$lead->id}");
+                            Event::dispatch(new GenericAudit('cadence.missing', [
+                                'lead_id' => $lead->id,
+                                'message' => "Cadência não encontrada para o lead {$lead->id}",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             continue;
                         }
 
                         if ($lead->situacao_contato === 'Contato Efetivo') {
-                            Log::info("Lead {$lead->id} possui situação 'Contato Efetivo'. Pulando...");
+                            Event::dispatch(new GenericAudit('cadence.skipped', [
+                                'lead_id' => $lead->id,
+                                'message' => "Lead {$lead->id} possui situação 'Contato Efetivo'. Pulando...",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             continue;
                         }
 
                         if (!$this->isValidTime($lead->cadencia->hora_inicio) || !$this->isValidTime($lead->cadencia->hora_fim)) {
-                            Log::warning("Horário inválido para a cadência do lead {$lead->id}. Pulando...");
+                            Event::dispatch(new GenericAudit('cadence.invalid_time', [
+                                'lead_id' => $lead->id,
+                                'message' => "Horário inválido para a cadência do lead {$lead->id}. Pulando...",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             continue;
                         }
 
                         $etapas = $lead->cadencia->etapas;
                         if ($etapas->isEmpty()) {
-                            Log::info("Nenhuma etapa ativa encontrada para a cadência {$lead->cadencia_id} do lead {$lead->id}. Pulando...");
+                            Event::dispatch(new GenericAudit('cadence.no_active_stages', [
+                                'lead_id' => $lead->id,
+                                'cadencia_id' => $lead->cadencia_id,
+                                'message' => "Nenhuma etapa ativa encontrada para a cadência {$lead->cadencia_id} do lead {$lead->id}. Pulando...",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             continue;
                         }
 
@@ -60,7 +94,12 @@ class ProcessCadence extends Command
                             ->first();
 
                         if ($lastSentEtapa && $lastSentEtapa->etapa->cadencia_id !== $lead->cadencia_id) {
-                            Log::info("Cadência mudou para o lead {$lead->id}. Reiniciando etapas...");
+                            Event::dispatch(new GenericAudit('cadence.reset_stages', [
+                                'lead_id' => $lead->id,
+                                'message' => "Cadência mudou para o lead {$lead->id}. Reiniciando etapas...",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             $currentEtapaIndex = 0;
                         } else {
                             $currentEtapaIndex = $lastSentEtapa ? $etapas->search(function ($etapa) use ($lastSentEtapa) {
@@ -69,7 +108,13 @@ class ProcessCadence extends Command
                         }
 
                         if (!isset($etapas[$currentEtapaIndex])) {
-                            Log::info("Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Pulando...");
+                            Event::dispatch(new GenericAudit('cadence.all_stages_completed', [
+                                'lead_id' => $lead->id,
+                                'cadencia_id' => $lead->cadencia_id,
+                                'message' => "Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Pulando...",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
                             continue;
                         }
 
@@ -77,21 +122,43 @@ class ProcessCadence extends Command
                             $etapa = $etapas[$currentEtapaIndex];
 
                             if (!$etapa->active) {
-                                Log::info("Etapa {$etapa->id} do lead {$lead->id} não está ativa. Pulando...");
+                                Event::dispatch(new GenericAudit('cadence.inactive_stage', [
+                                    'lead_id' => $lead->id,
+                                    'etapa_id' => $etapa->id,
+                                    'message' => "Etapa {$etapa->id} do lead {$lead->id} não está ativa. Pulando...",
+                                    'auditable_type' => get_class($lead),
+                                    'auditable_id' => $lead->id,
+                                ]));
                                 $currentEtapaIndex++;
                                 continue;
                             }
 
                             if ($this->etapaEnviada($lead, $etapa)) {
-                                Log::info("Etapa {$etapa->id} do lead {$lead->id} já foi enviada.");
+                                Event::dispatch(new GenericAudit('cadence.stage_already_sent', [
+                                    'lead_id' => $lead->id,
+                                    'etapa_id' => $etapa->id,
+                                    'message' => "Etapa {$etapa->id} do lead {$lead->id} já foi enviada.",
+                                    'auditable_type' => get_class($lead),
+                                    'auditable_id' => $lead->id,
+                                ]));
                                 $currentEtapaIndex++;
                                 continue;
                             }
 
                             // Validação: pelo menos hora ou intervalo deve ser válido
                             if (!$this->isValidTime($etapa->hora) && !$this->isValidTime($etapa->intervalo)) {
-                                Log::error("Etapa {$etapa->id} do lead {$lead->id} deve ter pelo menos hora ou intervalo definido. Pulando...");
-                                Log::error("Detalhes: hora={$etapa->hora}, intervalo={$etapa->intervalo}, dias={$etapa->dias}");
+                                Event::dispatch(new GenericAudit('cadence.invalid_stage_time', [
+                                    'lead_id' => $lead->id,
+                                    'etapa_id' => $etapa->id,
+                                    'message' => "Etapa {$etapa->id} do lead {$lead->id} deve ter pelo menos hora ou intervalo definido. Pulando...",
+                                    'details' => [
+                                        'hora' => $etapa->hora,
+                                        'intervalo' => $etapa->intervalo,
+                                        'dias' => $etapa->dias,
+                                    ],
+                                    'auditable_type' => get_class($lead),
+                                    'auditable_id' => $lead->id,
+                                ]));
                                 $currentEtapaIndex++;
                                 continue;
                             }
@@ -102,10 +169,22 @@ class ProcessCadence extends Command
                                 ->setDate($now->year, $now->month, $now->day);
 
                             $dataAgendada = $this->calcularDataAgendada($lead, $etapa, $now);
-                            Log::info("Etapa {$etapa->id} do lead {$lead->id} agendada para {$dataAgendada}");
+                            Event::dispatch(new GenericAudit('cadence.stage_scheduled', [
+                                'lead_id' => $lead->id,
+                                'etapa_id' => $etapa->id,
+                                'message' => "Etapa {$etapa->id} do lead {$lead->id} agendada para {$dataAgendada}",
+                                'auditable_type' => get_class($lead),
+                                'auditable_id' => $lead->id,
+                            ]));
 
                             if ($dataAgendada->isFuture()) {
-                                Log::info("Etapa {$etapa->id} do lead {$lead->id} ainda no futuro. Aguardando...");
+                                Event::dispatch(new GenericAudit('cadence.stage_future', [
+                                    'lead_id' => $lead->id,
+                                    'etapa_id' => $etapa->id,
+                                    'message' => "Etapa {$etapa->id} do lead {$lead->id} ainda no futuro. Aguardando...",
+                                    'auditable_type' => get_class($lead),
+                                    'auditable_id' => $lead->id,
+                                ]));
                                 break;
                             }
 
@@ -114,7 +193,13 @@ class ProcessCadence extends Command
                                 $this->processarEtapa($lead, $etapa);
                                 $currentEtapaIndex++;
                             } else {
-                                Log::info("Etapa {$etapa->id} do lead {$lead->id} fora do horário permitido ({$horaInicio} - {$horaFim}).");
+                                Event::dispatch(new GenericAudit('cadence.outside_time_window', [
+                                    'lead_id' => $lead->id,
+                                    'etapa_id' => $etapa->id,
+                                    'message' => "Etapa {$etapa->id} do lead {$lead->id} fora do horário permitido ({$horaInicio} - {$horaFim}).",
+                                    'auditable_type' => get_class($lead),
+                                    'auditable_id' => $lead->id,
+                                ]));
                                 break;
                             }
                         }
@@ -135,11 +220,11 @@ class ProcessCadence extends Command
             })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
-                      ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
-                      ->where(function ($query) use ($now) {
-                          $query->whereNull('intervalo')
-                                ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY), INTERVAL TIME_TO_SEC(COALESCE(intervalo, "00:00:00")) SECOND) <= ?', [$now]);
-                      });
+                    ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
+                    ->where(function ($query) use ($now) {
+                        $query->whereNull('intervalo')
+                            ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY), INTERVAL TIME_TO_SEC(COALESCE(intervalo, "00:00:00")) SECOND) <= ?', [$now]);
+                    });
             })
             ->with(['cadencia.etapas' => function ($query) {
                 $query->where('active', true)->orderBy('id');
@@ -156,7 +241,12 @@ class ProcessCadence extends Command
             Carbon::createFromFormat('H:i:s', $time);
             return true;
         } catch (\Exception $e) {
-            Log::error("Formato de horário inválido: {$time}");
+            Event::dispatch(new GenericAudit('cadence.invalid_time_format', [
+                'time' => $time,
+                'message' => "Formato de horário inválido: {$time}",
+                'auditable_type' => System::class,
+                'auditable_id' => 0,
+            ]));
             return false;
         }
     }
@@ -166,12 +256,24 @@ class ProcessCadence extends Command
         $baseDate = $this->getBaseDate($lead, $etapa, $now);
         $dias = (int) ($etapa->dias ?? 0);
 
-        Log::info("Calculando data agendada para etapa {$etapa->id}: baseDate={$baseDate}, dias={$dias}, intervalo={$etapa->intervalo}, hora={$etapa->hora}");
+        Event::dispatch(new GenericAudit('cadence.calculate_scheduled_date', [
+            'lead_id' => $lead->id,
+            'etapa_id' => $etapa->id,
+            'message' => "Calculando data agendada para etapa {$etapa->id}: baseDate={$baseDate}, dias={$dias}, intervalo={$etapa->intervalo}, hora={$etapa->hora}",
+            'auditable_type' => get_class($lead),
+            'auditable_id' => $lead->id,
+        ]));
 
         $dataAgendada = $baseDate->copy()->addDays($dias);
 
         if ($etapa->imediat && $etapa->id === $lead->cadencia->etapas->first()->id) {
-            Log::info("Etapa {$etapa->id} é imediata, usando hora definida ou atual");
+            Event::dispatch(new GenericAudit('cadence.immediate_stage', [
+                'lead_id' => $lead->id,
+                'etapa_id' => $etapa->id,
+                'message' => "Etapa {$etapa->id} é imediata, usando hora definida ou atual",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
             return $dataAgendada->setTimeFromTimeString($etapa->hora ?: $baseDate->toTimeString());
         }
 
@@ -179,18 +281,35 @@ class ProcessCadence extends Command
             try {
                 $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
                 $dataAgendada->addHours($intervalo->hour)
-                             ->addMinutes($intervalo->minute)
-                             ->addSeconds($intervalo->second);
-                Log::info("Intervalo aplicado: {$etapa->intervalo}, nova data={$dataAgendada}");
+                    ->addMinutes($intervalo->minute)
+                    ->addSeconds($intervalo->second);
+                Event::dispatch(new GenericAudit('cadence.interval_applied', [
+                    'lead_id' => $lead->id,
+                    'etapa_id' => $etapa->id,
+                    'message' => "Intervalo aplicado: {$etapa->intervalo}, nova data={$dataAgendada}",
+                    'auditable_type' => get_class($lead),
+                    'auditable_id' => $lead->id,
+                ]));
             } catch (\Exception $e) {
-                Log::error("Erro ao processar intervalo da etapa {$etapa->id}: {$e->getMessage()}");
+                Event::dispatch(new GenericAudit('cadence.interval_error', [
+                    'lead_id' => $lead->id,
+                    'etapa_id' => $etapa->id,
+                    'message' => "Erro ao processar intervalo da etapa {$etapa->id}: {$e->getMessage()}",
+                    'auditable_type' => get_class($lead),
+                    'auditable_id' => $lead->id,
+                ]));
             }
         }
 
-        // Se hora estiver definida, usa-a; caso contrário, mantém o horário da data agendada
         if ($this->isValidTime($etapa->hora)) {
             $dataAgendada->setTimeFromTimeString($etapa->hora);
-            Log::info("Hora definida aplicada: {$etapa->hora}, data final={$dataAgendada}");
+            Event::dispatch(new GenericAudit('cadence.hour_applied', [
+                'lead_id' => $lead->id,
+                'etapa_id' => $etapa->id,
+                'message' => "Hora definida aplicada: {$etapa->hora}, data final={$dataAgendada}",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
         }
 
         return $dataAgendada;
@@ -206,7 +325,13 @@ class ProcessCadence extends Command
             ->first();
 
         $baseDate = $lastMessage ? Carbon::parse($lastMessage->enviado_em) : ($lead->created_at ?? $now);
-        Log::info("Base date para lead {$lead->id}, etapa {$etapa->id}: {$baseDate}");
+        Event::dispatch(new GenericAudit('cadence.base_date', [
+            'lead_id' => $lead->id,
+            'etapa_id' => $etapa->id,
+            'message' => "Base date para lead {$lead->id}, etapa {$etapa->id}: {$baseDate}",
+            'auditable_type' => get_class($lead),
+            'auditable_id' => $lead->id,
+        ]));
         return $baseDate;
     }
 
@@ -227,18 +352,35 @@ class ProcessCadence extends Command
         $cadencia = Cadencias::find($etapa->cadencia_id);
 
         if (!$cadencia) {
-            Log::error("Cadência não encontrada para a etapa {$etapa->id}");
+            Event::dispatch(new GenericAudit('cadence.missing_for_stage', [
+                'etapa_id' => $etapa->id,
+                'message' => "Cadência não encontrada para a etapa {$etapa->id}",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
             return;
         }
 
         $evolution = Evolution::find($cadencia->evolution_id);
 
         if ($evolution && $evolution->api_post && $evolution->apikey) {
-            Log::info("Processando etapa {$etapa->id} para lead {$lead->contact_name}");
+            Event::dispatch(new GenericAudit('cadence.processing_stage', [
+                'lead_id' => $lead->id,
+                'etapa_id' => $etapa->id,
+                'message' => "Processando etapa {$etapa->id} para lead {$lead->contact_name}",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
 
             $numeroWhatsapp = $this->isWhatsappNumber($lead->contact_number);
 
-            Log::info("Número formatado: {$numeroWhatsapp}");
+            Event::dispatch(new GenericAudit('cadence.formatted_number', [
+                'lead_id' => $lead->id,
+                'etapa_id' => $etapa->id,
+                'message' => "Número formatado: {$numeroWhatsapp}",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
 
             $maxAttempts = 3;
             $attempt = 1;
@@ -257,14 +399,33 @@ class ProcessCadence extends Command
                     $this->registrarEnvio($lead, $etapa);
                     $this->info("Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}");
 
-                    Log::info("Aguardando 5 segundos antes do próximo envio...");
-                    sleep(5);
+                    Event::dispatch(new GenericAudit('cadence.message_sent', [
+                        'lead_id' => $lead->id,
+                        'etapa_id' => $etapa->id,
+                        'message' => "Mensagem da etapa {$etapa->id} enviada para o lead {$lead->contact_name}",
+                        'auditable_type' => get_class($lead),
+                        'auditable_id' => $lead->id,
+                    ]));
 
+                    sleep(5);
                     return;
                 } catch (\Exception $e) {
-                    Log::error("Tentativa {$attempt} falhou para lead {$lead->contact_name}: " . $e->getMessage());
+                    Event::dispatch(new GenericAudit('cadence.send_failed', [
+                        'lead_id' => $lead->id,
+                        'etapa_id' => $etapa->id,
+                        'attempt' => $attempt,
+                        'message' => "Tentativa {$attempt} falhou para lead {$lead->contact_name}: {$e->getMessage()}",
+                        'auditable_type' => get_class($lead),
+                        'auditable_id' => $lead->id,
+                    ]));
                     if ($attempt === $maxAttempts) {
-                        Log::error("Falha definitiva ao enviar mensagem para lead {$lead->contact_name}");
+                        Event::dispatch(new GenericAudit('cadence.send_failed_final', [
+                            'lead_id' => $lead->id,
+                            'etapa_id' => $etapa->id,
+                            'message' => "Falha definitiva ao enviar mensagem para lead {$lead->contact_name}",
+                            'auditable_type' => get_class($lead),
+                            'auditable_id' => $lead->id,
+                        ]));
                         return;
                     }
                     sleep(5);
@@ -272,7 +433,13 @@ class ProcessCadence extends Command
                 }
             }
         } else {
-            Log::error("Caixa Evolution ou credenciais não encontradas para evolution_id: {$cadencia->evolution_id}");
+            Event::dispatch(new GenericAudit('cadence.missing_evolution', [
+                'etapa_id' => $etapa->id,
+                'evolution_id' => $cadencia->evolution_id,
+                'message' => "Caixa Evolution ou credenciais não encontradas para evolution_id: {$cadencia->evolution_id}",
+                'auditable_type' => get_class($lead),
+                'auditable_id' => $lead->id,
+            ]));
         }
     }
 
