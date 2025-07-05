@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Clients\BiUP;
 
 use App\Models\CadenceMessage;
 use App\Models\Cadencias;
@@ -16,7 +16,8 @@ use App\Services\ZohoCrmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
-use App\Helpers\NotificationHelper; // Importar o helper
+use App\Helpers\NotificationHelper;
+use App\Http\Controllers\Controller;
 
 class WebhookZohoController extends Controller
 {
@@ -85,7 +86,6 @@ class WebhookZohoController extends Controller
 
     public function createFromWebhook(Request $request)
     {
-        // Log detalhado do webhook
         Log::info('Webhook request Zoho / Bulkship', [
             'method' => $request->method(),
             'content' => $request->getContent(),
@@ -93,28 +93,23 @@ class WebhookZohoController extends Controller
             'id_card' => $request->id_card ?? 'Não fornecido'
         ]);
 
-        // Verifica se o método é POST e se há conteúdo
         if (!$request->isMethod('post') || !$request->getContent()) {
             Log::error('Nenhum dado recebido no webhook');
             return response('No data received', 400);
         }
 
-        // Verifica se o id_card está presente
         $idCard = $request->id_card ?? 'Não fornecido';
-
-        // Formata os números de telefone
         $contactNumber = $this->formatPhoneNumber($request->contact_number);
         $contactNumberEmpresa = $this->formatPhoneNumber($request->contact_number_empresa);
 
-        // Notificar se o número do lead não pôde ser formatado
         if ($contactNumber === 'Não fornecido' && !empty($request->contact_number)) {
             $user = $request->chatwoot_accoumts ? User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first() : null;
             if ($user) {
                 SystemNotification::create([
                     'user_id' => $user->id,
-                    'title'   => 'Falha ao Formatar Número do Lead',
-                    'message' => "Não foi possível formatar o número do lead com ID Card: {$idCard}. Nome do Lead:  {$request->contact_name}. Número fornecido: {$request->contact_number}.",
-                    'read'    => false
+                    'title' => 'Falha ao Formatar Número do Lead',
+                    'message' => "Não foi possível formatar o número do lead com ID Card: {$idCard}. Nome do Lead: {$request->contact_name}. Número fornecido: {$request->contact_number}.",
+                    'read' => false
                 ]);
                 Log::info("Notificação enviada para o usuário ID {$user->id} sobre falha na formatação do número do lead ID {$idCard}.");
             } else {
@@ -122,7 +117,6 @@ class WebhookZohoController extends Controller
             }
         }
 
-        // Obtém informações do vendedor, se fornecido
         $emailVendedor = 'Não fornecido';
         $nomeVendedor = 'Não fornecido';
         if ($request->id_vendedor && $request->id_vendedor !== 'Não fornecido') {
@@ -133,35 +127,58 @@ class WebhookZohoController extends Controller
             }
         }
 
-        /**
-         * INFO: Verifica se o lead já existe no SyncFlowLeads e no Chatwoot.
-         * Se existir, atualiza os dados; se não, cria um novo registro.
-         * Usando o $chatwootStatus para rastrear o status do contato no Chatwoot.
-         */
-        $syncEmp = SyncFlowLeads::where('id_card', $idCard)->first();
+        // Buscar lead no SyncFlowLeads por id_card ou contact_number
+        $syncEmp = null;
+        if ($idCard !== 'Não fornecido') {
+            $syncEmp = SyncFlowLeads::where('id_card', $idCard)->first();
+            Log::info("Busca no SyncFlowLeads por id_card {$idCard}: " . ($syncEmp ? 'Encontrado' : 'Não encontrado'));
+        }
+        if (!$syncEmp && $contactNumber !== 'Não fornecido') {
+            $syncEmp = SyncFlowLeads::where('contact_number', $contactNumber)->first();
+            Log::info("Busca no SyncFlowLeads por contact_number {$contactNumber}: " . ($syncEmp ? 'Encontrado' : 'Não encontrado'));
+        }
+
         $chatwootStatus = 'pending';
+        $contactId = $syncEmp ? $syncEmp->contact_id : null;
+        $identifier = $syncEmp ? $syncEmp->identifier : null;
 
         if ($contactNumber !== 'Não fornecido' && $request->chatwoot_accoumts) {
             $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
             if ($user && $user->token_acess) {
-                $contacts = $this->chatwootService->searchContatosApi(
-                    $contactNumber,
-                    $request->chatwoot_accoumts,
-                    $user->token_acess
-                );
-                // Log simplificado e seguro
+                // Gerar o identifier apenas se não existir
+                if (!$identifier && $idCard !== 'Não fornecido') {
+                    $identifier = $idCard . '_' . now()->timestamp;
+                    Log::info("Identifier gerado: {$identifier} para id_card {$idCard}");
+                }
+
+                // Buscar contato no Chatwoot, priorizando identifier
+                $contacts = [];
+                if ($identifier) {
+                    Log::info("Buscando contato no Chatwoot por identifier: {$identifier}, chatwoot_accoumts: {$request->chatwoot_accoumts}");
+                    $contacts = $this->chatwootService->searchContatosApi($identifier, $request->chatwoot_accoumts, $user->token_acess);
+                    Log::info("Resultado da busca por identifier {$identifier}: " . json_encode($contacts));
+                }
+                if (empty($contacts) && $contactNumber !== 'Não fornecido') {
+                    Log::info("Buscando contato no Chatwoot por phone_number: {$contactNumber}, chatwoot_accoumts: {$request->chatwoot_accoumts}");
+                    $contacts = $this->chatwootService->searchContatosApi($contactNumber, $request->chatwoot_accoumts, $user->token_acess);
+                    Log::info("Resultado da busca por phone_number {$contactNumber}: " . json_encode($contacts));
+                }
+
                 $logContacts = is_array($contacts) ? array_map(function ($contact) {
                     return [
                         'id' => $contact['id'] ?? 'N/A',
+                        'id_contact' => $contact['id_contact'] ?? 'N/A',
                         'name' => $contact['name'] ?? 'N/A',
                         'phone_number' => $contact['phone_number'] ?? 'N/A',
-                        'email' => $contact['email'] ?? 'N/A'
+                        'email' => $contact['email'] ?? 'N/A',
+                        'identifier' => $contact['identifier'] ?? 'N/A'
                     ];
                 }, $contacts) : [];
-                Log::info("Busca por {$contactNumber} retornou " . count($contacts) . " contatos para id_card {$request->id_card}: " . json_encode($logContacts));
+                Log::info("Busca por {$contactNumber} ou identifier {$identifier} retornou " . count($contacts) . " contatos para id_card {$idCard}: " . json_encode($logContacts));
 
-                //Notificar se o contato já existe no Chatwoot
                 if (is_array($contacts) && !empty($contacts)) {
+                    $contact = $contacts[0];
+                    Log::info("Contato selecionado para atualização: " . json_encode($contact));
                     SystemNotification::create([
                         'user_id' => $user->id,
                         'title' => 'Contato já existe no Chatwoot',
@@ -169,46 +186,66 @@ class WebhookZohoController extends Controller
                         'read' => false
                     ]);
                     Log::info("Notificação enviada para o usuário ID {$user->id} sobre contato existente no Chatwoot para id_card {$idCard}.");
-                }
 
-                try {
-                    if (is_array($contacts) && !empty($contacts)) {
-                        // Atualizar contato existente
-                        $contact = $contacts[0];
-                        $contactData = $this->chatwootService->updateContact(
-                            $request->chatwoot_accoumts,
-                            $user->token_acess,
-                            $contact['id_contact'],
-                            $request->contact_name ?? $contact['name'] ?? 'Não fornecido',
-                            $request->contact_email !== 'Não fornecido' ? $request->contact_email : null
-                        );
-                        if ($contactData) {
-                            Log::info("Contato atualizado no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contact['id']}");
-                            $chatwootStatus = 'success';
-                        } else {
-                            Log::error("Falha ao atualizar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contact['id']}");
-                            $chatwootStatus = 'failed';
-                        }
+                    // Usar id_contact se disponível, senão id
+                    $contactIdForUpdate = isset($contact['id_contact']) ? $contact['id_contact'] : $contact['id'];
+                    $contactData = $this->chatwootService->updateContact(
+                        $request->chatwoot_accoumts,
+                        $user->token_acess,
+                        $contactIdForUpdate,
+                        $request->contact_name ?? $contact['name'] ?? 'Não fornecido',
+                        $request->contact_email !== 'Não fornecido' ? $request->contact_email : null,
+                        $contact['identifier'] ?? $identifier
+                    );
+                    if ($contactData) {
+                        Log::info("Contato atualizado no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contactIdForUpdate}");
+                        $chatwootStatus = 'success';
+                        $contactId = $contactData['contact_id'] ?? $contactIdForUpdate;
+                        $identifier = $contactData['identifier'] ?? $identifier;
                     } else {
-                        // Criar novo contato
+                        Log::error("Falha ao atualizar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contactIdForUpdate}");
+                        $chatwootStatus = 'success'; // Considerar sucesso, pois o contato já existe
+                        $contactId = $contactIdForUpdate; // Usar o ID encontrado na busca
+                    }
+                } else {
+                    try {
                         $contactData = $this->chatwootService->createContact(
                             $request->chatwoot_accoumts,
                             $user->token_acess,
                             $request->contact_name ?? 'Não fornecido',
                             $contactNumber,
-                            $request->contact_email !== 'Não fornecido' ? $request->contact_email : null
+                            $request->contact_email !== 'Não fornecido' ? $request->contact_email : null,
+                            $identifier
                         );
                         if ($contactData) {
-                            Log::info("Contato criado no Chatwoot para id_card {$idCard}, número {$contactNumber}");
+                            Log::info("Contato criado no Chatwoot para id_card {$idCard}, número {$contactNumber}, identifier {$identifier}, contact_id: {$contactData['contact_id']}");
                             $chatwootStatus = 'success';
+                            $contactId = $contactData['contact_id'];
+                            $identifier = $contactData['identifier'] ?? $identifier;
                         } else {
-                            Log::error("Falha ao criar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}");
+                            throw new \Exception("Resposta vazia ao criar contato no Chatwoot");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Erro ao criar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: {$e->getMessage()}");
+                        if (strpos($e->getMessage(), '422') !== false && strpos($e->getMessage(), 'has already been taken') !== false) {
+                            Log::info("Contato já existe no Chatwoot. Tentando recuperar contato existente para id_card {$idCard}, número {$contactNumber}");
+                            $contacts = $this->chatwootService->searchContatosApi($contactNumber, $request->chatwoot_accoumts, $user->token_acess);
+                            Log::info("Resultado da busca de recuperação por phone_number {$contactNumber}: " . json_encode($contacts));
+                            if (is_array($contacts) && !empty($contacts)) {
+                                $contact = $contacts[0];
+                                $chatwootStatus = 'success';
+                                $contactId = isset($contact['id_contact']) ? $contact['id_contact'] : $contact['id'];
+                                $identifier = $contact['identifier'] ?? $identifier;
+                                Log::info("Contato recuperado com sucesso no Chatwoot para id_card {$idCard}, número {$contactNumber}, contact_id: {$contactId}");
+                            } else {
+                                Log::error("Falha ao recuperar contato existente no Chatwoot para id_card {$idCard}, número {$contactNumber}");
+                                $chatwootStatus = 'failed';
+                            }
+                        } else {
+                            Log::error("Falha ao criar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: {$e->getMessage()}");
                             $chatwootStatus = 'failed';
                         }
                     }
-                } catch (\Exception $e) {
-                    Log::error("Erro ao processar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: {$e->getMessage()}");
-                    $chatwootStatus = 'failed';
                 }
             } else {
                 Log::error("Usuário ou token não encontrado para chatwoot_accoumts: {$request->chatwoot_accoumts}, id_card {$idCard}");
@@ -219,9 +256,7 @@ class WebhookZohoController extends Controller
             $chatwootStatus = 'skipped';
         }
 
-        /**
-         * INFO: Atualiza ou cria o registro no SyncFlowLeads.
-         */
+        // Salvar ou atualizar o lead no SyncFlowLeads
         if ($syncEmp) {
             $oldEstagio = $syncEmp->estagio;
             $syncEmp->contact_name = $request->contact_name ?? $syncEmp->contact_name;
@@ -235,15 +270,26 @@ class WebhookZohoController extends Controller
             $syncEmp->nome_vendedor = $nomeVendedor;
             $syncEmp->id_vendedor = $request->id_vendedor ?? $syncEmp->id_vendedor;
             $syncEmp->chatwoot_status = $chatwootStatus;
+            $syncEmp->contact_id = $contactId;
+            $syncEmp->identifier = $identifier;
             $syncEmp->updated_at = now();
 
             if ($request->cadencia_id) {
-                $syncEmp->cadencia_id = $request->cadencia_id;
-                Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$syncEmp->id}, id_card {$idCard}");
+                $cadencia = Cadencias::find($request->cadencia_id);
+                if ($cadencia) {
+                    $syncEmp->cadencia_id = $request->cadencia_id;
+                    Log::info("Cadência ID {$request->cadencia_id} atribuída diretamente ao lead ID {$syncEmp->id}, id_card {$idCard}");
+                } else {
+                    Log::warning("Cadência ID {$request->cadencia_id} não encontrada no banco de dados para id_card {$idCard}. Cadência não atribuída.");
+                }
             }
 
-            $syncEmp->save();
-            Log::info("Lead existente atualizado com ID: {$syncEmp->id}, id_card {$idCard}, chatwoot_status: {$chatwootStatus}");
+            try {
+                $syncEmp->save();
+                Log::info("Lead existente atualizado com ID: {$syncEmp->id}, id_card {$idCard}, chatwoot_status: {$chatwootStatus}, contact_id: {$contactId}, identifier: {$identifier}");
+            } catch (\Exception $e) {
+                Log::error("Erro ao salvar lead existente no SyncFlowLeads para id_card {$idCard}: {$e->getMessage()}");
+            }
         } else {
             $syncEmp = new SyncFlowLeads();
             $syncEmp->id_card = $idCard;
@@ -258,19 +304,29 @@ class WebhookZohoController extends Controller
             $syncEmp->nome_vendedor = $nomeVendedor;
             $syncEmp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
             $syncEmp->chatwoot_status = $chatwootStatus;
+            $syncEmp->contact_id = $contactId;
+            $syncEmp->identifier = $identifier;
             $syncEmp->created_at = now();
 
             if ($request->cadencia_id) {
-                $syncEmp->cadencia_id = $request->cadencia_id;
-                Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead, id_card {$idCard}");
+                $cadencia = Cadencias::find($request->cadencia_id);
+                if ($cadencia) {
+                    $syncEmp->cadencia_id = $request->cadencia_id;
+                    Log::info("Cadência ID {$request->cadencia_id} atribuída ao novo lead, id_card {$idCard}");
+                } else {
+                    Log::warning("Cadência ID {$request->cadencia_id} não encontrada no banco de dados para id_card {$idCard}. Cadência não atribuída.");
+                }
             } else {
                 Log::info("Nenhum cadência_id recebido; cadência não atribuída ao novo lead, id_card {$idCard}");
             }
 
-            $syncEmp->save();
-            Log::info("Novo lead salvo com ID: {$syncEmp->id}, id_card {$idCard}, chatwoot_status: {$chatwootStatus}");
+            try {
+                $syncEmp->save();
+                Log::info("Novo lead salvo com ID: {$syncEmp->id}, id_card {$idCard}, chatwoot_status: {$chatwootStatus}, contact_id: {$contactId}, identifier: {$identifier}");
+            } catch (\Exception $e) {
+                Log::error("Erro ao salvar novo lead no SyncFlowLeads para id_card {$idCard}: {$e->getMessage()}");
+            }
 
-            // Validar ID antes de atualizar Status_WhatsApp
             try {
                 $leadExists = $this->zohoCrmService->checkLeadExists($idCard);
                 if ($leadExists) {
@@ -288,12 +344,8 @@ class WebhookZohoController extends Controller
             }
         }
 
-        /**
-         * INFO: Verifica se o lead tem uma conversa aberta no Chatwoot e atribui o agente usando credenciais do Evolution.
-         */
         if ($syncEmp && $contactNumber !== 'Não fornecido' && $syncEmp->cadencia_id) {
             try {
-                // Consultar a cadência associada ao lead
                 $cadencia = Cadencias::find($syncEmp->cadencia_id);
                 if (!$cadencia) {
                     Log::error("Cadência não encontrada para o lead", [
@@ -304,7 +356,6 @@ class WebhookZohoController extends Controller
                     return response('Webhook received successfully', 200);
                 }
 
-                // Obter as credenciais do Evolution
                 $evolution = Evolution::find($cadencia->evolution_id);
                 if (!$evolution || !$evolution->api_post || !$evolution->apikey) {
                     Log::error("Caixa Evolution ou credenciais não encontradas para evolution_id: {$cadencia->evolution_id}", [
@@ -314,26 +365,21 @@ class WebhookZohoController extends Controller
                     return response('Webhook received successfully', 200);
                 }
 
-                // Verificar se existe uma conversa aberta associada ao lead
                 $conversation = ChatwootConversation::where('sync_flow_lead_id', $syncEmp->id)
                     ->where('status', 'open')
                     ->first();
 
                 if ($conversation) {
-                    // Encontrar o agente associado
                     $chatWootAgent = ChatwootsAgents::where('email', $syncEmp->email_vendedor)
                         ->where('chatwoot_account_id', $evolution->api_post)
                         ->first();
 
                     if ($chatWootAgent) {
-                        // Verificar se o agente já foi atribuído
                         if (!$conversation->agent_assigned_once) {
-                            // Obter lista de agentes do Chatwoot usando credenciais do Evolution
                             $agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
                             $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
 
                             if ($matchingAgent) {
-                                // Atribuir o agente à conversa
                                 $this->chatwootService->assignAgentToConversation(
                                     $evolution->api_post,
                                     $evolution->apikey,
@@ -348,7 +394,6 @@ class WebhookZohoController extends Controller
                                     'evolution_id' => $cadencia->evolution_id
                                 ]);
 
-                                // Atualizar a flag agent_assigned_once
                                 $conversation->agent_assigned_once = true;
                                 $conversation->agent_id = $matchingAgent['agent_id'];
                                 $conversation->save();
@@ -399,21 +444,5 @@ class WebhookZohoController extends Controller
         }
 
         return response('Webhook received successfully', 200);
-    }
-
-    /**
-     * Registra o envio de uma mensagem para o lead na etapa especificada.
-     *
-     * @param $lead
-     * @param $etapa
-     * @return void
-     */
-    protected function registrarEnvio($lead, $etapa)
-    {
-        CadenceMessage::create([
-            'sync_flow_leads_id' => $lead->id,
-            'etapa_id' => $etapa->id,
-            'enviado_em' => now(),
-        ]);
     }
 }

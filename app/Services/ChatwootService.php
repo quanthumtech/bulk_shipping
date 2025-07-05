@@ -116,6 +116,7 @@ class ChatwootService
                     'id' => $contact['phone_number'],
                     'name' => $contact['name'] ?? $contact['phone_number'],
                     'id_contact' => $contact['id'] ?? null,
+                    'identifier' => $contact['identifier'] ?? null,
                 ];
             })->toArray();
         } catch (\Exception $e) {
@@ -300,7 +301,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato criado ou null em caso de erro
      */
-    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null)
+    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null, $identifier = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts";
         $headers = [
@@ -317,9 +318,13 @@ class ChatwootService
             $payload['email'] = $email;
         }
 
+        if ($identifier) {
+            $payload['identifier'] = $identifier;
+        }
+
         try {
             $response = Http::withHeaders($headers)
-                ->timeout(5) // Timeout de 5 segundos
+                ->timeout(5)
                 ->post($url, $payload);
 
             if (!$response->successful()) {
@@ -329,7 +334,11 @@ class ChatwootService
 
             $data = $response->json();
             Log::info("Contato criado com sucesso no Chatwoot para {$phoneNumber}: " . json_encode($data));
-            return $data['payload'] ?? null;
+            return [
+                'contact_id' => $data['payload']['id'] ?? null,
+                'identifier' => $data['payload']['identifier'] ?? $identifier,
+                'payload' => $data['payload']
+            ];
         } catch (\Exception $e) {
             Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
             return null;
@@ -346,7 +355,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato atualizado ou null em caso de erro
      */
-    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null)
+    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null, $identifier = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts/{$contactId}";
         $headers = [
@@ -362,9 +371,13 @@ class ChatwootService
             $payload['email'] = $email;
         }
 
+        if ($identifier) {
+            $payload['identifier'] = $identifier;
+        }
+
         try {
             $response = Http::withHeaders($headers)
-                ->timeout(5) // Timeout de 5 segundos
+                ->timeout(5)
                 ->put($url, $payload);
 
             if (!$response->successful()) {
@@ -374,7 +387,11 @@ class ChatwootService
 
             $data = $response->json();
             Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
-            return $data['payload'] ?? null;
+            return [
+                'contact_id' => $data['payload']['id'] ?? $contactId,
+                'identifier' => $data['payload']['identifier'] ?? $identifier,
+                'payload' => $data['payload']
+            ];
         } catch (\Exception $e) {
             Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
             return null;
