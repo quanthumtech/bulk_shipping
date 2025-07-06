@@ -385,38 +385,30 @@ class WebhookZohoController extends Controller
                     }
 
                     if ($chatWootAgent) {
-                        if (!$conversation->agent_assigned_once) {
-                            $agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
-                            $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
+                        $agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
+                        $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
 
-                            if ($matchingAgent) {
-                                $this->chatwootService->assignAgentToConversation(
-                                    $evolution->api_post,
-                                    $evolution->apikey,
-                                    $conversation->conversation_id,
-                                    $matchingAgent['agent_id']
-                                );
-                                Log::info('Agente atribuído à conversa pelo webhook Zoho', [
-                                    'conversation_id' => $conversation->conversation_id,
-                                    'agent_id' => $matchingAgent['agent_id'],
-                                    'lead_id' => $syncEmp->id,
-                                    'id_card' => $idCard,
-                                    'evolution_id' => $cadencia->evolution_id
-                                ]);
+                        if ($matchingAgent) {
+                            $this->chatwootService->assignAgentToConversation(
+                                $evolution->api_post,
+                                $evolution->apikey,
+                                $conversation->conversation_id,
+                                $matchingAgent['agent_id']
+                            );
+                            Log::info('Agente atribuído (ou reatribuído) à conversa pelo webhook Zoho', [
+                                'conversation_id' => $conversation->conversation_id,
+                                'agent_id' => $matchingAgent['agent_id'],
+                                'lead_id' => $syncEmp->id,
+                                'id_card' => $idCard,
+                                'evolution_id' => $cadencia->evolution_id
+                            ]);
 
-                                $conversation->agent_assigned_once = true;
-                                $conversation->agent_id = $matchingAgent['agent_id'];
-                                $conversation->save();
-                            } else {
-                                Log::warning('Agente não encontrado na lista de agentes do Chatwoot', [
-                                    'email_vendedor' => $syncEmp->email_vendedor,
-                                    'conversation_id' => $conversation->conversation_id,
-                                    'lead_id' => $syncEmp->id,
-                                    'evolution_id' => $cadencia->evolution_id
-                                ]);
-                            }
+                            $conversation->agent_assigned_once = true;
+                            $conversation->agent_id = $matchingAgent['agent_id'];
+                            $conversation->save();
                         } else {
-                            Log::info('Agente já foi atribuído anteriormente à conversa', [
+                            Log::warning('Agente não encontrado na lista de agentes do Chatwoot', [
+                                'email_vendedor' => $syncEmp->email_vendedor,
                                 'conversation_id' => $conversation->conversation_id,
                                 'lead_id' => $syncEmp->id,
                                 'evolution_id' => $cadencia->evolution_id
