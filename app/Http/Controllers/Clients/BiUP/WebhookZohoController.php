@@ -146,9 +146,13 @@ class WebhookZohoController extends Controller
             $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
             if ($user && $user->token_acess) {
                 // Gerar o identifier apenas se não existir
-                if (!$identifier && $idCard !== 'Não fornecido') {
-                    $identifier = $idCard . '_' . now()->timestamp;
-                    Log::info("Identifier gerado: {$identifier} para id_card {$idCard}");
+                if (!$identifier && $syncEmp && $syncEmp->id) {
+                    $identifier = $syncEmp->id . '_' . now()->timestamp;
+                    Log::info("Identifier gerado: {$identifier} para lead ID {$syncEmp->id}, id_card {$idCard}");
+                } elseif (!$identifier && $idCard !== 'Não fornecido') {
+                    // Caso não exista $syncEmp ainda (lead novo), usar fallback com hash do idCard
+                    $identifier = substr(md5($idCard), 0, 12) . '_' . now()->timestamp;
+                    Log::info("Identifier gerado (fallback): {$identifier} para id_card {$idCard}");
                 }
 
                 // Buscar contato no Chatwoot, priorizando identifier
