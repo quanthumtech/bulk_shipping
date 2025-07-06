@@ -370,9 +370,17 @@ class WebhookZohoController extends Controller
                     ->first();
 
                 if ($conversation) {
+                    // Tentativa 1
                     $chatWootAgent = ChatwootsAgents::where('email', $syncEmp->email_vendedor)
                         ->where('chatwoot_account_id', $evolution->api_post)
                         ->first();
+
+                    // Tentativa 2
+                    if (!$chatWootAgent && $emailVendedor && $emailVendedor !== 'Não fornecido') {
+                        $chatWootAgent = ChatwootsAgents::where('email', $emailVendedor)
+                            ->where('chatwoot_account_id', $evolution->api_post)
+                            ->first();
+                    }
 
                     if ($chatWootAgent) {
                         if (!$conversation->agent_assigned_once) {
