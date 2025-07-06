@@ -19,9 +19,9 @@ class CadenciaForm extends Form
 
     public $name;
 
-    public $hora_inicio;
+    public $hora_inicio = '08:00:00'; // Valor padrão
 
-    public $hora_fim;
+    public $hora_fim = '23:59:00'; // Valor padrão
 
     public $description;
 
@@ -41,8 +41,8 @@ class CadenciaForm extends Form
     {
         $this->cadencias             = $cadencias;
         $this->name                  = $cadencias->name;
-        $this->hora_inicio            = $cadencias->hora_inicio;
-        $this->hora_fim               = $cadencias->hora_fim;
+        $this->hora_inicio           = $cadencias->hora_inicio ?? '08:00:00';
+        $this->hora_fim              = $cadencias->hora_fim ?? '23:59:00';
         $this->description           = $cadencias->description;
         $this->stage                 = $cadencias->stage;
         $this->active                = (bool) $cadencias->active;
