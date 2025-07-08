@@ -187,6 +187,9 @@ class ChatwootService
             throw new \Exception('Failed to assign agent: ' . $response->body());
         }
 
+        Log::info("Agente {$agentId} atribuído à conversa {$conversationId} com sucesso.");
+        Log::info("Resposta da API: " . $response->body());
+
         return $response->json();
     }
 
