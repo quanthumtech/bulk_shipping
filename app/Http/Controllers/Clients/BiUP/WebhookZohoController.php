@@ -200,13 +200,13 @@ class WebhookZohoController extends Controller
                         $contactIdForUpdate,
                         $request->contact_name ?? $contact['name'] ?? 'Não fornecido',
                         $request->contact_email !== 'Não fornecido' ? $request->contact_email : null,
-                        $contact['identifier'] ?? $identifier
+                        $identifier ?? $contactNumber,
                     );
                     if ($contactData) {
                         Log::info("Contato atualizado no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contactIdForUpdate}");
                         $chatwootStatus = 'success';
                         $contactId = $contactData['contact_id'] ?? $contactIdForUpdate;
-                        $identifier = $contactData['identifier'] ?? $identifier;
+                        $identifier = $identifier ?? $contactNumber;
                     } else {
                         Log::error("Falha ao atualizar contato no Chatwoot para id_card {$idCard}, número {$contactNumber}: ID {$contactIdForUpdate}");
                         $chatwootStatus = 'success'; // Considerar sucesso, pois o contato já existe
