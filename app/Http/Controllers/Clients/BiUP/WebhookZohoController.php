@@ -403,7 +403,7 @@ class WebhookZohoController extends Controller
                         //$matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
 
                         $this->chatwootService->assignAgentToConversation(
-                            $evolution->api_post,
+                            $request->chatwoot_accoumts,
                             $evolution->apikey,
                             $conversation->conversation_id,
                             $chatWootAgent->agent_id
