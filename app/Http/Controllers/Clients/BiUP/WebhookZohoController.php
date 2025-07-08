@@ -396,6 +396,8 @@ class WebhookZohoController extends Controller
                         'agent_id' => $chatWootAgent->agent_id ?? 'N/A'
                     ]);
 
+                    Log::info("Dados para atribuição de agente: evolution_id: {$cadencia->evolution_id}, api_post: {$evolution->api_post}, apikey: {$evolution->apikey}, conversation_id: {$conversation->conversation_id}, agent_id: " . ($chatWootAgent->agent_id ?? 'N/A'));
+
                     if ($chatWootAgent && $chatWootAgent->agent_id) {
                         //$agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
                         //$matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
@@ -406,6 +408,7 @@ class WebhookZohoController extends Controller
                             $conversation->conversation_id,
                             $chatWootAgent->agent_id
                         );
+
                         Log::info('Agente atribuído (ou reatribuído) à conversa pelo webhook Zoho', [
                             'conversation_id' => $conversation->conversation_id,
                             'agent_id' =>  $chatWootAgent->agent_id,
