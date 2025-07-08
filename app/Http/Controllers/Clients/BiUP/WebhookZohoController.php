@@ -399,12 +399,13 @@ class WebhookZohoController extends Controller
                     Log::info("Dados para atribuição de agente: evolution_id: {$cadencia->evolution_id}, api_post: {$evolution->api_post}, apikey: {$evolution->apikey}, conversation_id: {$conversation->conversation_id}, agent_id: " . ($chatWootAgent->agent_id ?? 'N/A'));
 
                     if ($chatWootAgent && $chatWootAgent->agent_id) {
-                        //$agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
-                        //$matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
+
+                        $user = User::where('chatwoot_accoumts', $request->chatwoot_accoumts)->first();
+                        $apiToken = $user ? $user->token_acess : null;
 
                         $this->chatwootService->assignAgentToConversation(
                             $request->chatwoot_accoumts,
-                            $evolution->apikey,
+                            $apiToken,
                             $conversation->conversation_id,
                             $chatWootAgent->agent_id
                         );
