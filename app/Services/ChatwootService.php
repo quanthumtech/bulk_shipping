@@ -177,6 +177,8 @@ class ChatwootService
      */
     public function assignAgentToConversation($accountId, $apiToken, $conversationId, $agentId)
     {
+        Log::info("Atribuindo agente {$agentId} à conversa {$conversationId} na conta {$accountId}, com token {$apiToken}");
+
         $response = Http::withHeaders([
             'api_access_token' => $apiToken
         ])->post($this->apiBaseUrl . $accountId . '/conversations/' . $conversationId . '/assignments', [
