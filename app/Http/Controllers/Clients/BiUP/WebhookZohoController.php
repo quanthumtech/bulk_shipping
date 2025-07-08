@@ -375,8 +375,9 @@ class WebhookZohoController extends Controller
                     ->first();
 
                 if ($conversation) {
-                    // Tentativa 1 Agente
                     Log::info("Dados usados para buscar agente: email_vendedor: {$syncEmp->email_vendedor}, chatwoot_account_id: {$request->chatwoot_accoumts}");
+
+                    // Tentativa 1 Agente
                     $chatWootAgent = ChatwootsAgents::where('email', $syncEmp->email_vendedor)
                         ->where('chatwoot_account_id', $request->chatwoot_accoumts)
                         ->first();
@@ -389,36 +390,28 @@ class WebhookZohoController extends Controller
                             ->first();
                     }
 
-                    if ($chatWootAgent) {
-                        $agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
-                        $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
+                    if ($chatWootAgent && $chatWootAgent->agent_id) {
+                        //$agents = $this->chatwootService->getAgents($evolution->api_post, $evolution->apikey);
+                        //$matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
 
-                        if ($matchingAgent) {
-                            $this->chatwootService->assignAgentToConversation(
-                                $evolution->api_post,
-                                $evolution->apikey,
-                                $conversation->conversation_id,
-                                $matchingAgent['agent_id']
-                            );
-                            Log::info('Agente atribuído (ou reatribuído) à conversa pelo webhook Zoho', [
-                                'conversation_id' => $conversation->conversation_id,
-                                'agent_id' => $matchingAgent['agent_id'],
-                                'lead_id' => $syncEmp->id,
-                                'id_card' => $idCard,
-                                'evolution_id' => $cadencia->evolution_id
-                            ]);
+                        $this->chatwootService->assignAgentToConversation(
+                            $evolution->api_post,
+                            $evolution->apikey,
+                            $conversation->conversation_id,
+                            $chatWootAgent->agent_id
+                        );
+                        Log::info('Agente atribuído (ou reatribuído) à conversa pelo webhook Zoho', [
+                            'conversation_id' => $conversation->conversation_id,
+                            'agent_id' =>  $chatWootAgent->agent_id,
+                            'lead_id' => $syncEmp->id,
+                            'id_card' => $idCard,
+                            'evolution_id' => $cadencia->evolution_id
+                        ]);
 
-                            $conversation->agent_assigned_once = true;
-                            $conversation->agent_id = $matchingAgent['agent_id'];
-                            $conversation->save();
-                        } else {
-                            Log::warning('Agente não encontrado na lista de agentes do Chatwoot', [
-                                'email_vendedor' => $syncEmp->email_vendedor,
-                                'conversation_id' => $conversation->conversation_id,
-                                'lead_id' => $syncEmp->id,
-                                'evolution_id' => $cadencia->evolution_id
-                            ]);
-                        }
+                        $conversation->agent_assigned_once = true;
+                        $conversation->agent_id =  $chatWootAgent->agent_id;
+                        $conversation->save();
+
                     } else {
                         Log::warning('Agente Chatwoot não encontrado ou account_id não corresponde', [
                             'email_vendedor' => $syncEmp->email_vendedor,
