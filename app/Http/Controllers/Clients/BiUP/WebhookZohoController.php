@@ -149,10 +149,10 @@ class WebhookZohoController extends Controller
                 if (!$identifier && $syncEmp && $syncEmp->id) {
                     $identifier = $request->contact_number;
                     Log::info("Identifier gerado: {$identifier} para lead ID {$syncEmp->id}, id_card {$idCard}");
+
                 } elseif (!$identifier && $idCard !== 'Não fornecido') {
-                    // Caso não exista $syncEmp ainda (lead novo), gerar identifier curto baseado no número de telefone e timestamp
-                    $base = $contactNumber !== 'Não fornecido' ? $contactNumber : uniqid();
-                    $identifier = substr(md5($base), 0, 8) . '_' . substr(time(), -5);
+
+                    $identifier = $request->contact_number;
                     Log::info("Identifier gerado (fallback): {$identifier} para id_card {$idCard}");
                 }
 
