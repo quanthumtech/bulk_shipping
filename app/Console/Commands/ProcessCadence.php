@@ -44,14 +44,26 @@ class ProcessCadence extends Command
                             continue;
                         }
 
+                        if ($lead->hasCompletedCadence($lead->cadencia_id)) {
+                            Log::info("Cadência {$lead->cadencia_id} já concluída para o lead {$lead->id}. Pulando...");
+                            $lead->markCadenceCompleted($lead->cadencia_id);
+                            continue;
+                        }
+
                         if (!$this->isValidTime($lead->cadencia->hora_inicio) || !$this->isValidTime($lead->cadencia->hora_fim)) {
                             Log::warning("Horário inválido para a cadência do lead {$lead->id}. Pulando...");
                             continue;
                         }
 
-                        $etapas = $lead->cadencia->etapas;
-                        if ($etapas->isEmpty()) {
-                            Log::info("Nenhuma etapa ativa encontrada para a cadência {$lead->cadencia_id} do lead {$lead->id}. Pulando...");
+                        $etapas = $lead->cadencia->etapas->where('active', true);
+
+                        $etapasEnviadas = $etapas->filter(function ($etapa) use ($lead) {
+                            return $this->etapaEnviada($lead, $etapa);
+                        });
+
+                        if ($etapasEnviadas->count() === $etapas->count() && $etapas->count() > 0) {
+                            Log::info("Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Marcando como concluída.");
+                            $lead->markCadenceCompleted($lead->cadencia_id);
                             continue;
                         }
 
@@ -128,22 +140,25 @@ class ProcessCadence extends Command
 
     protected function hasPendingCadences(Carbon $now)
     {
+
         return SyncFlowLeads::whereNotNull('cadencia_id')
             ->where('situacao_contato', '!=', 'Contato Efetivo')
+            ->whereRaw('JSON_CONTAINS(completed_cadences, ?) = 0', [json_encode('cadencia_id')])
             ->whereHas('cadencia', function ($query) {
                 $query->where('active', true);
             })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
-                      ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
-                      ->where(function ($query) use ($now) {
-                          $query->whereNull('intervalo')
+                    ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
+                    ->where(function ($query) use ($now) {
+                        $query->whereNull('intervalo')
                                 ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY), INTERVAL TIME_TO_SEC(COALESCE(intervalo, "00:00:00")) SECOND) <= ?', [$now]);
-                      });
+                    });
             })
             ->with(['cadencia.etapas' => function ($query) {
                 $query->where('active', true)->orderBy('id');
             }]);
+
     }
 
     protected function isValidTime($time)

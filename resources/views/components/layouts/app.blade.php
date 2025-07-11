@@ -152,6 +152,11 @@
                             <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
                             <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
                         </x-mary-menu-sub>
+
+                        <x-mary-menu-sub title="Logs" icon="s-shield-check">
+                            <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-logs" />
+                        </x-mary-menu-sub>
+
                     @endif
                 @endif
                 <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="/faq-info" />

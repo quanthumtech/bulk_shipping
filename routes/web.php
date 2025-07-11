@@ -18,6 +18,7 @@ use App\Livewire\StatisticIndex;
 use App\Livewire\SyncFlowLeads;
 use App\Livewire\UserConfigIndex;
 use App\Livewire\UsersIndex;
+use App\Livewire\WebhookLogsIndex;
 use Illuminate\Support\Facades\Route;
 
 // Webhook Padrão Bulkship SyncFlow
@@ -110,5 +111,10 @@ Route::get('/notifications-index', NotificationsIndex::class)
 Route::get('/scrpits-index', ScriptsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('scripts.index');
+
+// Webhook Logs
+Route::get('/webhook-logs/{userId?}', WebhookLogsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('webhook-logs.index');
 
 require __DIR__.'/auth.php';

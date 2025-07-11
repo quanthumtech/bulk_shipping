@@ -32,6 +32,7 @@ use App\Models\ChatwootMessage;
 use App\Models\ChatwootsAgents;
 use App\Models\User;
 use App\Services\ChatwootService;
+use App\Services\WebhookLogService;
 use App\Services\ZohoCrmService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -40,11 +41,16 @@ class WebhookChatWootController extends Controller
 {
     protected $chatwootServices;
     protected $zohoCrmService;
+    protected $webhookLogService;
 
-    public function __construct(ChatwootService $chatwootService, ZohoCrmService $zohoCrmService)
-    {
+    public function __construct(
+        ChatwootService $chatwootService,
+        ZohoCrmService $zohoCrmService,
+        WebhookLogService $webhookLogService
+    ) {
         $this->chatwootServices = $chatwootService;
         $this->zohoCrmService = $zohoCrmService;
+        $this->webhookLogService = $webhookLogService;
     }
 
     public function handleWebhook(Request $request)
@@ -53,7 +59,9 @@ class WebhookChatWootController extends Controller
             $payload = $request->all();
 
             // Registrar o webhook recebido
-            Log::info('Chatwoot Webhook Chatwoot / Bulkship', ['payload' => $payload]);
+            $this->webhookLogService->info('Chatwoot Webhook Chatwoot / Bulkship', [
+                'payload' => $payload,
+            ], $payload['account']['id'] ?? null, null, 'chatwoot');
 
             // Verifica se é um evento suportado
             if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created', 'conversation_status_updated'])) {
