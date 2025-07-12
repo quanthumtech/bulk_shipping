@@ -8,11 +8,19 @@ use App\Models\Versions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Services\WebhookLogService;
 
 class ChatwootService
 {
-
     public $apiBaseUrl = 'https://chatwoot.plataformamundo.com.br/api/v1/accounts/';
+
+    protected $webhookLogService;
+
+    public function __construct(
+        WebhookLogService $webhookLogService
+    ) {
+        $this->webhookLogService = $webhookLogService;
+    }
 
     /**
      * Obtém os contatos da conta da
@@ -360,7 +368,6 @@ class ChatwootService
                 'exception' => [
                     'message' => $e->getMessage(),
                     'code' => $e->getCode(),
-                    'trace' => array_slice($e->getTrace(), 0, 5),
                 ],
             ], $accountId, null, 'zoho');
             return null;
@@ -431,7 +438,6 @@ class ChatwootService
                 'exception' => [
                     'message' => $e->getMessage(),
                     'code' => $e->getCode(),
-                    'trace' => array_slice($e->getTrace(), 0, 5),
                 ],
             ], $accountId, null, 'zoho');
             return null;
