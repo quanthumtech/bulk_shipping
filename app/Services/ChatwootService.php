@@ -340,8 +340,27 @@ class ChatwootService
                 'identifier' => $data['payload']['identifier'],
                 'payload' => $data['payload']
             ];
+
+            // Log the successful creation
+            $this->webhookLogService->info("Contato criado com sucesso", [
+                'phone_number' => $phoneNumber,
+                'name' => $name,
+                'email' => $email,
+                'identifier' => $identifier,
+            ], $accountId, null, 'zoho');
         } catch (\Exception $e) {
             Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
+             $this->webhookLogService->info("Erro ao Criar o contato", [
+                'phone_number' => $phoneNumber,
+                'name' => $name,
+                'email' => $email,
+                'identifier' => $identifier,
+                'exception' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'trace' => array_slice($e->getTrace(), 0, 5),
+                ],
+            ], $accountId, null, 'zoho');
             return null;
         }
     }
@@ -384,6 +403,14 @@ class ChatwootService
 
             $data = $response->json();
             Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
+
+            // Log the successful update
+            $this->webhookLogService->info("Contato atualizado com sucesso", [
+                'contact_id' => $contactId,
+                'name' => $name,
+                'email' => $email,
+                'identifier' => $identifier,
+            ], $accountId, null, 'zoho');
             return [
                 'contact_id' => $data['payload']['id'] ?? $contactId,
                 'identifier' => $data['payload']['identifier'],
@@ -391,6 +418,17 @@ class ChatwootService
             ];
         } catch (\Exception $e) {
             Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
+            $this->webhookLogService->info("Erro ao Atualizar o contato", [
+                'contact_id' => $contactId,
+                'name' => $name,
+                'email' => $email,
+                'identifier' => $identifier,
+                'exception' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'trace' => array_slice($e->getTrace(), 0, 5),
+                ],
+            ], $accountId, null, 'zoho');
             return null;
         }
     }
