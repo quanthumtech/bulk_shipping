@@ -9,6 +9,7 @@ use App\Models\SystemNotification;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
+use Illuminate\Support\Facades\Log;
 
 class SyncFlowLeads extends Component
 {
@@ -117,6 +118,7 @@ class SyncFlowLeads extends Component
             $this->cadenceModal = false;
         } catch (\Exception $e) {
             $this->error('Erro ao salvar a Cadência.', position: 'toast-top');
+            Log::error('Erro ao salvar a Cadência' . $e->getMessage());
         }
     }
 

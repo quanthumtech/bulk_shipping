@@ -31,8 +31,8 @@ class SyncFlowLeadsForm extends Form
 
     protected $rules = [
         'contact_name'             => 'required|string',
-        'contact_number'           => 'required|string',
-        'contact_number_empresa'   => 'string',
+        'contact_number'           => 'required',
+        'contact_number_empresa'   => 'nullable',
         'contact_email'            => 'string',
         'estagio'                  => 'string',
     ];
