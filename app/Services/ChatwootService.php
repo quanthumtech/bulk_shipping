@@ -350,7 +350,7 @@ class ChatwootService
             ], $accountId, null, 'zoho');
         } catch (\Exception $e) {
             Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
-             $this->webhookLogService->info("Erro ao Criar o contato", [
+             $this->webhookLogService->error("Erro ao Criar o contato", [
                 'phone_number' => $phoneNumber,
                 'name' => $name,
                 'email' => $email,
@@ -418,7 +418,7 @@ class ChatwootService
             ];
         } catch (\Exception $e) {
             Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
-            $this->webhookLogService->info("Erro ao Atualizar o contato", [
+            $this->webhookLogService->error("Erro ao Atualizar o contato", [
                 'contact_id' => $contactId,
                 'name' => $name,
                 'email' => $email,
