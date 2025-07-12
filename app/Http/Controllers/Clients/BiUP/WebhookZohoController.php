@@ -91,11 +91,14 @@ class WebhookZohoController extends Controller
                 $this->webhookLogService->info('Notificação de falha no formato do número enviada ao usuário', [
                     'user_id' => $user->id,
                     'id_card' => $idCard,
+                    'contact_number' => $request->contact_number,
+                    'contact_name' => $request->contact_name,
                 ], $chatwootAccountId, $userId, 'zoho');
             } else {
                 $this->webhookLogService->warning("Nenhum usuário encontrado para chatwoot_accoumts: {$chatwootAccountId}", [
                     'id_card' => $idCard,
                     'contact_number' => $request->contact_number,
+                    'contact_name' => $request->contact_name,
                 ], $chatwootAccountId, null, 'zoho');
             }
         }
@@ -127,6 +130,7 @@ class WebhookZohoController extends Controller
             $this->webhookLogService->info("Busca no SyncFlowLeads por id_card: " . ($syncEmp ? 'Encontrado' : 'Não encontrado'), [
                 'id_card' => $idCard,
                 'contact_number' => $contactNumber,
+                'contact_name' => $request->contact_name,
                 'lead_id' => $syncEmp?->id,
             ], $chatwootAccountId, $userId, 'zoho');
         }
@@ -134,6 +138,7 @@ class WebhookZohoController extends Controller
             $syncEmp = SyncFlowLeads::where('contact_number', $contactNumber)->first();
             $this->webhookLogService->info("Busca no SyncFlowLeads por contact_number: " . ($syncEmp ? 'Encontrado' : 'Não encontrado'), [
                 'contact_number' => $contactNumber,
+                'contact_name' => $request->contact_name,
                 'id_card' => $idCard,
                 'lead_id' => $syncEmp?->id,
             ], $chatwootAccountId, $userId, 'zoho');
