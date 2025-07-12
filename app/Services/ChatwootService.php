@@ -323,10 +323,6 @@ class ChatwootService
             $payload['email'] = $email;
         }
 
-        if ($identifier) {
-            $payload['identifier'] = $identifier;
-        }
-
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(5)
@@ -341,7 +337,7 @@ class ChatwootService
             Log::info("Contato criado com sucesso no Chatwoot para {$phoneNumber}: " . json_encode($data));
             return [
                 'contact_id' => $data['payload']['id'] ?? null,
-                'identifier' => $data['payload']['identifier'] ?? $identifier,
+                'identifier' => $data['payload']['identifier'],
                 'payload' => $data['payload']
             ];
         } catch (\Exception $e) {
@@ -376,10 +372,6 @@ class ChatwootService
             $payload['email'] = $email;
         }
 
-        if ($identifier) {
-            $payload['identifier'] = $identifier;
-        }
-
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(5)
@@ -394,7 +386,7 @@ class ChatwootService
             Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
             return [
                 'contact_id' => $data['payload']['id'] ?? $contactId,
-                'identifier' => $data['payload']['identifier'] ?? $identifier,
+                'identifier' => $data['payload']['identifier'],
                 'payload' => $data['payload']
             ];
         } catch (\Exception $e) {
