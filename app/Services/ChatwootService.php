@@ -306,7 +306,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato criado ou null em caso de erro
      */
-    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null, $identifier = null)
+    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts";
         $headers = [
@@ -375,7 +375,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato atualizado ou null em caso de erro
      */
-    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null, $identifier = null)
+    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts/{$contactId}";
         $headers = [
