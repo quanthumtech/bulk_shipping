@@ -13,10 +13,12 @@ class WebhookLog extends Model
         'message',
         'context',
         'chatwoot_account_id',
+        'archived',
     ];
 
     protected $casts = [
         'context' => 'array',
+        'archived' => 'boolean',
     ];
 
     /**
