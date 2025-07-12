@@ -19,7 +19,9 @@ use App\Livewire\SyncFlowLeads;
 use App\Livewire\UserConfigIndex;
 use App\Livewire\UsersIndex;
 use App\Livewire\WebhookLogsIndex;
+use App\Livewire\WebhookTypeIndex;
 use Illuminate\Support\Facades\Route;
+use App\Livewire\ProcessLogsIndex;
 
 // Webhook Padrão Bulkship SyncFlow
 Route::post('/webhook-bulkship-syncflow', [CreateFromWebhookSyncFlowController::class, 'createFromWebhookSyncFlow']);
@@ -112,9 +114,19 @@ Route::get('/scrpits-index', ScriptsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('scripts.index');
 
+// Webhook Types Selection
+Route::get('/webhook-types', WebhookTypeIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('webhook-types.index');
+
 // Webhook Logs
 Route::get('/webhook-logs/{userId?}', WebhookLogsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('webhook-logs.index');
+
+// System Logs
+Route::get('/processos-logs', ProcessLogsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('processos-logs.index');
 
 require __DIR__.'/auth.php';

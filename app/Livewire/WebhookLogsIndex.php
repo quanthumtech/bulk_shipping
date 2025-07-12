@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class WebhookLogsIndex extends Component
 {
@@ -20,6 +21,9 @@ class WebhookLogsIndex extends Component
     public string $search = '';
     public string $typeFilter = '';
     public string $webhookTypeFilter = '';
+    public ?string $startDate = null;
+    public ?string $endDate = null;
+    public ?string $dataNow = null;
     public int $perPage = 10;
     public ?int $selectedLogId = null;
     public bool $showDrawer = false;
@@ -27,9 +31,10 @@ class WebhookLogsIndex extends Component
     public bool $showArchived = false;
     public bool $showFilterDrawer = false;
 
-    public function mount($userId = null)
+    public function mount($userId = null, $webhookType = null)
     {
         $this->userId = $userId;
+        $this->webhookTypeFilter = $webhookType ?? '';
         $this->selected = [];
         if ($this->userId && !User::find($this->userId)) {
             $this->error('Usuário não encontrado.', position: 'toast-top');
@@ -64,6 +69,9 @@ class WebhookLogsIndex extends Component
         $this->search = '';
         $this->typeFilter = '';
         $this->webhookTypeFilter = '';
+        $this->startDate = null;
+        $this->endDate = null;
+        $this->dataNow = null;
         $this->showArchived = false;
         $this->resetPage();
         $this->success('Filtros resetados!', position: 'toast-top');
@@ -71,16 +79,20 @@ class WebhookLogsIndex extends Component
 
     public function applyFilters()
     {
+        $this->validate([
+            'startDate' => 'nullable|date',
+            'endDate' => 'nullable|date|after_or_equal:startDate',
+            'dataNow' => 'nullable|date',
+        ]);
+
+        if ($this->dataNow && ($this->startDate || $this->endDate)) {
+            $this->error('Por favor, use apenas "Data do Log" ou "Data Inicial/Final", não ambos.', position: 'toast-top');
+            return;
+        }
+
         $this->resetPage();
         $this->showFilterDrawer = false;
         $this->success('Filtros aplicados!', position: 'toast-top');
-    }
-
-    public function selectWebhookType(string $webhookType)
-    {
-        $this->webhookTypeFilter = $webhookType;
-        $this->resetPage();
-        Log::info('Webhook type selected', ['webhook_type' => $webhookType]);
     }
 
     public function deleteLog(int $id)
@@ -125,6 +137,7 @@ class WebhookLogsIndex extends Component
 
     public function exportSelected()
     {
+        Log::info('exportSelected called', ['selected' => $this->selected]);
         if (empty($this->selected)) {
             $this->error('Nenhum log selecionado.', position: 'toast-top');
             return;
@@ -155,6 +168,7 @@ class WebhookLogsIndex extends Component
 
     public function updatedSelected($value)
     {
+        Log::info('Selected rows updated', ['selected' => $this->selected, 'value' => $value]);
         $this->dispatch('refresh-component');
     }
 
@@ -174,6 +188,21 @@ class WebhookLogsIndex extends Component
     }
 
     public function updatedWebhookTypeFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStartDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedEndDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedDataNow()
     {
         $this->resetPage();
     }
@@ -205,6 +234,15 @@ class WebhookLogsIndex extends Component
             ->when($this->search, fn($q) => $q->where('message', 'like', '%' . $this->search . '%'))
             ->when($this->typeFilter, fn($q) => $q->where('type', $this->typeFilter))
             ->when($this->webhookTypeFilter, fn($q) => $q->where('webhook_type', $this->webhookTypeFilter))
+            ->when($this->dataNow, function ($q) {
+                $dateTime = Carbon::parse($this->dataNow, 'America/Sao_Paulo')->setTimezone('UTC');
+                return $q->whereBetween('created_at', [
+                    $dateTime->copy()->subMinute(),
+                    $dateTime->copy()->addMinute(),
+                ]);
+            })
+            ->when(!$this->dataNow && $this->startDate, fn($q) => $q->whereDate('created_at', '>=', Carbon::parse($this->startDate)->startOfDay()->setTimezone('UTC')))
+            ->when(!$this->dataNow && $this->endDate, fn($q) => $q->whereDate('created_at', '<=', Carbon::parse($this->endDate)->endOfDay()->setTimezone('UTC')))
             ->when(!$this->showArchived, fn($q) => $q->where('archived', false))
             ->orderBy('created_at', 'desc');
 

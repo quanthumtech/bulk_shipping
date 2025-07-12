@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\ChatwootService;
+use App\Services\SystemLogService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
         // WebhookLogService
         $this->app->singleton('WebhookLogService', function ($app) {
             return new \App\Services\WebhookLogService();
+        });
+
+        // SystemLogService
+        $this->app->singleton(SystemLogService::class, function ($app) {
+            return new SystemLogService();
         });
     }
 

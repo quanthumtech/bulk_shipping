@@ -154,7 +154,8 @@
                         </x-mary-menu-sub>
 
                         <x-mary-menu-sub title="Logs" icon="s-shield-check">
-                            <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-logs" />
+                            <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-types" />
+                            <x-mary-menu-item title="Logs de Processos" icon="o-document-text" link="/processos-logs" />
                         </x-mary-menu-sub>
 
                     @endif
