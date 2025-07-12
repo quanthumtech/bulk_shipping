@@ -149,22 +149,63 @@ class WebhookZohoController extends Controller
 
         // Processar contato no Chatwoot
         if ($contactNumber !== 'Não fornecido' && $chatwootAccountId && $user && $user->token_acess) {
-            // Buscar contato no Chatwoot por contact_number
-            $contacts = $this->chatwootService->searchContatosApi($contactNumber, $chatwootAccountId, $user->token_acess);
-            $this->webhookLogService->info("Busca por contact_number {$contactNumber} no Chatwoot", [
-                'contact_number' => $contactNumber,
-                'contacts_found' => count($contacts),
-                'contacts' => array_map(function ($contact) {
-                    return [
-                        'id' => $contact['id'] ?? 'N/A',
-                        'id_contact' => $contact['id_contact'] ?? 'N/A',
-                        'name' => $contact['name'] ?? 'N/A',
-                        'phone_number' => $contact['phone_number'] ?? 'N/A',
-                        'email' => $contact['email'] ?? 'N/A',
-                    ];
-                }, $contacts),
-            ], $chatwootAccountId, $userId, 'zoho');
+            // Buscar contato no Chatwoot por contact_email e contact_number
+            $contacts = [];
 
+            // Checar por email se fornecido e válido
+            if (!empty($request->contact_email) && $request->contact_email !== 'Não fornecido') {
+                $emailContacts = $this->chatwootService->searchContatosApi($request->contact_email, $chatwootAccountId, $user->token_acess);
+                $this->webhookLogService->info("Busca por email {$request->contact_email} no Chatwoot", [
+                    'contact_email' => $request->contact_email,
+                    'contacts_found' => count($emailContacts),
+                    'contacts' => array_map(function ($contact) {
+                        return [
+                            'id' => $contact['id'] ?? 'N/A',
+                            'id_contact' => $contact['id_contact'] ?? 'N/A',
+                            'name' => $contact['name'] ?? 'N/A',
+                            'phone_number' => $contact['phone_number'] ?? 'N/A',
+                            'email' => $contact['email'] ?? 'N/A',
+                        ];
+                    }, $emailContacts),
+                ], $chatwootAccountId, $userId, 'zoho');
+                $contacts = array_merge($contacts, $emailContacts);
+            }
+
+            // Checar por número se fornecido e válido
+            if (!empty($contactNumber) && $contactNumber !== 'Não fornecido') {
+                $numberContacts = $this->chatwootService->searchContatosApi($contactNumber, $chatwootAccountId, $user->token_acess);
+                $this->webhookLogService->info("Busca por contact_number {$contactNumber} no Chatwoot", [
+                    'contact_number' => $contactNumber,
+                    'contacts_found' => count($numberContacts),
+                    'contacts' => array_map(function ($contact) {
+                        return [
+                            'id' => $contact['id'] ?? 'N/A',
+                            'id_contact' => $contact['id_contact'] ?? 'N/A',
+                            'name' => $contact['name'] ?? 'N/A',
+                            'phone_number' => $contact['phone_number'] ?? 'N/A',
+                            'email' => $contact['email'] ?? 'N/A',
+                        ];
+                    }, $numberContacts),
+                ], $chatwootAccountId, $userId, 'zoho');
+                // Evitar duplicidade de contatos
+                foreach ($numberContacts as $nc) {
+                    $alreadyExists = false;
+                    foreach ($contacts as $ec) {
+                        if (
+                            (!empty($nc['id']) && $nc['id'] === ($ec['id'] ?? null)) ||
+                            (!empty($nc['id_contact']) && $nc['id_contact'] === ($ec['id_contact'] ?? null))
+                        ) {
+                            $alreadyExists = true;
+                            break;
+                        }
+                    }
+                    if (!$alreadyExists) {
+                        $contacts[] = $nc;
+                    }
+                }
+            }
+            
+            
             if (is_array($contacts) && !empty($contacts)) {
                 $contact = $contacts[0];
                 $contactIdForUpdate = $contact['id_contact'] ?? $contact['id'];
