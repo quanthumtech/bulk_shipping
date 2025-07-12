@@ -291,7 +291,7 @@ class WebhookZohoController extends Controller
             $syncEmp->id_vendedor = $request->id_vendedor ?? $syncEmp->id_vendedor;
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
-            $syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
+            //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->updated_at = now();
 
             if ($request->cadencia_id) {
@@ -344,7 +344,7 @@ class WebhookZohoController extends Controller
             $syncEmp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
-            $syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
+            //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->completed_cadences = '0';
             $syncEmp->created_at = now();
 
