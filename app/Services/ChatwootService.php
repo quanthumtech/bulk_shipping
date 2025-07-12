@@ -14,14 +14,6 @@ class ChatwootService
 {
     public $apiBaseUrl = 'https://chatwoot.plataformamundo.com.br/api/v1/accounts/';
 
-    protected $webhookLogService;
-
-    public function __construct(
-        WebhookLogService $webhookLogService
-    ) {
-        $this->webhookLogService = $webhookLogService;
-    }
-
     /**
      * Obtém os contatos da conta da
      * empresa do uauário.
@@ -345,6 +337,9 @@ class ChatwootService
             Log::info("Contato criado com sucesso no Chatwoot para {$phoneNumber}: " . json_encode($data));
             $identifier = $data['payload']['identifier'] ?? null;
 
+            // Ensure webhookLogService is available
+            $this->webhookLogService = app(WebhookLogService::class);
+
             // Log the successful creation
             $this->webhookLogService->info("Contato criado com sucesso", [
                 'phone_number' => $phoneNumber,
@@ -360,7 +355,11 @@ class ChatwootService
             ];
         } catch (\Exception $e) {
             Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
-             $this->webhookLogService->error("Erro ao Criar o contato", [
+            
+            // Ensure webhookLogService is available
+            $this->webhookLogService = app(WebhookLogService::class);
+
+            $this->webhookLogService->error("Erro ao Criar o contato", [
                 'phone_number' => $phoneNumber,
                 'name' => $name,
                 'email' => $email,
@@ -416,6 +415,10 @@ class ChatwootService
             // Define identifier before using it
             $identifier = $data['payload']['identifier'] ?? null;
 
+            
+            // Ensure webhookLogService is available
+            $this->webhookLogService = app(WebhookLogService::class);
+
             // Log the successful update
             $this->webhookLogService->info("Contato atualizado com sucesso", [
                 'contact_id' => $contactId,
@@ -430,6 +433,10 @@ class ChatwootService
             ];
         } catch (\Exception $e) {
             Log::error("Erro ao atualizar contato no Chatwoot (ID: {$contactId}): {$e->getMessage()}");
+            
+            // Ensure webhookLogService is available
+            $this->webhookLogService = app(WebhookLogService::class);
+            
             $this->webhookLogService->error("Erro ao Atualizar o contato", [
                 'contact_id' => $contactId,
                 'name' => $name,
