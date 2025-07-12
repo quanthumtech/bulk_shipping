@@ -306,7 +306,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato criado ou null em caso de erro
      */
-    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null)
+    public function createContact($accountId, $apiToken, $name, $phoneNumber, $email = null, $userId = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts";
         $headers = [
@@ -346,7 +346,7 @@ class ChatwootService
                 'name' => $name,
                 'email' => $email,
                 'identifier' => $identifier,
-            ], $accountId, null, 'zoho');
+            ], $accountId, $userId, 'zoho');
 
             return [
                 'contact_id' => $data['payload']['id'] ?? null,
@@ -368,7 +368,7 @@ class ChatwootService
                     'message' => $e->getMessage(),
                     'code' => $e->getCode(),
                 ],
-            ], $accountId, null, 'zoho');
+            ], $accountId, $userId, 'zoho');
             return null;
         }
     }
@@ -383,7 +383,7 @@ class ChatwootService
      * @param string|null $email Email do contato (opcional)
      * @return array|null Dados do contato atualizado ou null em caso de erro
      */
-    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null)
+    public function updateContact($accountId, $apiToken, $contactId, $name, $email = null, $userId = null)
     {
         $url = "{$this->apiBaseUrl}{$accountId}/contacts/{$contactId}";
         $headers = [
@@ -425,7 +425,7 @@ class ChatwootService
                 'name' => $name,
                 'email' => $email,
                 'identifier' => $identifier,
-            ], $accountId, null, 'zoho');
+            ], $accountId, $userId, 'zoho');
             return [
                 'contact_id' => $data['payload']['id'] ?? $contactId,
                 'identifier' => $identifier,
@@ -436,7 +436,7 @@ class ChatwootService
             
             // Ensure webhookLogService is available
             $this->webhookLogService = app(WebhookLogService::class);
-            
+
             $this->webhookLogService->error("Erro ao Atualizar o contato", [
                 'contact_id' => $contactId,
                 'name' => $name,
@@ -446,7 +446,7 @@ class ChatwootService
                     'message' => $e->getMessage(),
                     'code' => $e->getCode(),
                 ],
-            ], $accountId, null, 'zoho');
+            ], $accountId, $userId, 'zoho');
             return null;
         }
     }

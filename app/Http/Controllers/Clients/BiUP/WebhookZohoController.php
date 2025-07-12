@@ -221,7 +221,8 @@ class WebhookZohoController extends Controller
                     $user->token_acess,
                     $contactIdForUpdate,
                     $request->contact_name ?? $contact['name'] ?? 'Não fornecido',
-                    $request->contact_email !== 'Não fornecido' ? $request->contact_email : null
+                    $request->contact_email !== 'Não fornecido' ? $request->contact_email : null,
+                    $userId
                 );
 
                 if ($contactData) {
@@ -260,7 +261,8 @@ class WebhookZohoController extends Controller
                         $user->token_acess,
                         $request->contact_name ?? 'Não fornecido',
                         $contactNumber,
-                        $request->contact_email !== 'Não fornecido' ? $request->contact_email : null
+                        $request->contact_email !== 'Não fornecido' ? $request->contact_email : null,
+                        $userId
                     );
 
                     if ($contactData) {
