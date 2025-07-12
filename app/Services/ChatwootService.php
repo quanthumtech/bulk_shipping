@@ -335,11 +335,7 @@ class ChatwootService
 
             $data = $response->json();
             Log::info("Contato criado com sucesso no Chatwoot para {$phoneNumber}: " . json_encode($data));
-            return [
-                'contact_id' => $data['payload']['id'] ?? null,
-                'identifier' => $data['payload']['identifier'],
-                'payload' => $data['payload']
-            ];
+            $identifier = $data['payload']['identifier'] ?? null;
 
             // Log the successful creation
             $this->webhookLogService->info("Contato criado com sucesso", [
@@ -348,6 +344,12 @@ class ChatwootService
                 'email' => $email,
                 'identifier' => $identifier,
             ], $accountId, null, 'zoho');
+
+            return [
+                'contact_id' => $data['payload']['id'] ?? null,
+                'identifier' => $identifier,
+                'payload' => $data['payload']
+            ];
         } catch (\Exception $e) {
             Log::error("Erro ao criar contato no Chatwoot para {$phoneNumber}: {$e->getMessage()}");
              $this->webhookLogService->error("Erro ao Criar o contato", [
@@ -404,6 +406,9 @@ class ChatwootService
             $data = $response->json();
             Log::info("Contato atualizado com sucesso no Chatwoot (ID: {$contactId}): " . json_encode($data));
 
+            // Define identifier before using it
+            $identifier = $data['payload']['identifier'] ?? null;
+
             // Log the successful update
             $this->webhookLogService->info("Contato atualizado com sucesso", [
                 'contact_id' => $contactId,
@@ -413,7 +418,7 @@ class ChatwootService
             ], $accountId, null, 'zoho');
             return [
                 'contact_id' => $data['payload']['id'] ?? $contactId,
-                'identifier' => $data['payload']['identifier'],
+                'identifier' => $identifier,
                 'payload' => $data['payload']
             ];
         } catch (\Exception $e) {
