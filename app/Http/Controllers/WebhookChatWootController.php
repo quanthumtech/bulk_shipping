@@ -168,6 +168,16 @@ class WebhookChatWootController extends Controller
                     $matchingAgent = collect($agents)->firstWhere('email', $lead->email_vendedor);
                 }
 
+                // Se não encontrar o agente, tenta buscar pelo syncEmp
+                if (!$matchingAgent && isset($syncEmp)) {
+                    $fallbackAgent = ChatwootsAgents::where('email', $syncEmp->email_vendedor)
+                        ->where('chatwoot_account_id', $accountId)
+                        ->first();
+                    if ($fallbackAgent) {
+                        $matchingAgent = collect($agents)->firstWhere('email', $syncEmp->email_vendedor);
+                    }
+                }
+
                 // Atribuir agente apenas se não foi atribuído antes
                 if ($matchingAgent && $apiToken && !$agentAssignedOnce) {
                     $this->chatwootServices->assignAgentToConversation($accountId, $apiToken, $conversationId, $matchingAgent['agent_id']);
