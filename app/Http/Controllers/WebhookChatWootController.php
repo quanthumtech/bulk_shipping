@@ -58,11 +58,7 @@ class WebhookChatWootController extends Controller
         try {
             $payload = $request->all();
 
-            // Registrar o webhook recebido
-            $user = User::where('chatwoot_accoumts', $accountId)->first();
-            $this->webhookLogService->info('Chatwoot Webhook Chatwoot / Bulkship', [
-                'payload' => $payload,
-            ], $payload['account']['id'] ?? null, $user->id, 'chatwoot');
+           
 
             // Verifica se é um evento suportado
             if (isset($payload['event']) && in_array($payload['event'], ['conversation_updated', 'message_created', 'conversation_status_updated'])) {
@@ -71,6 +67,12 @@ class WebhookChatWootController extends Controller
 
                 // Extrair o accountId
                 $accountId = $payload['account']['id'] ?? ($payload['messages'][0]['account_id'] ?? null);
+
+                // Registrar o webhook recebido
+                $user = User::where('chatwoot_accoumts', $accountId)->first();
+                $this->webhookLogService->info('Chatwoot Webhook Chatwoot / Bulkship', [
+                    'payload' => $payload,
+                ], $payload['account']['id'] ?? null, $user->id, 'chatwoot');
 
                 // Extrair informações de contato
                 $contactEmail = $payload['meta']['sender']['email'] ?? null;
