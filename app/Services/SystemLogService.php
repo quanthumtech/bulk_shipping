@@ -38,11 +38,6 @@ class SystemLogService
                 foreach ($logsToArchive as $log) {
                     $log->update(['archived' => true]);
                 }
-
-                Log::info('Arquivados logs antigos automaticamente', [
-                    'count' => $logsToArchive->count(),
-                    'log_ids' => $logsToArchive->pluck('id')->toArray(),
-                ]);
             }
 
             SystemLog::create([

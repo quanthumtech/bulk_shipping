@@ -24,10 +24,6 @@ class WebhookLogService
                     $log->update(['archived' => true]);
                 }
 
-                Log::info('Arquivados logs de webhook antigos automaticamente', [
-                    'count' => $logsToArchive->count(),
-                    'log_ids' => $logsToArchive->pluck('id')->toArray(),
-                ]);
             }
 
             WebhookLog::create([
