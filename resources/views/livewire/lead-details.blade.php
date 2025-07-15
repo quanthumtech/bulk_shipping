@@ -8,27 +8,32 @@
     <!-- Informações do Lead -->
     <div class="mt-4">
         <x-mary-card title="Informações do Lead" class="shadow-lg">
-            <table class="table w-full">
-                <tbody>
-                    <tr><th>Nome</th><td>{{ $lead->contact_name ?? 'Não informado' }}</td></tr>
-                    <tr><th>Número de Contato</th><td>{{ $lead->contact_number ?? 'Não informado' }}</td></tr>
-                    <tr><th>Número da Empresa</th><td>{{ $lead->contact_number_empresa ?? 'Não informado' }}</td></tr>
-                    <tr><th>Email</th><td>{{ $lead->contact_email ?? 'Não informado' }}</td></tr>
-                    <tr><th>Estágio</th><td>{{ $lead->estagio ?? 'Não informado' }}</td></tr>
-                    <tr><th>Situação de Contato</th><td>{{ $lead->situacao_contato ?? 'Não informado' }}</td></tr>
-                    <tr><th>Nome do Vendedor</th><td>{{ $lead->nome_vendedor ?? 'Não informado' }}</td></tr>
-                    <tr><th>Email do Vendedor</th><td>{{ $lead->email_vendedor ?? 'Não informado' }}</td></tr>
-                    <tr><th>ID Card</th><td>{{ $lead->id_card ?? 'Não informado' }}</td></tr>
-                    <tr><th>Origem</th><td>{{ $isFromWebhook ? 'Webhook' : 'Manual' }}</td></tr>
-                    <tr><th>Status Chatwoot</th><td>
-                        @if($lead->chatwoot_status)
-                            <x-mary-badge value="{{ $lead->chatwoot_status }}" class="badge-primary" />
-                        @else
-                            <x-mary-badge value="Não informado" class="badge-secondary" />
-                        @endif
-                    </td></tr>
-                </tbody>
-            </table>
+            @if($lead)
+                <table class="table w-full">
+                    <tbody>
+                        <tr><th>Nome</th><td>{{ $lead->contact_name ?? 'Não informado' }}</td></tr>
+                        <tr><th>Número de Contato</th><td>{{ $lead->contact_number ?? 'Não informado' }}</td></tr>
+                        <tr><th>Número da Empresa</th><td>{{ $lead->contact_number_empresa ?? 'Não informado' }}</td></tr>
+                        <tr><th>Email</th><td>{{ $lead->contact_email ?? 'Não informado' }}</td></tr>
+                        <tr><th>Estágio</th><td>{{ $lead->estagio ?? 'Não informado' }}</td></tr>
+                        <tr><th>Situação de Contato</th><td>{{ $lead->situacao_contato ?? 'Não informado' }}</td></tr>
+                        <tr><th>Nome do Vendedor</th><td>{{ $lead->nome_vendedor ?? 'Não informado' }}</td></tr>
+                        <tr><th>Email do Vendedor</th><td>{{ $lead->email_vendedor ?? 'Não informado' }}</td></tr>
+                        <tr><th>ID Card</th><td>{{ $lead->id_card ?? 'Não informado' }}</td></tr>
+                        <tr><th>Contact ID</th><td>{{ $lead->contact_id ?? 'Não informado' }}</td></tr>
+                        <tr><th>Origem</th><td>{{ $isFromWebhook ? 'Webhook' : 'Manual' }}</td></tr>
+                        <tr><th>Status Chatwoot</th><td>
+                            @if($lead->chatwoot_status)
+                                <x-mary-badge value="{{ $lead->chatwoot_status }}" class="badge-primary" />
+                            @else
+                                <x-mary-badge value="Não informado" class="badge-secondary" />
+                            @endif
+                        </td></tr>
+                    </tbody>
+                </table>
+            @else
+                <p class="text-gray-500">Nenhuma informação de lead disponível.</p>
+            @endif
         </x-mary-card>
     </div>
 
@@ -57,32 +62,39 @@
         <x-mary-card title="Conversas no Chatwoot" class="shadow-lg">
             @if(!empty($conversations))
                 @foreach($conversations as $conversation)
-                    <div class="mb-4">
-                        <table class="table w-full">
-                            <thead>
-                                <tr>
-                                    <th>ID da Conversa</th>
-                                    <th>Status</th>
-                                    <th>Criado em</th>
-                                    <th>Atualizado em</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>{{ $conversation['id'] }}</td>
-                                    <td>{{ $conversation['status'] }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($conversation['created_at'])->format('d/m/Y H:i') }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($conversation['updated_at'])->format('d/m/Y H:i') }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="mt-2">
-                            <h4 class="font-bold">Mensagens</h4>
+                    <x-mary-collapse :open="$showMessages[$conversation['id']] ?? false" separator>
+                        <x-slot:heading>
+                            <div wire:click="toggleMessages({{ $conversation['id'] }})" class="cursor-pointer text-base-content">
+                                Conversa ID: {{ $conversation['id'] }} (Status: {{ $conversation['status'] }})
+                            </div>
+                        </x-slot:heading>
+                        <x-slot:content>
+                            <table class="table w-full mb-4">
+                                <thead>
+                                    <tr>
+                                        <th>ID da Conversa</th>
+                                        <th>Status</th>
+                                        <th>Agente Atribuído</th>
+                                        <th>Criado em</th>
+                                        <th>Atualizado em</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>{{ $conversation['id'] }}</td>
+                                        <td>{{ $conversation['status'] }}</td>
+                                        <td>{{ $conversation['assignee_name'] }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($conversation['created_at'])->format('d/m/Y H:i') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($conversation['updated_at'])->format('d/m/Y H:i') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <h4 class="font-bold mb-2">Mensagens</h4>
                             @if(!empty($conversation['messages']))
                                 <ul class="space-y-2">
                                     @foreach($conversation['messages'] as $message)
                                         <li class="border-b pb-2">
-                                            <p class="text-sm text-gray-600">{{ $message['created_at'] }} - {{ $message['sender_name'] ?? 'Desconhecido' }}</p>
+                                            <p class="text-sm text-gray-600">{{ $message['created_at'] }} - {{ $message['sender_name'] }}</p>
                                             <p class="text-base">{{ $message['content'] }}</p>
                                             <p class="text-xs text-gray-400">Mensagem ID: {{ $message['message_id'] }}</p>
                                         </li>
@@ -91,8 +103,8 @@
                             @else
                                 <p class="text-gray-500">Nenhuma mensagem encontrada.</p>
                             @endif
-                        </div>
-                    </div>
+                        </x-slot:content>
+                    </x-mary-collapse>
                 @endforeach
             @else
                 <p class="text-gray-500">Nenhuma conversa encontrada.</p>
