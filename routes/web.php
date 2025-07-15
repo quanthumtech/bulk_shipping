@@ -9,6 +9,7 @@ use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
 use App\Livewire\LeadConversationHistory;
+use App\Livewire\LeadDetails;
 use App\Livewire\ListContatosIndex;
 use App\Livewire\NotificationsIndex;
 use App\Livewire\PerfilIndex;
@@ -128,5 +129,10 @@ Route::get('/webhook-logs/{userId?}', WebhookLogsIndex::class)
 Route::get('/processos-logs', ProcessLogsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('processos-logs.index');
+
+// Details of SyncFlow Leads
+Route::get('/lead/{leadId}/details', LeadDetails::class)
+    ->middleware(['auth', 'verified'])
+    ->name('lead.details');
 
 require __DIR__.'/auth.php';

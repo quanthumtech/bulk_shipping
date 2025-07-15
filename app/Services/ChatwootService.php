@@ -13,6 +13,7 @@ use App\Services\WebhookLogService;
 class ChatwootService
 {
     public $apiBaseUrl = 'https://chatwoot.plataformamundo.com.br/api/v1/accounts/';
+    protected $webhookLogService;
 
     /**
      * Obtém os contatos da conta da
@@ -121,6 +122,66 @@ class ChatwootService
             })->toArray();
         } catch (\Exception $e) {
             Log::error('Erro ao pesquisar contatos: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtém as conversas de um contato específico no Chatwoot.
+     *
+     * @param [type] $contactId
+     * @param [type] $chatwootAccountId
+     * @param [type] $tokenAcesso
+     * @return void
+     */
+    public function getContactConversation($contactId, $chatwootAccountId = null, $tokenAcesso = null)
+    {
+        if ($chatwootAccountId === null || $tokenAcesso === null) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if (!$user) {
+                Log::error('Nenhum usuário autenticado e nenhum chatwootAccountId/tokenAcesso fornecido.');
+                return [];
+            }
+            $chatwootAccountId = $chatwootAccountId ?? $user->chatwoot_accoumts;
+            $tokenAcesso = $tokenAcesso ?? $user->token_acess;
+        }
+
+        $url = $this->apiBaseUrl . $chatwootAccountId . '/contacts/' . $contactId . '/conversations';
+        $headers = [
+            'api_access_token' => $tokenAcesso,
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)->get($url);
+
+            if (!$response->successful()) {
+                Log::error('Erro ao buscar conversa: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
+            }
+
+            $data = $response->json();
+            Log::info("Conversa encontrada: " . json_encode($data));
+
+            return collect($data['payload'] ?? $data)->map(function ($conversation) {
+                return [
+                    'id' => $conversation['id'],
+                    'status' => $conversation['status'],
+                    'created_at' => $conversation['created_at'],
+                    'updated_at' => $conversation['updated_at'],
+                    'last_activity_at' => $conversation['last_activity_at'] ?? $conversation['updated_at'],
+                    'assignee_id' => $conversation['meta']['assignee']['id'] ?? null,
+                    'messages' => collect($conversation['messages'] ?? [])->map(function ($message) {
+                        return [
+                            'message_id' => $message['id'],
+                            'content' => $message['content'],
+                            'created_at' => \Carbon\Carbon::parse($message['created_at'])->toDateTimeString(),
+                            'sender_name' => $message['sender']['name'] ?? null,
+                        ];
+                    })->toArray(),
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            Log::error('Erro ao recuperar conversa: ' . $e->getMessage());
             return [];
         }
     }
