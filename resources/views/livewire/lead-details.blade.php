@@ -75,6 +75,7 @@
                                         <th>ID da Conversa</th>
                                         <th>Status</th>
                                         <th>Agente Atribuído</th>
+                                        <th>Email do Agente</th>
                                         <th>Criado em</th>
                                         <th>Atualizado em</th>
                                     </tr>
@@ -84,6 +85,7 @@
                                         <td>{{ $conversation['id'] }}</td>
                                         <td>{{ $conversation['status'] }}</td>
                                         <td>{{ $conversation['assignee_name'] }}</td>
+                                        <td>{{ $conversation['assignee_email'] ?? 'Não informado' }}</td>
                                         <td>{{ \Carbon\Carbon::parse($conversation['created_at'])->format('d/m/Y H:i') }}</td>
                                         <td>{{ \Carbon\Carbon::parse($conversation['updated_at'])->format('d/m/Y H:i') }}</td>
                                     </tr>
@@ -94,7 +96,16 @@
                                 <ul class="space-y-2">
                                     @foreach($conversation['messages'] as $message)
                                         <li class="border-b pb-2">
-                                            <p class="text-sm text-gray-600">{{ $message['created_at'] }} - {{ $message['sender_name'] }}</p>
+                                            <p class="text-sm text-gray-600">
+                                                {{ $message['created_at'] }} - {{ $message['sender_name'] }}
+                                                @if($message['message_type'] == 2)
+                                                    <x-mary-badge value="Sistema" class="badge-secondary" />
+                                                @elseif($message['sender_type'] == 'User')
+                                                    <x-mary-badge value="Usuário" class="badge-primary" />
+                                                @else
+                                                    <x-mary-badge value="Outro" class="badge-info" />
+                                                @endif
+                                            </p>
                                             <p class="text-base">{{ $message['content'] }}</p>
                                             <p class="text-xs text-gray-400">Mensagem ID: {{ $message['message_id'] }}</p>
                                         </li>

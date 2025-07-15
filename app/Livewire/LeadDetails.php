@@ -39,7 +39,7 @@ class LeadDetails extends Component
     {
         try {
             // Carregar o lead com suas relações
-            $this->lead = SyncFlowLeads::with(['cadencia', 'chatwootConversations.messages'])
+            $this->lead = SyncFlowLeads::with(['cadencia'])
                 ->where('id', $this->leadId)
                 ->where('chatwoot_accoumts', Auth::user()->chatwoot_accoumts ?? null)
                 ->first();
@@ -62,7 +62,7 @@ class LeadDetails extends Component
             // Carregar conversas diretamente da API do Chatwoot
             $chatwootService = app(ChatwootService::class);
             $apiConversations = $chatwootService->getContactConversation(
-                $this->lead->contact_id,
+                $this->lead->contact_id ?? null,
                 Auth::user()->chatwoot_accoumts,
                 Auth::user()->token_acess
             );
@@ -75,127 +75,110 @@ class LeadDetails extends Component
                     'response' => $apiConversations,
                 ]);
                 $this->warning('Não foi possível carregar conversas da API.', position: 'toast-top');
-            } else {
-                foreach ($apiConversations as $conversation) {
-                    // Verificar estrutura do payload
-                    if (!isset($conversation['id']) || !is_array($conversation)) {
-                        Log::warning('Conversa inválida ou sem ID encontrada no payload.', [
-                            'conversation' => $conversation,
-                            'lead_id' => $this->leadId,
-                        ]);
-                        continue;
-                    }
-
-                    $conversationId = $conversation['id'];
-                    // Inicializar estado do colapso
-                    if (!isset($this->showMessages[$conversationId])) {
-                        $this->showMessages[$conversationId] = false;
-                    }
-
-                    // Atualizar contact_id se necessário
-                    if (!$this->lead->contact_id && isset($conversation['meta']['sender']['id'])) {
-                        $this->lead->contact_id = $conversation['meta']['sender']['id'];
-                        $this->lead->save();
-                        Log::info('Contact ID atualizado para lead.', [
-                            'lead_id' => $this->leadId,
-                            'contact_id' => $this->lead->contact_id,
-                        ]);
-                    }
-
-                    // Sincronizar conversa com o banco
-                    $exists = ChatwootConversation::where('conversation_id', $conversationId)
-                        ->where('sync_flow_lead_id', $this->lead->id)
-                        ->exists();
-
-                    if (!$exists) {
-                        try {
-                            ChatwootConversation::create([
-                                'sync_flow_lead_id' => $this->lead->id,
-                                'conversation_id' => $conversationId,
-                                'account_id' => Auth::user()->chatwoot_accoumts,
-                                'agent_id' => $conversation['meta']['assignee']['id'] ?? null,
-                                'status' => $conversation['status'] ?? 'open',
-                                'content' => $conversation['messages'][0]['content'] ?? null,
-                                'last_activity_at' => Carbon::createFromTimestamp($conversation['last_activity_at'] ?? time())->toDateTimeString(),
-                                'agent_assigned_once' => !empty($conversation['meta']['assignee']['id']),
-                            ]);
-
-                            // Sincronizar mensagens
-                            if (isset($conversation['messages']) && is_array($conversation['messages'])) {
-                                foreach ($conversation['messages'] as $message) {
-                                    if (!isset($message['id'])) {
-                                        Log::warning('Mensagem sem ID encontrada.', [
-                                            'message' => $message,
-                                            'conversation_id' => $conversationId,
-                                        ]);
-                                        continue;
-                                    }
-                                    \App\Models\ChatwootMessage::updateOrCreate(
-                                        [
-                                            'chatwoot_conversation_id' => $conversationId,
-                                            'message_id' => $message['id'],
-                                        ],
-                                        [
-                                            'content' => $message['content'] ?? 'Mensagem vazia',
-                                            'sender_name' => $message['sender']['name'] ?? ($message['sender_name'] ?? 'Desconhecido'),
-                                            'created_at' => Carbon::parse($message['created_at'] ?? now())->toDateTimeString(),
-                                        ]
-                                    );
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            Log::error('Erro ao sincronizar conversa: ' . $e->getMessage(), [
-                                'conversation_id' => $conversationId,
-                                'lead_id' => $this->lead->id,
-                            ]);
-                            $this->warning('Erro ao sincronizar conversa. Exibindo dados da API.', position: 'toast-top');
-                        }
-                    }
-
-                    // Adicionar conversa ao array para exibição
-                    $this->conversations[] = [
-                        'id' => $conversationId,
-                        'status' => $conversation['status'] ?? 'open',
-                        'created_at' => Carbon::createFromTimestamp($conversation['created_at'] ?? time())->toDateTimeString(),
-                        'updated_at' => Carbon::createFromTimestamp($conversation['updated_at'] ?? time())->toDateTimeString(),
-                        'assignee_id' => $conversation['meta']['assignee']['id'] ?? null,
-                        'assignee_name' => $conversation['meta']['assignee']['name'] ?? 'Não atribuído',
-                        'messages' => isset($conversation['messages']) && is_array($conversation['messages'])
-                            ? array_map(function ($message) {
-                                return [
-                                    'message_id' => $message['id'] ?? 'N/A',
-                                    'content' => $message['content'] ?? 'Mensagem vazia',
-                                    'sender_name' => $message['sender']['name'] ?? ($message['sender_name'] ?? 'Desconhecido'),
-                                    'created_at' => Carbon::parse($message['created_at'] ?? now())->format('d/m/Y H:i'),
-                                ];
-                            }, $conversation['messages'])
-                            : [],
-                    ];
-                }
+                return;
             }
 
-            // Carregar conversas do banco como fallback
-            $this->lead->load('chatwootConversations.messages');
-            foreach ($this->lead->chatwootConversations as $dbConversation) {
-                if (!collect($this->conversations)->contains('id', $dbConversation->conversation_id)) {
-                    $this->conversations[] = [
-                        'id' => $dbConversation->conversation_id,
-                        'status' => $dbConversation->status,
-                        'created_at' => $dbConversation->created_at->toDateTimeString(),
-                        'updated_at' => $dbConversation->updated_at->toDateTimeString(),
-                        'assignee_id' => $dbConversation->agent_id,
-                        'assignee_name' => 'Não atribuído',
-                        'messages' => $dbConversation->messages->map(function ($message) {
-                            return [
-                                'message_id' => $message->message_id,
-                                'content' => $message->content,
-                                'sender_name' => $message->sender_name ?? 'Desconhecido',
-                                'created_at' => $message->created_at->format('d/m/Y H:i'),
-                            ];
-                        })->toArray(),
-                    ];
-                    $this->showMessages[$dbConversation->conversation_id] = false;
+            foreach ($apiConversations as $conversation) {
+                // Validar estrutura do payload
+                if (!is_array($conversation) || !isset($conversation['id'])) {
+                    Log::warning('Conversa inválida ou sem ID encontrada no payload.', [
+                        'conversation' => $conversation,
+                        'lead_id' => $this->leadId,
+                    ]);
+                    continue;
                 }
+
+                $conversationId = $conversation['id'];
+
+                // Inicializar estado do colapso
+                if (!isset($this->showMessages[$conversationId])) {
+                    $this->showMessages[$conversationId] = false;
+                }
+
+                // Atualizar contact_id se necessário
+                if (!$this->lead->contact_id && isset($conversation['meta']['sender']['id'])) {
+                    $this->lead->contact_id = $conversation['meta']['sender']['id'];
+                    $this->lead->save();
+                    Log::info('Contact ID atualizado para lead.', [
+                        'lead_id' => $this->leadId,
+                        'contact_id' => $this->lead->contact_id,
+                    ]);
+                }
+
+                // Sincronizar conversa com o banco (sem depender disso para exibição)
+                $exists = ChatwootConversation::where('conversation_id', $conversationId)
+                    ->where('sync_flow_lead_id', $this->lead->id)
+                    ->exists();
+
+                if (!$exists) {
+                    try {
+                        ChatwootConversation::create([
+                            'sync_flow_lead_id' => $this->lead->id,
+                            'conversation_id' => $conversationId,
+                            'account_id' => Auth::user()->chatwoot_accoumts,
+                            'agent_id' => $conversation['meta']['assignee']['id'] ?? $conversation['assignee_id'] ?? null,
+                            'status' => $conversation['status'] ?? 'open',
+                            'content' => $conversation['messages'][0]['content'] ?? null,
+                            'last_activity_at' => Carbon::createFromTimestamp($conversation['last_activity_at'] ?? time())->toDateTimeString(),
+                            'agent_assigned_once' => !empty($conversation['meta']['assignee']['id'] ?? $conversation['assignee_id']),
+                        ]);
+
+                        // Sincronizar mensagens
+                        if (isset($conversation['messages']) && is_array($conversation['messages'])) {
+                            foreach ($conversation['messages'] as $message) {
+                                if (!isset($message['id'])) {
+                                    Log::warning('Mensagem sem ID encontrada.', [
+                                        'message' => $message,
+                                        'conversation_id' => $conversationId,
+                                    ]);
+                                    continue;
+                                }
+                                \App\Models\ChatwootMessage::updateOrCreate(
+                                    [
+                                        'chatwoot_conversation_id' => $conversationId,
+                                        'message_id' => $message['id'],
+                                    ],
+                                    [
+                                        'content' => $message['content'] ?? 'Mensagem vazia',
+                                        'sender_name' => $message['sender']['name'] ?? ($message['sender_name'] ?? 'Desconhecido'),
+                                        'sender_type' => $message['sender_type'] ?? null,
+                                        'message_type' => $message['message_type'] ?? 1,
+                                        'created_at' => Carbon::parse($message['created_at'] ?? now())->toDateTimeString(),
+                                    ]
+                                );
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Erro ao sincronizar conversa: ' . $e->getMessage(), [
+                            'conversation_id' => $conversationId,
+                            'lead_id' => $this->lead->id,
+                        ]);
+                        $this->warning('Erro ao sincronizar conversa. Exibindo dados da API.', position: 'toast-top');
+                    }
+                }
+
+                // Adicionar conversa ao array para exibição (usando apenas dados do payload)
+                $this->conversations[] = [
+                    'id' => $conversationId,
+                    'status' => $conversation['status'] ?? 'open',
+                    'created_at' => Carbon::createFromTimestamp($conversation['created_at'] ?? time())->toDateTimeString(),
+                    'updated_at' => Carbon::createFromTimestamp($conversation['updated_at'] ?? time())->toDateTimeString(),
+                    'assignee_id' => $conversation['meta']['assignee']['id'] ?? $conversation['assignee_id'] ?? null,
+                    'assignee_name' => $conversation['meta']['assignee']['name'] ?? ($conversation['assignee_name'] ?? 'Não atribuído'),
+                    'assignee_email' => $conversation['meta']['assignee']['email'] ?? ($conversation['assignee_email'] ?? null),
+                    'messages' => isset($conversation['messages']) && is_array($conversation['messages'])
+                        ? array_map(function ($message) {
+                            return [
+                                'message_id' => $message['id'] ?? 'N/A',
+                                'content' => $message['content'] ?? 'Mensagem vazia',
+                                'sender_name' => $message['sender']['name'] ?? ($message['sender_name'] ?? 'Desconhecido'),
+                                'sender_type' => $message['sender_type'] ?? null,
+                                'message_type' => $message['message_type'] ?? 1,
+                                'created_at' => Carbon::parse($message['created_at'] ?? now())->format('d/m/Y H:i'),
+                            ];
+                        }, $conversation['messages'])
+                        : [],
+                ];
             }
         } catch (\Exception $e) {
             Log::error('Erro ao carregar dados do lead: ' . $e->getMessage(), [
