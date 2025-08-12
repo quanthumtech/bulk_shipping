@@ -89,6 +89,16 @@ class ProcessCadence extends Command
                             continue;
                         }
 
+                        if (!$this->isValidDate($now, $lead->cadencia)) {
+                            Log::info("Hoje não é um dia válido para a cadência {$lead->cadencia_id}. Pulando lead {$lead->id}...");
+                            $this->systemLogService->info("Hoje não é um dia válido para a cadência. Pulando lead...", [
+                                'process' => 'ProcessCadencia',
+                                'lead_id' => $lead->id,
+                                'cadencia_id' => $lead->cadencia_id
+                            ]);
+                            continue;
+                        }
+
                         $etapas = $lead->cadencia->etapas->where('active', true);
 
                         $this->systemLogService->info('Etapas ativas encontradas', [
@@ -311,40 +321,74 @@ class ProcessCadence extends Command
                 'etapa_id' => $etapa->id,
                 'hora' => $etapa->hora
             ]);
-            return $dataAgendada->setTimeFromTimeString($etapa->hora ?: $baseDate->toTimeString());
-        }
+            $dataAgendada->setTimeFromTimeString($etapa->hora ?: $baseDate->toTimeString());
+        } else {
+            if ($this->isValidTime($etapa->intervalo)) {
+                try {
+                    $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
+                    $dataAgendada->addHours($intervalo->hour)
+                                 ->addMinutes($intervalo->minute)
+                                 ->addSeconds($intervalo->second);
+                    $this->systemLogService->info("Intervalo aplicado", [
+                        'process' => 'ProcessCadencia',
+                        'lead_id' => $lead->id,
+                        'etapa_id' => $etapa->id,
+                        'intervalo' => $etapa->intervalo,
+                        'nova_data' => $dataAgendada->toDateTimeString()
+                    ]);
+                } catch (\Exception $e) {
+                    $this->systemLogService->error("Erro ao processar intervalo da etapa", [
+                        'process' => 'ProcessCadencia',
+                        'lead_id' => $lead->id,
+                        'etapa_id' => $etapa->id,
+                        'exception' => $e->getMessage()
+                    ]);
+                }
+            }
 
-        if ($this->isValidTime($etapa->intervalo)) {
-            try {
-                $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
-                $dataAgendada->addHours($intervalo->hour)
-                             ->addMinutes($intervalo->minute)
-                             ->addSeconds($intervalo->second);
-                $this->systemLogService->info("Intervalo aplicado", [
+            if ($this->isValidTime($etapa->hora)) {
+                $dataAgendada->setTimeFromTimeString($etapa->hora);
+                $this->systemLogService->info("Hora definida aplicada", [
                     'process' => 'ProcessCadencia',
                     'lead_id' => $lead->id,
                     'etapa_id' => $etapa->id,
-                    'intervalo' => $etapa->intervalo,
-                    'nova_data' => $dataAgendada->toDateTimeString()
-                ]);
-            } catch (\Exception $e) {
-                $this->systemLogService->error("Erro ao processar intervalo da etapa", [
-                    'process' => 'ProcessCadencia',
-                    'lead_id' => $lead->id,
-                    'etapa_id' => $etapa->id,
-                    'exception' => $e->getMessage()
+                    'hora' => $etapa->hora,
+                    'data_final' => $dataAgendada->toDateTimeString()
                 ]);
             }
         }
 
-        if ($this->isValidTime($etapa->hora)) {
-            $dataAgendada->setTimeFromTimeString($etapa->hora);
-            $this->systemLogService->info("Hora definida aplicada", [
+        // Ajustar para a próxima data válida respeitando days_of_week e excluded_dates
+        $cadencia = $lead->cadencia;
+        $loopCount = 0;
+        $maxLoops = 365; // Limite para evitar loops infinitos, e.g., 1 ano
+
+        while (!$this->isValidDate($dataAgendada, $cadencia)) {
+            if ($loopCount >= $maxLoops) {
+                Log::error("Limite de loops atingido ao ajustar data agendada para etapa {$etapa->id} do lead {$lead->id}.");
+                $this->systemLogService->error("Limite de loops atingido ao ajustar data agendada", [
+                    'process' => 'ProcessCadencia',
+                    'lead_id' => $lead->id,
+                    'etapa_id' => $etapa->id,
+                    'data_agendada' => $dataAgendada->toDateTimeString()
+                ]);
+                break;
+            }
+
+            $dataAgendada->addDay();
+            if ($this->isValidTime($etapa->hora)) {
+                $dataAgendada->setTimeFromTimeString($etapa->hora);
+            } // Se não houver hora específica, mantém o horário atual ao adicionar dia
+
+            $loopCount++;
+        }
+
+        if ($loopCount > 0) {
+            $this->systemLogService->info("Data agendada ajustada para data válida após {$loopCount} iterações", [
                 'process' => 'ProcessCadencia',
                 'lead_id' => $lead->id,
                 'etapa_id' => $etapa->id,
-                'hora' => $etapa->hora,
-                'data_final' => $dataAgendada->toDateTimeString()
+                'data_ajustada' => $dataAgendada->toDateTimeString()
             ]);
         }
 
@@ -378,6 +422,17 @@ class ProcessCadence extends Command
                 $query->where('cadencia_id', $lead->cadencia_id);
             })
             ->exists();
+    }
+
+    protected function isValidDate(Carbon $date, Cadencias $cadencia)
+    {
+        $weekday = $date->dayOfWeekIso;
+        $dateStr = $date->format('Y-m-d');
+
+        $daysOfWeek = $cadencia->days_of_week ?? [1, 2, 3, 4, 5, 6, 7];
+        $excludedDates = $cadencia->excluded_dates ?? [];
+
+        return in_array($weekday, $daysOfWeek) && !in_array($dateStr, $excludedDates);
     }
 
     protected function processarEtapa($lead, $etapa)

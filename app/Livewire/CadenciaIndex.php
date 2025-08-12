@@ -2,10 +2,9 @@
 
 namespace App\Livewire;
 
-use App\Livewire\Forms\CadenciaForm;
 use App\Models\Cadencias;
-use App\Models\Evolution;
-use App\Services\ZohoCrmService; // Importe o serviço
+use App\Services\ZohoCrmService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
@@ -16,31 +15,21 @@ class CadenciaIndex extends Component
 {
     use WithPagination, Toast;
 
-    public CadenciaForm $form;
-
-    public bool $cadenciaModal = false;
-
-    public bool $editMode = false;
-
     public $search = '';
 
     public int $perPage = 3;
-
-    public $title = '';
 
     public $options = [];
 
     protected $zohoService;
 
-    // Injete o serviço no construtor
     public function mount(ZohoCrmService $zohoService)
     {
         $this->zohoService = $zohoService;
 
-        if(Auth::user()->chatwoot_accoumts == 5)
-        {
+        if (Auth::user()->chatwoot_accounts == 5) {
             $this->loadStages();
-        }else{
+        } else {
             Log::info('O usuário não possui a conta do Zoho CRM.');
         }
     }
@@ -48,65 +37,22 @@ class CadenciaIndex extends Component
     public function loadStages()
     {
         try {
-            $this->zohoService = app(ZohoCrmService::class);
             $stages = $this->zohoService->getStages();
-            // Formate os estágios para o formato esperado pelo mary-select (['value' => '', 'label' => ''])
             $this->options = array_map(function ($stage) {
                 return [
                     'id' => $stage['display_value'],
-                    //'value' => $stage['actual_value'],
                     'name' => $stage['display_value'],
                 ];
             }, $stages);
-
-            //dd($this->options); // Adicione aqui para depurar
         } catch (\Exception $e) {
             $this->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage(), position: 'toast-top');
-        }
-    }
-
-    public function showModal()
-    {
-        $this->form->reset();
-        $this->editMode = false;
-        $this->cadenciaModal = true;
-        $this->title = 'Nova Cadência';
-    }
-
-    public function edit($id)
-    {
-        $cadencias = Cadencias::find($id);
-
-        if ($cadencias) {
-            $this->form->setCadencias($cadencias);
-            $this->editMode = true;
-            $this->cadenciaModal = true;
-        } else {
-            $this->info('Cadência não encontrado.', position: 'toast-top');
-        }
-    }
-
-    public function save()
-    {
-        try {
-            if ($this->editMode) {
-                $this->form->update();
-                $this->editMode = false;
-                $this->success('Cadência atualizado com sucesso!', position: 'toast-top', redirectTo: route('cadencias.index'));
-            } else {
-                $this->form->store();
-                $this->success('Cadência cadastrado com sucesso!', position: 'toast-top', redirectTo: route('cadencias.index'));
-            }
-
-            $this->cadenciaModal = false;
-        } catch (\Exception $e) {
-            $this->error('Erro ao salvar o Cadência.', position: 'toast-top', redirectTo: route('cadencias.index'));
         }
     }
 
     public function delete($id)
     {
         Cadencias::find($id)->delete();
+        $this->success('Cadência excluída com sucesso!', position: 'toast-top');
     }
 
     public function render()
@@ -121,45 +67,25 @@ class CadenciaIndex extends Component
             })
             ->paginate($this->perPage);
 
-        $cadencias = Cadencias::where('user_id', $user->id)->where('active', 1)->get();
-
         foreach ($cadencias_table as $cadencia) {
             $cadencia->active = $this->getActiveUser($cadencia->active);
+            $cadencia->updatet_date = Carbon::parse($cadencia->updated_at)->format('d/m/Y H:i');
         }
 
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'name', 'label' => 'Nome'],
             ['key' => 'description', 'label' => 'Descrição'],
+            ['key' => 'updatet_date', 'label' => 'Última Alteração'],
             ['key' => 'active', 'label' => 'Ativo'],
         ];
 
-        $descriptionCard = 'Cadências são fluxos de comunicação que podem ser aplicados a um ou mais contatos. Cada cadência é composta por uma série de etapas,
-                            que podem ser mensagens de texto, e-mails, ligações, entre outros. Clique no botão "+" para criar as etapas da sua cadência.';
-
-        $caixasEvolution = collect([['id' => '', 'name' => 'Selecione uma Caixa...']])
-        ->concat(
-            Evolution::where('user_id', Auth::user()->id)
-                ->where('active', 1)
-                ->get()
-                ->map(function ($evolution) {
-                    $url = $evolution->api_post ?? '';
-                    $parts = explode('sendText/', $url);
-                    $namePart = count($parts) > 1 ? $parts[1] : $url;
-                    return [
-                        'id' => $evolution->id,
-                        'name' => $namePart,
-                    ];
-                })
-        );
+        $descriptionCard = 'Cadências são fluxos de comunicação que podem ser aplicados a um ou mais contatos. Cada cadência é composta por uma série de etapas, que podem ser mensagens de texto, e-mails, ligações, entre outros. Clique no botão "+" para criar as etapas da sua cadência.';
 
         return view('livewire.cadencia-index', [
             'cadencias_table' => $cadencias_table,
-            'cadencias' => $cadencias,
             'headers' => $headers,
             'descriptionCard' => $descriptionCard,
-            'options' => $this->options, // Passe as opções para a view
-            'caixasEvolution' => $caixasEvolution,
         ]);
     }
 

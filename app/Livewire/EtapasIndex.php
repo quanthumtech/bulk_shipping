@@ -5,6 +5,8 @@ use App\Livewire\Forms\EtapasForm;
 use App\Models\CadenceMessage;
 use App\Models\Cadencias;
 use App\Models\Etapas;
+use Illuminate\Container\Attributes\Log;
+use Illuminate\Support\Facades\Log as FacadesLog;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -38,11 +40,25 @@ class EtapasIndex extends Component
     public function save()
     {
         try {
+
             if ($this->editMode) {
+
+                $checaRange = $this->isHoraDentroDaCadencia($this->form->cadenciaId, $this->form->hora);
+                if (!$checaRange) {
+                    $this->error('A hora informada não está dentro do intervalo da cadência.', position: 'toast-top');
+                    return;
+                }
+
                 $this->form->update();
                 $this->editMode = false;
                 $this->success('Etapa atualizado com sucesso!', position: 'toast-top');
             } else {
+                $checaRange = $this->isHoraDentroDaCadencia($this->form->cadenciaId, $this->form->hora);
+                if (!$checaRange) {
+                    $this->error('A hora informada não está dentro do intervalo da cadência.', position: 'toast-top');
+                    return;
+                }
+
                 $this->form->store();
                 $this->success('Etapa cadastrado com sucesso!', position: 'toast-top');
             }
@@ -50,8 +66,7 @@ class EtapasIndex extends Component
             $this->etapaModal = false;
 
         } catch (\Exception $e) {
-            dd($e);
-            $this->error('Erro ao salvar o Etapa.', position: 'toast-top');
+            $this->error('Erro ao salvar o Etapa.' . $e->getMessage(), position: 'toast-top');
 
         }
     }
@@ -84,7 +99,6 @@ class EtapasIndex extends Component
             $etapa->active_format = $this->getActiveUser($etapa->active);
             $etapa->imediat_format = $this->getImediat($etapa->imediat);
 
-            // Busca a mensagem de cadence para a etapa atual
             $cadenceMessage = CadenceMessage::where('etapa_id', $etapa->id)->first();
             if ($cadenceMessage) {
                 $etapa->message_status = 'Enviada';
@@ -98,15 +112,13 @@ class EtapasIndex extends Component
         $headers = [
             ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
             ['key' => 'titulo', 'label' => 'Título'],
-            //['key' => 'tempo', 'label' => 'Tempo'],
             ['key' => 'dias', 'label' => 'Dias'],
             ['key' => 'hora', 'label' => 'Hora'],
-            ['key' => 'intervalo', 'label' => 'Intervalo'], // Nova coluna
+            ['key' => 'intervalo', 'label' => 'Intervalo'],
             ['key' => 'imediat_format', 'label' => 'Envio imediato'],
             ['key' => 'active_format', 'label' => 'Ativo'],
             ['key' => 'message_status', 'label' => 'Mensagem enviada'],
             ['key' => 'message_time', 'label' => 'Hora do envio'],
-            //['key' => 'unidade_tempo', 'label' => 'Unidade de Tempo'],
         ];
 
         $options = [
@@ -118,15 +130,14 @@ class EtapasIndex extends Component
 
         $optionsSend = [
             ['id' => '', 'name' => 'Selecione...'],
-            //['id' => 'email', 'name' => 'E-mail'], Em breve
             ['id' => 'whatsapp', 'name' => 'WhatsApp'],
         ];
 
         return view('livewire.etapas-index', [
-            'cadencia' => $cadencia,
-            'etapas' => $etapas,
-            'headers' => $headers,
-            'options' => $options,
+            'cadencia'    => $cadencia,
+            'etapas'      => $etapas,
+            'headers'     => $headers,
+            'options'     => $options,
             'optionsSend' => $optionsSend,
         ]);
     }
@@ -150,6 +161,18 @@ class EtapasIndex extends Component
         ];
 
         return $type[$imediat] ?? '';
+    }
+
+    private function isHoraDentroDaCadencia($cadenciaId, $hora)
+    {
+        $cadencia = Cadencias::find($cadenciaId);
+        if (!$cadencia) return false;
+
+        $horaInformada = \Carbon\Carbon::createFromFormat('H:i', substr($hora, 0, 5));
+        $horarioInicio = \Carbon\Carbon::createFromFormat('H:i:s', $cadencia->hora_inicio);
+        $horarioFim    = \Carbon\Carbon::createFromFormat('H:i:s', $cadencia->hora_fim);
+
+        return $horaInformada->between($horarioInicio, $horarioFim);
     }
 
 }

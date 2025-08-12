@@ -17,6 +17,13 @@ class Cadencias extends Model
         'user_id',
         'stage',
         'evolution_id',
+        'days_of_week',
+        'excluded_dates'
+    ];
+
+    protected $casts = [
+        'days_of_week' => 'array',
+        'excluded_dates' => 'array'
     ];
 
     public function etapas()

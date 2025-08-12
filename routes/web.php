@@ -4,6 +4,7 @@ use App\Http\Controllers\CreateFromWebhookSyncFlowController;
 use App\Http\Controllers\WebhookZohoController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
+use App\Livewire\CadenciaCreateEdit;
 use App\Livewire\CadenciaIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
@@ -89,6 +90,15 @@ Route::get('/contatos', ListContatosIndex::class)
 Route::get('/cadencias', CadenciaIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('cadencias.index');
+
+Route::get('cadencia-create', CadenciaCreateEdit::class)
+    ->middleware(['auth', 'verified'])
+    ->name('cadencias.create');
+
+// Add {id} parameter here
+Route::get('cadencia-edit/{id}', CadenciaCreateEdit::class)
+    ->middleware(['auth', 'verified'])
+    ->name('cadencias.edit');
 
 Route::get('/cadencias/{cadenciaId}/etapas', EtapasIndex::class)
     ->middleware(['auth', 'verified'])
