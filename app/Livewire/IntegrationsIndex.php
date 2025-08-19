@@ -85,8 +85,22 @@ class IntegrationsIndex extends Component
             $version->formatted_created_at = Carbon::parse($version->created_at)->format('d/m/Y');
         }
 
+        $options = $this->getVersionsEvoApi();
+
         return view('livewire.integrations-index', [
             'versions' => $versions,
+            'options' => $options,
         ]);
+    }
+
+    public function getVersionsEvoApi()
+    {
+        $options = [
+            ['name' => 'Selecione a versão...'],
+            ['id' => 1, 'name' => 'v1'],
+            ['id' => 2, 'name' => 'v2'],
+        ];
+
+        return $options;
     }
 }

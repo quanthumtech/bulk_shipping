@@ -36,9 +36,14 @@
     {{-- Modal para cadastro/edição --}}
     <x-mary-modal wire:model="modal" title="{{ $title }}">
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Nome" wire:model="form.name" required />
+            <x-mary-input label="Nome" wire:model="form.name" placeholder="Digite aqui..." required />
             <x-mary-input label="URL Evolution" wire:model="form.url_evolution" placeholder="https://.../message/sendText/" required />
-            <x-mary-input label="Tipo" wire:model="form.type" />
+
+            <x-mary-select 
+                label="Versão API" 
+                hint="Selecione a versão da API, consulte a documentação do Evolution para mais detalhes. link: https://doc.evolution-api.com"
+                :options="$options" 
+                wire:model="form.type" />
 
             <br>
             <x-mary-toggle label="Ativa" wire:model="form.active" />
