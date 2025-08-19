@@ -153,6 +153,10 @@
                             <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
                         </x-mary-menu-sub>
 
+                        <x-mary-menu-sub title="Integrações" icon="c-inbox-stack">
+                            <x-mary-menu-item title="Evolution" icon="c-inbox" link="/integrations" />
+                        </x-mary-menu-sub>
+
                         <x-mary-menu-sub title="Logs" icon="s-shield-check">
                             <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-types" />
                             <x-mary-menu-item title="Logs de Processos" icon="o-document-text" link="/processos-logs" />

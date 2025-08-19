@@ -9,6 +9,7 @@ use App\Livewire\CadenciaIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
+use App\Livewire\IntegrationsIndex;
 use App\Livewire\LeadConversationHistory;
 use App\Livewire\LeadDetails;
 use App\Livewire\ListContatosIndex;
@@ -144,5 +145,9 @@ Route::get('/processos-logs', ProcessLogsIndex::class)
 Route::get('/lead/{leadId}/details', LeadDetails::class)
     ->middleware(['auth', 'verified'])
     ->name('lead.details');
+
+Route::get('/integrations', IntegrationsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('integrations.index');
 
 require __DIR__.'/auth.php';
