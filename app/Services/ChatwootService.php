@@ -547,13 +547,6 @@ class ChatwootService
             return null;
         }
 
-        // Revisar esse trecho Depois
-        /*
-        $user = Auth::user();
-        $chatwootAccountId = $user->chatwoot_accoumts;
-        $tokenAcesso = $user->token_acess;
-        */
-
         $apikey = $Apikey ?? null;
         $api_post = $apiPost ?? null;
 
@@ -571,7 +564,7 @@ class ChatwootService
 
         // Verifica a versão ativa da API com base na parte extraída da URL
         $activeVersion = Versions::where('url_evolution', $baseUrl)
-            ->value('name');
+            ->value('type');
 
         Log::info("Versão ativa da API: {$activeVersion}");
 
@@ -580,20 +573,6 @@ class ChatwootService
             return null;
         }
 
-        // Busca o email do vendedor no modelo SyncFlowLeads
-        /*
-        $lead = SyncFlowLeads::where('contact_number', $phoneNumber)->first();
-        $agentName = $lead ? $lead->nome_vendedor : null;
-
-        Log::info("Email do vendedor encontrado: {$emailVendedor}");
-
-        if ($emailVendedor) {
-            // Busca o agente pelo email
-            $agents = $this->getAgents(5, 'cAGByrB3Hqm9NZDt1DUE6FsP');
-            $agent = collect($agents)->firstWhere('email', $emailVendedor);
-            $agentName = $agent ? $agent['name'] : 'Não fornecido';
-        }*/
-
         Log::info("Nome do agente/vendedor encontrado: {$agentName}");
 
         // Verifica se é uma URL de imagem diretamente ou Markdown
@@ -601,7 +580,7 @@ class ChatwootService
                 preg_match('/!\[.*?\]\((https?:\/\/.*?)\)/', $messageContent, $matches);
 
         // Configuração do payload e endpoint com base na versão
-        if ($activeVersion === 'Evolution v1') {
+        if ($activeVersion === '1' || $activeVersion === 1) {
             if ($isImage) {
                 $imageUrl = $matches[1] ?? trim($messageContent);
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
@@ -681,7 +660,7 @@ class ChatwootService
 
                 Log::info("Payload sendo enviado para a API Evolution v1 (Text): " . json_encode($payload));
             }
-        } elseif ($activeVersion === 'Evolution v2' || $activeVersion === 'Evolution v2 PM') {
+        } elseif ($activeVersion === '2' || $activeVersion === 2) {
             if ($isImage) {
                 $imageUrl = $matches[1] ?? trim($messageContent);
                 $caption = $matches ? trim(preg_replace('/!\[(.*?)\]\(.*\)/', '$1', $messageContent)) : '';
