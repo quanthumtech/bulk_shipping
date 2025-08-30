@@ -70,7 +70,11 @@
     {{--  Pirsch Analytics  --}}
     <script defer src="https://api.pirsch.io/pa.js" id="pianjs" data-code="rOVAXMnSEiydpyfzhgPnLVbX6iWcik7m"></script>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- EasyMDE --}}
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/doc-systems.js'])
 </head>
 <body class="min-h-screen font-sans antialiased">
     {{-- The navbar with `sticky` and `full-width` --}}
@@ -161,6 +165,8 @@
                             <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-types" />
                             <x-mary-menu-item title="Logs de Processos" icon="o-document-text" link="/processos-logs" />
                         </x-mary-menu-sub>
+
+                        <x-mary-menu-item title="Documentação" icon="o-document" link="/documentacao" />
 
                     @endif
                 @endif

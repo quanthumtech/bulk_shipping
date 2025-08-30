@@ -6,6 +6,7 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\CadenciaCreateEdit;
 use App\Livewire\CadenciaIndex;
+use App\Livewire\DocSystemsIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
 use App\Livewire\GroupSendIndex;
@@ -149,5 +150,10 @@ Route::get('/lead/{leadId}/details', LeadDetails::class)
 Route::get('/integrations', IntegrationsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('integrations.index');
+
+// Documentation System
+Route::get('/documentacao', DocSystemsIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('documentacao.index');
 
 require __DIR__.'/auth.php';
