@@ -20,7 +20,6 @@ function debounce(func, wait) {
 
 // Function to initialize Editor.js
 function initializeEditor(pageContent) {
-    // Delay initialization to ensure DOM is ready
     setTimeout(() => {
         const editorContainer = document.getElementById('editorjs');
         if (!editorContainer) {
@@ -28,7 +27,6 @@ function initializeEditor(pageContent) {
             return;
         }
 
-        // Safely destroy existing editor instance
         if (window.editorInstance && typeof window.editorInstance.destroy === 'function') {
             try {
                 window.editorInstance.destroy();
@@ -78,15 +76,15 @@ function initializeEditor(pageContent) {
                 } catch (e) {
                     console.error('Error in Editor.js onChange:', e);
                 }
-            }, 1000), // Debounce for 1 second
+            }, 1000),
         });
-    }, 100); // Delay initialization by 100ms
+    }, 100);
 }
 
 // Initialize Sortable and Editor.js
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing Sortable');
-    // Initialize Sortable
+    
     const sortablePages = document.getElementById('sortable-pages');
     if (sortablePages) {
         Sortable.create(sortablePages, {
@@ -99,11 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Do not initialize Editor.js on DOM load
     console.log('Skipping Editor.js initialization on DOM load');
 });
 
-// Handle Livewire's init-editor event
 document.addEventListener('livewire:init', () => {
     console.log('Livewire initialized, registering init-editor listener');
     Livewire.on('init-editor', ({ content }) => {

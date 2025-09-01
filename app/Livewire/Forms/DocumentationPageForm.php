@@ -1,53 +1,37 @@
 <?php
+
 namespace App\Livewire\Forms;
 
 use App\Models\DocumentationPage;
-use Livewire\Attributes\Validate;
+use Livewire\Attributes\Rule;
 use Livewire\Form;
-use Mary\Traits\Toast;
 
 class DocumentationPageForm extends Form
 {
-    use Toast;
-
     public ?DocumentationPage $page = null;
 
-    #[Validate('required|string|max:255')]
-    public $name;
+    #[Rule('required|string|max:255')]
+    public string $name = '';
 
-    public $active = true;
+    #[Rule('boolean')]
+    public bool $active = false;
 
-    public function setPage(DocumentationPage $page)
+    public function setPage(DocumentationPage $page): void
     {
         $this->page = $page;
         $this->name = $page->name;
-        $this->active = $page->active;
+        $this->active = (bool) $page->active;
     }
 
-    public function store()
+    public function store(): void
     {
-        $this->validate();
-
-        $maxPosition = DocumentationPage::max('position') ?? 0;
-
-        DocumentationPage::create([
-            'name' => $this->name,
-            'active' => $this->active,
-            'position' => $maxPosition + 1,
-        ]);
-
-        $this->reset();
+        $data = $this->validate();
+        DocumentationPage::create($data);
     }
 
-    public function update()
+    public function update(): void
     {
-        $this->validate();
-
-        $this->page->update([
-            'name' => $this->name,
-            'active' => $this->active,
-        ]);
-
-        $this->reset();
+        $data = $this->validate();
+        $this->page->update($data);
     }
 }

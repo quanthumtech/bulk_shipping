@@ -11,6 +11,7 @@ use Livewire\WithPagination;
 use Mary\Traits\Toast;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class SyncFlowLeads extends Component
 {
@@ -34,7 +35,7 @@ class SyncFlowLeads extends Component
     public ?bool $isFromWebhookFilter = null;
     public ?string $startDate = null;
     public ?string $endDate = null;
-    public array $show = []; // Array to track collapse state for each lead
+    public array $show = [];
 
     protected $queryString = [
         'search',
@@ -51,7 +52,6 @@ class SyncFlowLeads extends Component
 
     public function mount()
     {
-        // Initialize $show array for each lead (will be populated in render)
         $this->show = [];
     }
 
@@ -174,7 +174,7 @@ class SyncFlowLeads extends Component
             } else {
                 $this->form->store();
                 SystemNotification::create([
-                    'user_id' => auth()->user()->id,
+                    'user_id' => Auth::user()->id,
                     'title'   => 'Lead Cadastrado Manual',
                     'message' => 'Um novo lead foi cadastrado manualmente, nome: ' . $this->form->contact_name . ', número: ' . $this->form->contact_number,
                     'read'    => false
@@ -221,7 +221,7 @@ class SyncFlowLeads extends Component
         try {
             $this->form->update();
             SystemNotification::create([
-                'user_id' => auth()->user()->id,
+                'user_id' => Auth::user()->id,
                 'title'   => 'Cadência Atribuída',
                 'message' => 'Uma cadência foi atribuída manualmente ao lead: ' . $this->form->contact_name . ', número: ' . $this->form->contact_number,
                 'read'    => false
@@ -250,7 +250,7 @@ class SyncFlowLeads extends Component
     {
         return array_merge(
             [['id' => '', 'name' => 'Todas']],
-            Cadencias::where('user_id', auth()->user()->id)
+            Cadencias::where('user_id', Auth::user()->id)
                 ->get()
                 ->map(function ($cadencia) {
                     return [
@@ -303,7 +303,7 @@ class SyncFlowLeads extends Component
 
     public function render()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         if (!$user || !isset($user->chatwoot_accoumts)) {
             Log::warning('User or chatwoot_accoumts is null for user ID: ' . ($user ? $user->id : 'null'));
             $this->error('Conta Chatwoot não configurada.', position: 'toast-top');
@@ -348,7 +348,6 @@ class SyncFlowLeads extends Component
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);
 
-        // Initialize collapse state for each lead
         foreach ($syncFlowLeads as $lead) {
             if (!isset($this->show[$lead->id])) {
                 $this->show[$lead->id] = false;
