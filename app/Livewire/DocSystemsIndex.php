@@ -44,13 +44,13 @@ class DocSystemsIndex extends Component
     {
         $this->selectedPageId = $pageId;
         $this->selectedPage = DocumentationPage::find($pageId);
-        if ($this->userType !== UserType::ADMIN && $this->selectedPage && !$this->selectedPage->active) {
+        if ($this->userType !== UserType::SuperAdmin && $this->selectedPage && !$this->selectedPage->active) {
             $this->selectedPageId = null;
             $this->selectedPage = null;
             $this->error('Página não disponível.', position: 'toast-top');
             return;
         }
-        $this->showEditor = $this->userType === UserType::ADMIN;
+        $this->showEditor = $this->userType === UserType::SuperAdmin;
 
         if ($this->selectedPage && $this->showEditor) {
             $content = $this->selectedPage->content ?? ['blocks' => []];
@@ -60,7 +60,7 @@ class DocSystemsIndex extends Component
 
     public function showPageModal()
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para criar páginas.', position: 'toast-top');
             return;
         }
@@ -78,7 +78,7 @@ class DocSystemsIndex extends Component
 
     public function editPage($id)
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para editar páginas.', position: 'toast-top');
             return;
         }
@@ -97,7 +97,7 @@ class DocSystemsIndex extends Component
 
     public function save()
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para salvar páginas.', position: 'toast-top');
             return;
         }
@@ -123,7 +123,7 @@ class DocSystemsIndex extends Component
     #[On('saveContent')]
     public function saveContent($content)
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para salvar conteúdo.', position: 'toast-top');
             return;
         }
@@ -147,7 +147,7 @@ class DocSystemsIndex extends Component
 
     public function deletePage($id)
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para excluir páginas.', position: 'toast-top');
             return;
         }
@@ -167,7 +167,7 @@ class DocSystemsIndex extends Component
     public function toggleActive($pageId)
     {
         Log::debug('toggleActive called with pageId: ' . $pageId . ', current active state: ' . json_encode(DocumentationPage::find($pageId)->active));
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para alterar o status da página.', position: 'toast-top');
             return;
         }
@@ -267,7 +267,7 @@ class DocSystemsIndex extends Component
 
     public function reorderPages($params)
     {
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $this->error('Você não tem permissão para reordenar páginas.', position: 'toast-top');
             return;
         }
@@ -287,7 +287,7 @@ class DocSystemsIndex extends Component
     public function render()
     {
         $query = DocumentationPage::where('name', 'like', '%' . $this->search . '%');
-        if ($this->userType !== UserType::ADMIN) {
+        if ($this->userType !== UserType::SuperAdmin) {
             $query->where('active', true);
         }
         $pages = $query->orderBy('position')->get();
@@ -295,7 +295,7 @@ class DocSystemsIndex extends Component
 
         return view('livewire.doc-systems-index', [
             'pages' => $pages,
-            'isAdmin' => $this->userType === UserType::ADMIN,
+            'isAdmin' => $this->userType === UserType::SuperAdmin,
             'conteudo' => $this->selectedPage ? $this->getContentHtml($this->selectedPage->content ?? ['blocks' => []]) : '',
         ]);
     }
