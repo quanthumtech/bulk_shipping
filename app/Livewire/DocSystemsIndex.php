@@ -5,10 +5,10 @@ namespace App\Livewire;
 use App\Enums\UserType;
 use App\Livewire\Forms\DocumentationPageForm;
 use App\Models\DocumentationPage;
-use App\Models\User;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Mary\Traits\Toast;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use HTMLPurifier;
 use HTMLPurifier_Config;
@@ -33,6 +33,7 @@ class DocSystemsIndex extends Component
 
     public function mount()
     {
+        Log::debug('DocSystemsIndex mounted');
         $this->selectedPageId = null;
         $this->selectedPage = null;
         $this->showEditor = false;
@@ -43,6 +44,12 @@ class DocSystemsIndex extends Component
     {
         $this->selectedPageId = $pageId;
         $this->selectedPage = DocumentationPage::find($pageId);
+        if ($this->userType !== UserType::ADMIN && $this->selectedPage && !$this->selectedPage->active) {
+            $this->selectedPageId = null;
+            $this->selectedPage = null;
+            $this->error('Página não disponível.', position: 'toast-top');
+            return;
+        }
         $this->showEditor = $this->userType === UserType::ADMIN;
 
         if ($this->selectedPage && $this->showEditor) {
@@ -159,6 +166,7 @@ class DocSystemsIndex extends Component
 
     public function toggleActive($pageId)
     {
+        Log::debug('toggleActive called with pageId: ' . $pageId . ', current active state: ' . json_encode(DocumentationPage::find($pageId)->active));
         if ($this->userType !== UserType::ADMIN) {
             $this->error('Você não tem permissão para alterar o status da página.', position: 'toast-top');
             return;
@@ -166,13 +174,15 @@ class DocSystemsIndex extends Component
 
         try {
             $page = DocumentationPage::findOrFail($pageId);
-            $page->update(['active' => !$page->active]);
+            $newActiveState = !$page->active;
+            $page->update(['active' => $newActiveState]);
+            Log::debug('toggleActive updated pageId: ' . $pageId . ' to active: ' . $newActiveState);
             $this->success('Status da página atualizado com sucesso!', position: 'toast-top');
-           
             if ($this->selectedPageId === $pageId) {
                 $this->selectedPage = $page->fresh();
             }
         } catch (\Exception $e) {
+            Log::error('Error in toggleActive: ' . $e->getMessage());
             $this->error('Erro ao atualizar o status da página: ' . $e->getMessage(), position: 'toast-top');
         }
     }
@@ -181,6 +191,7 @@ class DocSystemsIndex extends Component
     {
         $config = HTMLPurifier_Config::createDefault();
         $config->set('HTML.Allowed', 'a[href|target],b,strong,i,em,br,span[class],pre,code');
+        $config->set('Cache.DefinitionImpl', null); // Disable caching
         $purifier = new HTMLPurifier($config);
 
         if (!is_array($content) || !isset($content['blocks']) || !is_array($content['blocks']) || empty($content['blocks'])) {
@@ -276,11 +287,11 @@ class DocSystemsIndex extends Component
     public function render()
     {
         $query = DocumentationPage::where('name', 'like', '%' . $this->search . '%');
-        
         if ($this->userType !== UserType::ADMIN) {
             $query->where('active', true);
         }
         $pages = $query->orderBy('position')->get();
+        Log::debug('Rendering with pages: ' . json_encode($pages->pluck('active', 'id')->toArray()));
 
         return view('livewire.doc-systems-index', [
             'pages' => $pages,
