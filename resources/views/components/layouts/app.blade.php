@@ -165,11 +165,10 @@
                             <x-mary-menu-item title="Logs de Webhooks" icon="o-document-text" link="/webhook-types" />
                             <x-mary-menu-item title="Logs de Processos" icon="o-document-text" link="/processos-logs" />
                         </x-mary-menu-sub>
-
-                        <x-mary-menu-item title="Documentação" icon="o-document" link="/documentacao" />
-
                     @endif
                 @endif
+                
+                <x-mary-menu-item title="Documentação" icon="o-document" link="/documentacao" />
                 <x-mary-menu-item title="FAQ" icon="o-question-mark-circle" link="/faq-info" />
                 <x-mary-menu-item title="Suporte" icon="o-lifebuoy" link="https://quanthum.tec.br/" />
             </x-mary-menu>
