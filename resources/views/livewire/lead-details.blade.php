@@ -64,60 +64,31 @@
         <x-mary-card title="Conversas no Chatwoot" class="shadow-lg">
             @if(!empty($conversations))
                 @foreach($conversations as $conversation)
-                    <x-mary-collapse :open="$showMessages[$conversation['id']] ?? false" separator>
-                        <x-slot:heading>
-                            <div wire:click="toggleMessages({{ $conversation['id'] }})" class="cursor-pointer text-base-content">
-                                Conversa ID: {{ $conversation['id'] }} (Status: {{ $conversation['status'] }})
-                            </div>
-                        </x-slot:heading>
-                        <x-slot:content>
-                            <table class="table w-full mb-4">
-                                <thead>
-                                    <tr>
-                                        <th>ID da Conversa</th>
-                                        <th>Status</th>
-                                        <th>Agente Atribuído</th>
-                                        <th>Email do Agente</th>
-                                        <th>Criado em</th>
-                                        <th>Atualizado em</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>{{ $conversation['id'] }}</td>
-                                        <td>{{ $conversation['status'] }}</td>
-                                        <td>{{ $conversation['assignee_name'] }}</td>
-                                        <td>{{ $conversation['assignee_email'] ?? 'Não informado' }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($conversation['created_at'])->format('d/m/Y H:i') }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($conversation['updated_at'])->format('d/m/Y H:i') }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <h4 class="font-bold mb-2">Mensagens</h4>
-                            @if(!empty($conversation['messages']))
-                                <ul class="space-y-2">
-                                    @foreach($conversation['messages'] as $message)
-                                        <li class="border-b pb-2">
-                                            <p class="text-sm text-gray-600">
-                                                {{ $message['created_at'] }} - {{ $message['sender_name'] }}
-                                                @if($message['message_type'] == 2)
-                                                    <x-mary-badge value="Sistema" class="badge-secondary" />
-                                                @elseif($message['sender_type'] == 'User')
-                                                    <x-mary-badge value="Usuário" class="badge-primary" />
-                                                @else
-                                                    <x-mary-badge value="Outro" class="badge-info" />
-                                                @endif
-                                            </p>
-                                            <p class="text-base">{{ $message['content'] }}</p>
-                                            <p class="text-xs text-gray-400">Mensagem ID: {{ $message['message_id'] }}</p>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <p class="text-gray-500">Nenhuma mensagem encontrada.</p>
-                            @endif
-                        </x-slot:content>
-                    </x-mary-collapse>
+                    <div class="border-b pb-4 mb-4">
+                        <table class="table w-full mb-4">
+                            <thead>
+                                <tr>
+                                    <th>ID da Conversa</th>
+                                    <th>Status</th>
+                                    <th>Agente Atribuído</th>
+                                    <th>Email do Agente</th>
+                                    <th>Criado em</th>
+                                    <th>Atualizado em</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ $conversation['id'] }}</td>
+                                    <td>{{ $conversation['status'] }}</td>
+                                    <td>{{ $conversation['assignee_name'] }}</td>
+                                    <td>{{ $conversation['assignee_email'] ?? 'Não informado' }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($conversation['created_at'])->format('d/m/Y H:i') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($conversation['updated_at'])->format('d/m/Y H:i') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <a href="https://chatwoot.plataformamundo.com.br/app/accounts/{{ auth()->user()->chatwoot_accoumts }}/conversations/{{ $conversation['id'] }}" target="_blank" class="btn btn-primary btn-sm">Ver Conversa</a>
+                    </div>
                 @endforeach
             @else
                 <p class="text-gray-500">Nenhuma conversa encontrada.</p>

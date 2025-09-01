@@ -21,18 +21,11 @@ class LeadDetails extends Component
     public $cadencia;
     public $conversations = [];
     public $isFromWebhook = false;
-    public array $showMessages = []; // Array to track collapse state for each conversation
 
     public function mount($leadId)
     {
         $this->leadId = $leadId;
         $this->loadLeadData();
-    }
-
-    public function toggleMessages($conversationId)
-    {
-        $this->showMessages[$conversationId] = !($this->showMessages[$conversationId] ?? false);
-        Log::info("Messages collapse for conversation ID '{$conversationId}' toggled: " . ($this->showMessages[$conversationId] ? 'Aberto' : 'Fechado'));
     }
 
     public function loadLeadData()
@@ -89,11 +82,6 @@ class LeadDetails extends Component
                 }
 
                 $conversationId = $conversation['id'];
-
-                // Inicializar estado do colapso
-                if (!isset($this->showMessages[$conversationId])) {
-                    $this->showMessages[$conversationId] = false;
-                }
 
                 // Atualizar contact_id se necessário
                 if (!$this->lead->contact_id && isset($conversation['meta']['sender']['id'])) {
@@ -157,7 +145,7 @@ class LeadDetails extends Component
                     }
                 }
 
-                // Adicionar conversa ao array para exibição (usando apenas dados do payload)
+                // Adicionar conversa ao array para exibição (sem mensagens)
                 $this->conversations[] = [
                     'id' => $conversationId,
                     'status' => $conversation['status'] ?? 'open',
@@ -166,18 +154,6 @@ class LeadDetails extends Component
                     'assignee_id' => $conversation['meta']['assignee']['id'] ?? $conversation['assignee_id'] ?? null,
                     'assignee_name' => $conversation['meta']['assignee']['name'] ?? ($conversation['assignee_name'] ?? 'Não atribuído'),
                     'assignee_email' => $conversation['meta']['assignee']['email'] ?? ($conversation['assignee_email'] ?? null),
-                    'messages' => isset($conversation['messages']) && is_array($conversation['messages'])
-                        ? array_map(function ($message) {
-                            return [
-                                'message_id' => $message['id'] ?? 'N/A',
-                                'content' => $message['content'] ?? 'Mensagem vazia',
-                                'sender_name' => $message['sender']['name'] ?? ($message['sender_name'] ?? 'Desconhecido'),
-                                'sender_type' => $message['sender_type'] ?? null,
-                                'message_type' => $message['message_type'] ?? 1,
-                                'created_at' => Carbon::parse($message['created_at'] ?? now())->format('d/m/Y H:i'),
-                            ];
-                        }, $conversation['messages'])
-                        : [],
                 ];
             }
         } catch (\Exception $e) {

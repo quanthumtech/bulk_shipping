@@ -129,86 +129,263 @@
         </x-mary-form>
     </x-mary-modal>
 
-    <!-- Cards Leads -->
-    <div class="grid lg:grid-cols-3 gap-5 mt-4">
-        @foreach ($syncFlowLeads as $sync)
-            @if ($sync)
-                <x-mary-card
-                    title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
-                    class="shadow-lg {{ empty($sync->contact_email) || empty($sync->contact_number) ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
-                    subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
-                    separator
-                >
-                    <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">
-                        <x-slot:heading>
-                            <div wire:click="toggleCollapse({{ $sync->id }})" class="cursor-pointer text-base-content">
-                                Mais Detalhes
+    <!-- Tabs for Leads -->
+    <x-mary-tabs wire:model="activeTab" class="mt-4">
+        <x-mary-tab name="all" label="Todos os Leads ({{ $allCount }})">
+            <!-- Cards Leads -->
+            <div class="grid lg:grid-cols-3 gap-5 mt-4">
+                @foreach ($syncFlowLeads as $sync)
+                    @if ($sync)
+                        @php
+                            $isIncomplete = (
+                                is_null($sync->contact_name) || $sync->contact_name === '' || $sync->contact_name === 'Não definido' ||
+                                is_null($sync->contact_email) || $sync->contact_email === '' || $sync->contact_email === 'Não fornecido' ||
+                                is_null($sync->contact_number) || $sync->contact_number === '' || $sync->contact_number === 'Não fornecido'
+                            );
+                        @endphp
+                        <x-mary-card
+                            title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
+                            class="shadow-lg {{ $isIncomplete ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
+                            subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
+                            separator
+                        >
+                            <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">
+                                <x-slot:heading>
+                                    <div wire:click="toggleCollapse({{ $sync->id }})" class="cursor-pointer text-base-content">
+                                        Mais Detalhes
+                                    </div>
+                                </x-slot:heading>
+                                <x-slot:content>
+                                    <div class="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Telefone:</span>
+                                            <span>{{ $sync->contact_number ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Email:</span>
+                                            <span>{{ $sync->contact_email ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Cadência:</span>
+                                            <span>{{ $sync->cadencia?->name ?? 'Não definido' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Situação Contato:</span>
+                                            <span>{{ $sync->situacao_contato ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Nome Vendedor:</span>
+                                            <span>{{ $sync->nome_vendedor ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Origem:</span>
+                                            <span>
+                                                @if(!empty($sync->id_card) && $sync->id_card !== 'Não fornecido')
+                                                    <x-mary-badge value="Webhook" class="badge-success" />
+                                                @else
+                                                    <x-mary-badge value="Manual" class="badge-info" />
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center md:col-span-2">
+                                            <span class="font-semibold mr-1">Status Chatwoot:</span>
+                                            @if(!empty($sync->chatwoot_status))
+                                                <x-mary-badge value="{{ $sync->chatwoot_status }}" class="badge-primary" />
+                                            @else
+                                                <x-mary-badge value="Não informado" class="badge-secondary" />
+                                            @endif
+                                        </div>
+                                    </div>
+                                </x-slot:content>
+                            </x-mary-collapse>
+                            <x-slot:menu>
+                                <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
+                                @if ($isIncomplete)
+                                    <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
+                                @endif
+                            </x-slot:menu>
+                            <div class="flex items-center gap-2">
+                                <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" class="btn-sm" />
+                                <x-mary-dropdown>
+                                    <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Ver Detalhes" icon="o-information-circle" link="{{ route('lead.details', ['leadId' => $sync->id]) }}" />
+                                </x-mary-dropdown>
                             </div>
-                        </x-slot:heading>
-                        <x-slot:content>
-                            <div class="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Telefone:</span>
-                                    <span>{{ $sync->contact_number ?? 'Não informado' }}</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Email:</span>
-                                    <span>{{ $sync->contact_email ?? 'Não informado' }}</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Cadência:</span>
-                                    <span>{{ $sync->cadencia?->name ?? 'Não definido' }}</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Situação Contato:</span>
-                                    <span>{{ $sync->situacao_contato ?? 'Não informado' }}</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Nome Vendedor:</span>
-                                    <span>{{ $sync->nome_vendedor ?? 'Não informado' }}</span>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-semibold mr-1">Origem:</span>
-                                    <span>
-                                        @if(!empty($sync->id_card) && $sync->id_card !== 'Não fornecido')
-                                            <x-mary-badge value="Webhook" class="badge-success" />
-                                        @else
-                                            <x-mary-badge value="Manual" class="badge-info" />
-                                        @endif
-                                    </span>
-                                </div>
-                                <div class="flex items-center md:col-span-2">
-                                    <span class="font-semibold mr-1">Status Chatwoot:</span>
-                                    @if(!empty($sync->chatwoot_status))
-                                        <x-mary-badge value="{{ $sync->chatwoot_status }}" class="badge-primary" />
-                                    @else
-                                        <x-mary-badge value="Não informado" class="badge-secondary" />
-                                    @endif
-                                </div>
-                            </div>
-                        </x-slot:content>
-                    </x-mary-collapse>
-                    <x-slot:menu>
-                        <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
-                        @if (empty($sync->contact_email) || empty($sync->contact_number) || $sync->contact_email === 'Não fornecido' || $sync->contact_number === 'Não fornecido')
-                            <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
-                        @endif
-                    </x-slot:menu>
-                    <div class="flex items-center gap-2">
-                        <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" class="btn-sm" />
-                        <x-mary-dropdown>
-                            <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
-                            <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
-                            <x-mary-menu-item title="Ver Detalhes" icon="o-information-circle" link="{{ route('lead.details', ['leadId' => $sync->id]) }}" />
-                        </x-mary-dropdown>
-                    </div>
-                </x-mary-card>
-            @endif
-        @endforeach
-    </div>
+                        </x-mary-card>
+                    @endif
+                @endforeach
+            </div>
 
-    <!-- Paginação -->
-    <div class="mt-4">
-        {{ $syncFlowLeads->links() }}
-    </div>
+            <!-- Paginação -->
+            <div class="mt-4">
+                {{ $syncFlowLeads->links() }}
+            </div>
+        </x-mary-tab>
+
+        <x-mary-tab name="leads" label="Leads Completos ({{ $completeCount }})">
+            <!-- Cards Leads -->
+            <div class="grid lg:grid-cols-3 gap-5 mt-4">
+                @foreach ($syncFlowLeads as $sync)
+                    @if ($sync)
+                        <x-mary-card
+                            title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
+                            class="shadow-lg bg-base-100"
+                            subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
+                            separator
+                        >
+                            <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">
+                                <x-slot:heading>
+                                    <div wire:click="toggleCollapse({{ $sync->id }})" class="cursor-pointer text-base-content">
+                                        Mais Detalhes
+                                    </div>
+                                </x-slot:heading>
+                                <x-slot:content>
+                                    <div class="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Telefone:</span>
+                                            <span>{{ $sync->contact_number ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Email:</span>
+                                            <span>{{ $sync->contact_email ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Cadência:</span>
+                                            <span>{{ $sync->cadencia?->name ?? 'Não definido' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Situação Contato:</span>
+                                            <span>{{ $sync->situacao_contato ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Nome Vendedor:</span>
+                                            <span>{{ $sync->nome_vendedor ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Origem:</span>
+                                            <span>
+                                                @if(!empty($sync->id_card) && $sync->id_card !== 'Não fornecido')
+                                                    <x-mary-badge value="Webhook" class="badge-success" />
+                                                @else
+                                                    <x-mary-badge value="Manual" class="badge-info" />
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center md:col-span-2">
+                                            <span class="font-semibold mr-1">Status Chatwoot:</span>
+                                            @if(!empty($sync->chatwoot_status))
+                                                <x-mary-badge value="{{ $sync->chatwoot_status }}" class="badge-primary" />
+                                            @else
+                                                <x-mary-badge value="Não informado" class="badge-secondary" />
+                                            @endif
+                                        </div>
+                                    </div>
+                                </x-slot:content>
+                            </x-mary-collapse>
+                            <x-slot:menu>
+                                <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
+                            </x-slot:menu>
+                            <div class="flex items-center gap-2">
+                                <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" class="btn-sm" />
+                                <x-mary-dropdown>
+                                    <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Ver Detalhes" icon="o-information-circle" link="{{ route('lead.details', ['leadId' => $sync->id]) }}" />
+                                </x-mary-dropdown>
+                            </div>
+                        </x-mary-card>
+                    @endif
+                @endforeach
+            </div>
+
+            <!-- Paginação -->
+            <div class="mt-4">
+                {{ $syncFlowLeads->links() }}
+            </div>
+        </x-mary-tab>
+
+        <x-mary-tab name="incomplete" label="Leads Faltam Dados ({{ $incompleteCount }})">
+            <!-- Cards Leads -->
+            <div class="grid lg:grid-cols-3 gap-5 mt-4">
+                @foreach ($syncFlowLeads as $sync)
+                    @if ($sync)
+                        <x-mary-card
+                            title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
+                            class="shadow-lg bg-orange-100 border-2 border-orange-500"
+                            subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
+                            separator
+                        >
+                            <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">
+                                <x-slot:heading>
+                                    <div wire:click="toggleCollapse({{ $sync->id }})" class="cursor-pointer text-base-content">
+                                        Mais Detalhes
+                                    </div>
+                                </x-slot:heading>
+                                <x-slot:content>
+                                    <div class="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Telefone:</span>
+                                            <span>{{ $sync->contact_number ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Email:</span>
+                                            <span>{{ $sync->contact_email ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Cadência:</span>
+                                            <span>{{ $sync->cadencia?->name ?? 'Não definido' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Situação Contato:</span>
+                                            <span>{{ $sync->situacao_contato ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Nome Vendedor:</span>
+                                            <span>{{ $sync->nome_vendedor ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="font-semibold mr-1">Origem:</span>
+                                            <span>
+                                                @if(!empty($sync->id_card) && $sync->id_card !== 'Não fornecido')
+                                                    <x-mary-badge value="Webhook" class="badge-success" />
+                                                @else
+                                                    <x-mary-badge value="Manual" class="badge-info" />
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center md:col-span-2">
+                                            <span class="font-semibold mr-1">Status Chatwoot:</span>
+                                            @if(!empty($sync->chatwoot_status))
+                                                <x-mary-badge value="{{ $sync->chatwoot_status }}" class="badge-primary" />
+                                            @else
+                                                <x-mary-badge value="Não informado" class="badge-secondary" />
+                                            @endif
+                                        </div>
+                                    </div>
+                                </x-slot:content>
+                            </x-mary-collapse>
+                            <x-slot:menu>
+                                <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
+                                <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
+                            </x-slot:menu>
+                            <div class="flex items-center gap-2">
+                                <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" class="btn-sm" />
+                                <x-mary-dropdown>
+                                    <x-mary-menu-item title="Editar" icon="o-pencil-square" @click="$wire.edit({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Excluir" icon="o-trash" wire:click="delete({{ $sync->id }})" />
+                                    <x-mary-menu-item title="Ver Detalhes" icon="o-information-circle" link="{{ route('lead.details', ['leadId' => $sync->id]) }}" />
+                                </x-mary-dropdown>
+                            </div>
+                        </x-mary-card>
+                    @endif
+                @endforeach
+            </div>
+
+            <!-- Paginação -->
+            <div class="mt-4">
+                {{ $syncFlowLeads->links() }}
+            </div>
+        </x-mary-tab>
+    </x-mary-tabs>
 </div>

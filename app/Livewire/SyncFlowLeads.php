@@ -36,6 +36,10 @@ class SyncFlowLeads extends Component
     public ?string $startDate = null;
     public ?string $endDate = null;
     public array $show = [];
+    public string $activeTab = 'all';
+    public int $allCount = 0;
+    public int $completeCount = 0;
+    public int $incompleteCount = 0;
 
     protected $queryString = [
         'search',
@@ -48,6 +52,7 @@ class SyncFlowLeads extends Component
         'isFromWebhookFilter',
         'startDate',
         'endDate',
+        'activeTab',
     ];
 
     public function mount()
@@ -107,6 +112,11 @@ class SyncFlowLeads extends Component
     }
 
     public function updatingEndDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingActiveTab()
     {
         $this->resetPage();
     }
@@ -313,10 +323,13 @@ class SyncFlowLeads extends Component
                 'estagioOptions' => $this->estagioOptions,
                 'situacaoContatoOptions' => $this->situacaoContatoOptions,
                 'cadenciaOptions' => $this->cadenciaOptions,
+                'allCount' => 0,
+                'completeCount' => 0,
+                'incompleteCount' => 0,
             ]);
         }
 
-        $syncFlowLeads = ModelsSyncFlowLeads::with(['cadencia', 'chatwootConversations'])
+        $baseQuery = ModelsSyncFlowLeads::with(['cadencia', 'chatwootConversations'])
             ->where('chatwoot_accoumts', $user->chatwoot_accoumts)
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -344,9 +357,69 @@ class SyncFlowLeads extends Component
                 }
             }))
             ->when($this->startDate, fn($q) => $q->whereDate('created_at', '>=', Carbon::parse($this->startDate)->startOfDay()->setTimezone('UTC')))
-            ->when($this->endDate, fn($q) => $q->whereDate('created_at', '<=', Carbon::parse($this->endDate)->endOfDay()->setTimezone('UTC')))
-            ->orderBy('created_at', 'desc')
-            ->paginate($this->perPage);
+            ->when($this->endDate, fn($q) => $q->whereDate('created_at', '<=', Carbon::parse($this->endDate)->endOfDay()->setTimezone('UTC')));
+
+        $this->allCount = $baseQuery->clone()->count();
+
+        $this->completeCount = $baseQuery->clone()->where(function ($q) {
+            $q->whereNotNull('contact_name')
+              ->where('contact_name', '!=', '')
+              ->where('contact_name', '!=', 'Não definido')
+              ->whereNotNull('contact_email')
+              ->where('contact_email', '!=', '')
+              ->where('contact_email', '!=', 'Não fornecido')
+              ->whereNotNull('contact_number')
+              ->where('contact_number', '!=', '')
+              ->where('contact_number', '!=', 'Não fornecido');
+        })->count();
+
+        $this->incompleteCount = $baseQuery->clone()->where(function ($q) {
+            $q->where(function ($subQ) {
+                $subQ->whereNull('contact_name')
+                     ->orWhere('contact_name', '')
+                     ->orWhere('contact_name', 'Não definido');
+            })->orWhere(function ($subQ) {
+                $subQ->whereNull('contact_email')
+                     ->orWhere('contact_email', '')
+                     ->orWhere('contact_email', 'Não fornecido');
+            })->orWhere(function ($subQ) {
+                $subQ->whereNull('contact_number')
+                     ->orWhere('contact_number', '')
+                     ->orWhere('contact_number', 'Não fornecido');
+            });
+        })->count();
+
+        if ($this->activeTab === 'all') {
+            $syncFlowLeads = $baseQuery->clone()->orderBy('created_at', 'desc')->paginate($this->perPage);
+        } elseif ($this->activeTab === 'leads') {
+            $syncFlowLeads = $baseQuery->clone()->where(function ($q) {
+                $q->whereNotNull('contact_name')
+                  ->where('contact_name', '!=', '')
+                  ->where('contact_name', '!=', 'Não definido')
+                  ->whereNotNull('contact_email')
+                  ->where('contact_email', '!=', '')
+                  ->where('contact_email', '!=', 'Não fornecido')
+                  ->whereNotNull('contact_number')
+                  ->where('contact_number', '!=', '')
+                  ->where('contact_number', '!=', 'Não fornecido');
+            })->orderBy('created_at', 'desc')->paginate($this->perPage);
+        } else {
+            $syncFlowLeads = $baseQuery->clone()->where(function ($q) {
+                $q->where(function ($subQ) {
+                    $subQ->whereNull('contact_name')
+                         ->orWhere('contact_name', '')
+                         ->orWhere('contact_name', 'Não definido');
+                })->orWhere(function ($subQ) {
+                    $subQ->whereNull('contact_email')
+                         ->orWhere('contact_email', '')
+                         ->orWhere('contact_email', 'Não fornecido');
+                })->orWhere(function ($subQ) {
+                    $subQ->whereNull('contact_number')
+                         ->orWhere('contact_number', '')
+                         ->orWhere('contact_number', 'Não fornecido');
+                });
+            })->orderBy('created_at', 'desc')->paginate($this->perPage);
+        }
 
         foreach ($syncFlowLeads as $lead) {
             if (!isset($this->show[$lead->id])) {
@@ -363,6 +436,9 @@ class SyncFlowLeads extends Component
             'estagioOptions' => $this->estagioOptions,
             'situacaoContatoOptions' => $this->situacaoContatoOptions,
             'cadenciaOptions' => $this->cadenciaOptions,
+            'allCount' => $this->allCount,
+            'completeCount' => $this->completeCount,
+            'incompleteCount' => $this->incompleteCount,
         ]);
     }
 }
