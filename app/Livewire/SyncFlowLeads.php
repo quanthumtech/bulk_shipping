@@ -6,6 +6,8 @@ use App\Livewire\Forms\SyncFlowLeadsForm;
 use App\Models\Cadencias;
 use App\Models\SyncFlowLeads as ModelsSyncFlowLeads;
 use App\Models\SystemNotification;
+use App\Models\User;
+use App\Enums\UserType;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -40,6 +42,7 @@ class SyncFlowLeads extends Component
     public int $allCount = 0;
     public int $completeCount = 0;
     public int $incompleteCount = 0;
+    public ?string $selectedAccount = null;
 
     protected $queryString = [
         'search',
@@ -53,11 +56,28 @@ class SyncFlowLeads extends Component
         'startDate',
         'endDate',
         'activeTab',
+        'selectedAccount',
     ];
 
     public function mount()
     {
         $this->show = [];
+        $user = Auth::user();
+        if ($user && $user->type_user === UserType::SuperAdmin->value) {
+            // Para SuperAdmin, não definimos selectedAccount inicialmente
+            // O usuário escolherá via dropdown
+        } else {
+            $this->selectedAccount = $user->chatwoot_accoumts ?? null;
+        }
+    }
+
+    public function updatedSelectedAccount()
+    {
+        $this->resetPage();
+        Log::info('Conta Chatwoot selecionada', [
+            'user_id' => Auth::user()->id,
+            'selected_account' => $this->selectedAccount,
+        ]);
     }
 
     public function toggleCollapse($leadId)
@@ -311,6 +331,28 @@ class SyncFlowLeads extends Component
         );
     }
 
+    public function getAccountOptionsProperty()
+    {
+        if (Auth::user()->type_user !== UserType::SuperAdmin->value) {
+            return [];
+        }
+
+        return array_merge(
+            //[['id' => '', 'name' => 'Selecione uma conta']],
+            User::select('chatwoot_accoumts')
+                ->distinct()
+                ->whereNotNull('chatwoot_accoumts')
+                ->where('chatwoot_accoumts', '!=', '')
+                ->pluck('chatwoot_accoumts')
+                ->map(function ($account) {
+                    return [
+                        'id' => $account,
+                        'name' => $account,
+                    ];
+                })->toArray()
+        );
+    }
+
     public function render()
     {
         $user = Auth::user();
@@ -323,14 +365,43 @@ class SyncFlowLeads extends Component
                 'estagioOptions' => $this->estagioOptions,
                 'situacaoContatoOptions' => $this->situacaoContatoOptions,
                 'cadenciaOptions' => $this->cadenciaOptions,
+                'accountOptions' => $this->accountOptions,
                 'allCount' => 0,
                 'completeCount' => 0,
                 'incompleteCount' => 0,
             ]);
         }
 
+        $chatwootAccount = $user->type_user === UserType::SuperAdmin->value ? $this->selectedAccount : $user->chatwoot_accoumts;
+
+        if ($user->type_user === UserType::SuperAdmin->value && empty($chatwootAccount)) {
+
+            if (!$user || !isset($user->chatwoot_accoumts)) {
+                
+                $this->error('Conta Chatwoot não configurada.', position: 'toast-top');
+
+                return view('livewire.sync-flow-leads', [
+                    'syncFlowLeads' => new \Illuminate\Pagination\LengthAwarePaginator(
+                        collect([]),
+                        0,
+                        $this->perPage,
+                        1,
+                        ['path' => url()->current()]
+                    ),
+                    'cadencias' => collect([['id' => '', 'name' => 'Selecione uma cadência']]),
+                    'estagioOptions' => $this->estagioOptions,
+                    'situacaoContatoOptions' => $this->situacaoContatoOptions,
+                    'cadenciaOptions' => $this->cadenciaOptions,
+                    'accountOptions' => $this->accountOptions,
+                    'allCount' => 0,
+                    'completeCount' => 0,
+                    'incompleteCount' => 0,
+                ]);
+            }
+        }
+
         $baseQuery = ModelsSyncFlowLeads::with(['cadencia', 'chatwootConversations'])
-            ->where('chatwoot_accoumts', $user->chatwoot_accoumts)
+            ->where('chatwoot_accoumts', $chatwootAccount)
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('contact_name', 'like', '%' . $this->search . '%')
@@ -436,6 +507,7 @@ class SyncFlowLeads extends Component
             'estagioOptions' => $this->estagioOptions,
             'situacaoContatoOptions' => $this->situacaoContatoOptions,
             'cadenciaOptions' => $this->cadenciaOptions,
+            'accountOptions' => $this->accountOptions,
             'allCount' => $this->allCount,
             'completeCount' => $this->completeCount,
             'incompleteCount' => $this->incompleteCount,

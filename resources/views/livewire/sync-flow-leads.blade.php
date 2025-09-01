@@ -1,11 +1,20 @@
 <div>
     <x-mary-header title="Cards Leads" subtitle="SyncFlow permite gerenciar leads capturados, criar e administrar cadências de forma eficiente." separator>
-        <x-slot:middle class="!justify-end">
+        <x-slot:middle class="!justify-end space-x-2">
             <x-mary-input icon="o-bolt" wire:model.live="search" placeholder="Buscar lead..." />
         </x-slot:middle>
         <x-slot:actions>
-            <x-mary-button label="Filtros Avançados" icon="o-funnel" @click="$wire.openFilterDrawer()" />
-            <x-mary-button label="Criar Lead" icon="o-plus" class="btn-primary ml-2" @click="$wire.showModal()" />
+            @if (Auth::user()->type_user === \App\Enums\UserType::SuperAdmin->value)
+                <x-mary-select
+                    wire:model.live="selectedAccount"
+                    :options="$accountOptions"
+                    option-label="name"
+                    option-value="id"
+                    placeholder="Chatwoot Account"
+                />
+            @endif
+            <x-mary-button icon="o-funnel" @click="$wire.openFilterDrawer()" />
+            <x-mary-button icon="o-plus" class="btn-primary ml-2" @click="$wire.showModal()" />
         </x-slot:actions>
     </x-mary-header>
 
