@@ -231,7 +231,19 @@ class WebhookLogsIndex extends Component
     {
         $query = WebhookLog::query()
             ->when($this->userId, fn($q) => $q->where('user_id', $this->userId))
-            ->when($this->search, fn($q) => $q->where('message', 'like', '%' . $this->search . '%'))
+            ->when($this->search, function($q) {
+                $searchTerm = '%' . $this->search . '%';
+                $q->where(function($sub) use ($searchTerm) {
+                    $sub->where('message', 'like', $searchTerm)
+                        ->orWhere('type', 'like', $searchTerm)
+                        ->orWhere('webhook_type', 'like', $searchTerm)
+                        ->orWhere('chatwoot_account_id', 'like', $searchTerm)
+                        ->orWhere('context', 'like', $searchTerm);
+                    if (is_numeric($this->search)) {
+                        $sub->orWhere('id', $this->search);
+                    }
+                });
+            })
             ->when($this->typeFilter, fn($q) => $q->where('type', $this->typeFilter))
             ->when($this->webhookTypeFilter, fn($q) => $q->where('webhook_type', $this->webhookTypeFilter))
             ->when($this->dataNow, function ($q) {

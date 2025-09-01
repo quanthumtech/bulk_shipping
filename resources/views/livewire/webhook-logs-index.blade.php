@@ -4,7 +4,7 @@
         subtitle="Visualize os logs gerados pelos webhooks."
         separator>
         <x-slot:middle class="!justify-end">
-            <x-mary-input icon="o-magnifying-glass" wire:model.live="search" placeholder="Pesquisar por mensagem..." />
+            <x-mary-input icon="o-magnifying-glass" wire:model.live="search" placeholder="Pesquisar qualquer coisa..." />
         </x-slot:middle>
         <x-slot:actions>
             <x-mary-button icon="o-funnel" wire:click="openFilterDrawer" title="Filtros" />
@@ -162,7 +162,7 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/12 lg:w-1/3"
+        class="w-11/12 lg:w-1/2"
         right>
         @if($selectedLog)
             <div class="space-y-4">
@@ -171,8 +171,21 @@
                 <div><strong>Mensagem:</strong> {{ $selectedLog->message }}</div>
                 <div><strong>Conta Chatwoot:</strong> {{ $selectedLog->chatwoot_account_id ?? 'N/A' }}</div>
                 <div><strong>Data:</strong> {{ $selectedLog->created_at->format('d/m/Y H:i:s') }}</div>
-                <div><strong>Contexto:</strong>
-                    <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-800 dark:text-gray-100">{{ json_encode($selectedLog->context, JSON_PRETTY_PRINT) }}</pre>
+                <div>
+                    <strong>Contexto:</strong>
+                    <div class="relative">
+                        <button
+                            type="button"
+                            class="absolute top-2 right-2 z-10 btn btn-xs btn-primary"
+                            onclick="navigator.clipboard.writeText(document.getElementById('context-json').innerText)">
+                            Copiar JSON
+                        </button>
+                        <pre
+                            id="context-json"
+                            class="bg-gray-100 dark:bg-gray-800 p-4 rounded text-gray-800 dark:text-gray-100 overflow-auto text-sm leading-relaxed border border-gray-200 dark:border-gray-700"
+                            style="white-space: pre-wrap; word-break: break-all;"
+                        >{{ json_encode($selectedLog->context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </div>
                 </div>
             </div>
         @else
