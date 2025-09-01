@@ -136,7 +136,7 @@
                 <x-mary-card
                     title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
                     class="shadow-lg {{ empty($sync->contact_email) || empty($sync->contact_number) ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
-                    subtitle="Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
+                    subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
                     separator
                 >
                     <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">

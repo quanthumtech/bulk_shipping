@@ -11,6 +11,8 @@
             @if($lead)
                 <table class="table w-full">
                     <tbody>
+                        <tr><th>Cadastrado Em</th><td>{{ $lead->created_at->format('d/m/Y H:i:s') ?? 'Não informado' }}</td></tr>
+                        <tr><th>Atualizado Em</th><td>{{ $lead->updated_at->format('d/m/Y H:i:s') ?? 'Não informado' }}</td></tr>
                         <tr><th>Nome</th><td>{{ $lead->contact_name ?? 'Não informado' }}</td></tr>
                         <tr><th>Número de Contato</th><td>{{ $lead->contact_number ?? 'Não informado' }}</td></tr>
                         <tr><th>Número da Empresa</th><td>{{ $lead->contact_number_empresa ?? 'Não informado' }}</td></tr>
