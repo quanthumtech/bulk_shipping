@@ -27,6 +27,15 @@
  * client_id: 1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP
  * redirect_uri: https://bulkship.plataformamundo.com.br/login
  * client_secret: 1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
+ * 
+ * Novas credenciais:
+ * 
+ * "access_token": "1000.5429c1804064453b97dbfd142b8f5a81.555e10d14306709fe97db158ef3fac01",
+ * "refresh_token": "1000.bd1c35d7c4002ff862213a178a1caeea.b3f5b1a01c4161b1cf30abc739aa6332",
+ * "scope": "ZohoCRM.settings.ALL ZohoCRM.modules.ALL ZohoCRM.users.ALL ZohoCRM.users.READ",
+ * "api_domain": "https://www.zohoapis.com",
+ * "token_type": "Bearer",
+ * "expires_in": 3600
  *
  * Serviço para interagir com a API do Zoho CRM.
  *

@@ -10,7 +10,7 @@
             <div class="space-y-2">
                 <x-mary-input label="Nome da cadência" wire:model.live="form.name" placeholder="Digite aqui o nome da cadência..." required />
             </div>
-            @if(Auth::user()->chatwoot_accounts == 5)
+            @if(Auth::user()->chatwoot_accoumts == 5)
                 <div class="space-y-2">
                     <x-mary-select label="Escolha o Estágio" :options="$options" wire:model.live="form.stage" />
                 </div>

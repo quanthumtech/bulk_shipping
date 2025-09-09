@@ -28,7 +28,7 @@ class CadenciaCreateEdit extends Component
     {
         $this->zohoService = $zohoService;
 
-        if (Auth::user()->chatwoot_accounts == 5) {
+        if (Auth::user()->chatwoot_accoumts == 5) {
             $this->loadStages();
         } else {
             Log::info('O usuário não possui a conta do Zoho CRM.');
