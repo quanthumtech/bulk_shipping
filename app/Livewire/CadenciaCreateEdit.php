@@ -31,7 +31,7 @@ class CadenciaCreateEdit extends Component
         if (Auth::user()->chatwoot_accoumts == 5) {
             $this->loadStages();
         } else {
-            Log::info('O usuário não possui a conta do Zoho CRM.');
+            logger()->info('O usuário não possui a conta do Zoho CRM.');
         }
 
         if ($id) {
@@ -58,7 +58,10 @@ class CadenciaCreateEdit extends Component
                 ];
             }, $stages);
         } catch (\Exception $e) {
+            report($e);
+            
             $this->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage(), position: 'toast-top');
+            logger()->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage());
         }
     }
 
@@ -78,8 +81,10 @@ class CadenciaCreateEdit extends Component
                 $this->success('Cadência cadastrada com sucesso!', position: 'toast-top', redirectTo: route('cadencias.index'));
             }
         } catch (\Exception $e) {
+            report($e);
+            
+            logger()->error('Erro ao salvar a cadência: ' . $e->getMessage());
             $this->error('Erro ao salvar a cadência: ' . $e->getMessage(), position: 'toast-top');
-            Log::error('Erro ao salvar cadência', ['error' => $e->getMessage()]);
         }
     }
 

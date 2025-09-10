@@ -151,12 +151,12 @@
                 <x-mary-menu-item title="SyncFlow" icon="s-square-3-stack-3d" link="/sync-flow" />
 
                 @if($user = auth()->user())
+                    <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
+                        <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
+                        <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
+                    </x-mary-menu-sub>
+                    
                     @if($user->type_user === '1' || $user->type_user === '2')
-                        <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
-                            <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
-                            <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
-                        </x-mary-menu-sub>
-
                         <x-mary-menu-sub title="Integrações" icon="c-inbox-stack">
                             <x-mary-menu-item title="Evolution" icon="c-inbox" link="/integrations" />
                         </x-mary-menu-sub>

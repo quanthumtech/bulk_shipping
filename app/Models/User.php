@@ -62,4 +62,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(SystemNotification::class);
     }
+
+    public function zohoIntegrations()
+    {
+        return $this->hasMany(ZohoIntegration::class);
+    }
 }

@@ -9,6 +9,17 @@
             <x-mary-button icon="o-plus" class="btn-primary" @click="window.location.href = '{{ route('users.config') }}'" />
         </x-slot:actions>
     </x-mary-header>
+
+    @if (auth()->user()->type_user === \App\Enums\UserType::User->value)
+        <x-mary-alert
+            title="Entenda as Responsabilidades desse Modulo."
+            icon="o-light-bulb"
+            description="Clique aqui para entender s responabilidades desse modulo."
+            class="bg-warning/10 text-warning border-warning/20 mb-4"
+            dismissible
+        />
+    @endif
+
     {{-- INFO: table --}}
     <x-mary-table
         :headers="$headers"
@@ -64,12 +75,14 @@
         {{-- Special `actions` slot --}}
         @scope('actions', $users)
             <div class="flex space-x-2">
-                <x-mary-button
-                    icon="o-trash"
-                    wire:click="delete({{ $users->id }})"
-                    spinner
-                    class="btn-sm btn-error"
-                />
+                @if (auth()->user()->type_user === \App\Enums\UserType::SuperAdmin->value)
+                    <x-mary-button
+                        icon="o-trash"
+                        wire:click="delete({{ $users->id }})"
+                        spinner
+                        class="btn-sm btn-error"
+                    />
+                @endif
                 <x-mary-button
                     icon="o-pencil-square"
                     @click="window.location.href = '{{ route('users.config', ['userId' => $users->id]) }}'"

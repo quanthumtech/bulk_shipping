@@ -169,6 +169,85 @@
                             icon="o-plus" />
                     </div>
                 </x-mary-tab>
+
+                <x-mary-tab name="integracao-tab">
+                    <x-slot:label>
+                        Integrações
+                    </x-slot:label>
+                    <div class="mt-4 space-y-4 mb-4">
+                        <x-mary-header title="Integrações Zoho One" subtitle="Adicione as integrações Zoho One para este usuário." size="text-2xl" />
+
+                        @foreach ($form->zoho_integrations as $index => $zoho)
+                            <div class="border p-4 rounded-lg space-y-4 relative">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="Zoho Client ID"
+                                            placeholder="Exemplo: 1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP"
+                                            hint="Informe o Client ID do Zoho One."
+                                            wire:model="form.zoho_integrations.{{ $index }}.client_id" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="Zoho Client Secret"
+                                            placeholder="Exemplo: 1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b"
+                                            hint="Informe o Client Secret do Zoho One."
+                                            wire:model="form.zoho_integrations.{{ $index }}.client_secret" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="Zoho Authorization Code"
+                                            placeholder="Exemplo: 1000.ea6b9ca02142a2d1877011941ac175ac..."
+                                            hint="Cole o código retornado pela URL de autorização do Zoho."
+                                            wire:model="form.zoho_integrations.{{ $index }}.code" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-input
+                                            label="Zoho Refresh Token"
+                                            placeholder="Exemplo: 1000.bd1c35d7c4002ff862213a178a1caeea..."
+                                            hint="O refresh token será preenchido automaticamente após processar o código."
+                                            wire:model="form.zoho_integrations.{{ $index }}.refresh_token"
+                                            readonly />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <x-mary-toggle wire:model="form.zoho_integrations.{{ $index }}.active">
+                                            <x-slot:label>
+                                                Integração Ativa
+                                            </x-slot:label>
+                                        </x-mary-toggle>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <x-mary-button
+                                        label="Autorizar Zoho One"
+                                        class="btn-primary btn-sm"
+                                        wire:click="initiateZohoAuth({{ $index }})"
+                                        icon="o-link"
+                                        :disabled="!$form->zoho_integrations[$index]['client_id'] || !$form->zoho_integrations[$index]['client_secret']" />
+                                    <x-mary-button
+                                        label="Processar Código"
+                                        class="btn-secondary btn-sm"
+                                        wire:click="processZohoCode({{ $index }})"
+                                        icon="o-check"
+                                        :disabled="!$form->zoho_integrations[$index]['client_id'] || !$form->zoho_integrations[$index]['client_secret'] || !$form->zoho_integrations[$index]['code']" />
+                                </div>
+                                @if (count($form->zoho_integrations) > 1)
+                                    <x-mary-button
+                                        label="Remover Integração"
+                                        class="btn-error btn-sm absolute top-2 right-2"
+                                        wire:click="removeZohoIntegration({{ $index }})"
+                                        icon="o-trash" />
+                                @endif
+                            </div>
+                        @endforeach
+
+                        <x-mary-button
+                            label="Adicionar Nova Integração Zoho"
+                            class="btn-primary"
+                            wire:click="addZohoIntegration"
+                            icon="o-plus" />
+                    </div>
+                </x-mary-tab>
             </x-mary-tabs>
 
             <x-slot:actions>

@@ -49,44 +49,47 @@ namespace App\Services;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\Models\ZohoIntegration;
 
 class ZohoCrmService
 {
     protected $client;
-    protected $config;
+    protected $userConfig;
 
-    public function __construct()
+    public function __construct(ZohoIntegration $zohoIntegration = null)
     {
         $this->client = new Client();
-        $this->config = config('services.zoho');
+        $this->userConfig = $zohoIntegration ? [
+            'client_id' => $zohoIntegration->client_id,
+            'client_secret' => $zohoIntegration->client_secret,
+            'refresh_token' => $zohoIntegration->refresh_token,
+            'token_url' => 'https://accounts.zoho.com/oauth/v2/token',
+            'api_url' => 'https://www.zohoapis.com/crm/v2',
+            'redirect_uri' => route('users.config', ['userId' => $zohoIntegration->user_id]),
+        ] : config('services.zoho');
 
-        if (empty($this->config['refresh_token'])) {
-            throw new \Exception('Zoho refresh token não configurado.');
+        if (empty($this->userConfig['refresh_token']) && $zohoIntegration) {
+            throw new \Exception('Zoho refresh token não configurado para o usuário.');
         }
     }
 
-    /**
-     * Obtém o access token do Zoho CRM usando o refresh token.
-     *
-     * @return void
-     */
     public function getAccessToken()
     {
-        $cacheKey = 'zoho_access_token';
+        $cacheKey = 'zoho_access_token_' . md5($this->userConfig['client_id'] . $this->userConfig['refresh_token']);
         $token = Cache::get($cacheKey);
 
         if ($token) {
-            Log::info('Access Token recuperado do cache');
+            Log::info('Access Token recuperado do cache para client_id: ' . $this->userConfig['client_id']);
             return $token;
         }
 
         try {
-            $response = $this->client->post($this->config['token_url'], [
+            $response = $this->client->post($this->userConfig['token_url'], [
                 'form_params' => [
                     'grant_type' => 'refresh_token',
-                    'client_id' => $this->config['client_id'],
-                    'client_secret' => $this->config['client_secret'],
-                    'refresh_token' => $this->config['refresh_token'],
+                    'client_id' => $this->userConfig['client_id'],
+                    'client_secret' => $this->userConfig['client_secret'],
+                    'refresh_token' => $this->userConfig['refresh_token'],
                 ],
             ]);
 
@@ -95,23 +98,43 @@ class ZohoCrmService
             if (isset($responseData['access_token'])) {
                 $token = $responseData['access_token'];
                 $expiresIn = $responseData['expires_in'] ?? 3600;
-                Cache::put($cacheKey, $token, $expiresIn - 60); // Cache for token lifetime minus 1 minute
-                Log::info('Novo Access Token obtido e armazenado no cache: ' . $token);
+                Cache::put($cacheKey, $token, $expiresIn - 60);
+                Log::info('Novo Access Token obtido para client_id: ' . $this->userConfig['client_id']);
                 return $token;
             } else {
-                Log::error('Erro ao obter o access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
-                throw new \Exception('Erro ao obter o access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
+                Log::error('Erro ao obter access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
+                throw new \Exception('Erro ao obter access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             if ($e->getResponse()->getStatusCode() === 400 && strpos($e->getMessage(), 'You have made too many requests') !== false) {
                 Log::warning('Limite de taxa atingido ao obter access token. Aguardando retry...');
-                sleep(10); // Espera 10 segundos antes de tentar novamente
-                return $this->getAccessToken(); // Retry
+                sleep(10);
+                return $this->getAccessToken();
             }
             Log::error('Exceção ao obter access token: ' . $e->getMessage());
             throw $e;
         } catch (\Exception $e) {
             Log::error('Exceção ao obter access token: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function exchangeCodeForTokens($code)
+    {
+        try {
+            $response = $this->client->post($this->userConfig['token_url'], [
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'client_id' => $this->userConfig['client_id'],
+                    'client_secret' => $this->userConfig['client_secret'],
+                    'redirect_uri' => $this->userConfig['redirect_uri'],
+                ],
+            ]);
+
+            return json_decode($response->getBody(), true);
+        } catch (\Exception $e) {
+            Log::error('Erro ao trocar código por tokens: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -126,7 +149,7 @@ class ZohoCrmService
         $accessToken = $this->getAccessToken();
 
         try {
-            $response = $this->client->get("{$this->config['api_url']}/settings/fields", [
+            $response = $this->client->get("{$this->userConfig['api_url']}/settings/fields", [
                 'query' => [
                     'module' => 'Potentials',
                 ],
@@ -162,7 +185,7 @@ class ZohoCrmService
         $accessToken = $this->getAccessToken();
 
         try {
-            $response = $this->client->get("{$this->config['api_url']}/users/{$ownerId}", [
+            $response = $this->client->get("{$this->userConfig['api_url']}/users/{$ownerId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                 ],
@@ -198,7 +221,7 @@ class ZohoCrmService
     {
         $accessToken = $this->getAccessToken();
         try {
-            $response = $this->client->get("{$this->config['api_url']}/Deals/{$leadId}", [
+            $response = $this->client->get("{$this->userConfig['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                 ],
@@ -230,7 +253,7 @@ class ZohoCrmService
 
         $accessToken = $this->getAccessToken();
         try {
-            $response = $this->client->put("{$this->config['api_url']}/Deals/{$leadId}", [
+            $response = $this->client->put("{$this->userConfig['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                     'Content-Type' => 'application/json',
@@ -270,7 +293,7 @@ class ZohoCrmService
 
         $accessToken = $this->getAccessToken();
         try {
-            $response = $this->client->get("{$this->config['api_url']}/Deals/{$leadId}", [
+            $response = $this->client->get("{$this->userConfig['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                 ],
@@ -312,7 +335,7 @@ class ZohoCrmService
                 ? $currentHistory . "\n[{$timestamp}] " . $message
                 : "[{$timestamp}] " . $message;
 
-            $response = $this->client->put("{$this->config['api_url']}/Deals/{$leadId}", [
+            $response = $this->client->put("{$this->userConfig['api_url']}/Deals/{$leadId}", [
                 'headers' => [
                     'Authorization' => "Zoho-oauthtoken {$accessToken}",
                     'Content-Type' => 'application/json',

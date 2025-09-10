@@ -30,7 +30,7 @@ class CadenciaIndex extends Component
         if (Auth::user()->chatwoot_accoumts == 5) {
             $this->loadStages();
         } else {
-            Log::info('O usuário não possui a conta do Zoho CRM.');
+            logger()->info('O usuário não possui a conta do Zoho CRM.');
         }
     }
 
@@ -45,7 +45,9 @@ class CadenciaIndex extends Component
                 ];
             }, $stages);
         } catch (\Exception $e) {
-            Log::error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage());
+            report($e);
+
+            logger()->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage());
             $this->error('Erro ao carregar os estágios do Zoho CRM: ' . $e->getMessage(), position: 'toast-top');
         }
     }

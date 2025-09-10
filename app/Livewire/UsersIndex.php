@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enums\UserType;
 use App\Livewire\Forms\UsersForm;
 use App\Livewire\Forms\VersionForm;
 use App\Models\User;
@@ -104,9 +105,20 @@ class UsersIndex extends Component
 
     public function render()
     {
-        $users = User::where('name', 'like', '%' . $this->search . '%')
-                     ->orWhere('email', 'like', '%' . $this->search . '%')
-                     ->paginate($this->perPage);
+        $authUser = auth()->user();
+
+        $query = User::query();
+
+        $query->where(function ($q) {
+            $q->where('name', 'like', '%' . $this->search . '%')
+            ->orWhere('email', 'like', '%' . $this->search . '%');
+        });
+
+        if ($authUser->type_user !== UserType::SuperAdmin->value) {
+            $query->where('id', $authUser->id);
+        }
+
+        $users = $query->paginate($this->perPage);
 
         foreach ($users as $user) {
             $user->type_user_name = $this->getUserTypeName($user->type_user);
