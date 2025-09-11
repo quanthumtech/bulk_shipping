@@ -70,7 +70,8 @@ class ZohoCrmService
         ] : config('services.zoho');
 
         if (empty($this->userConfig['refresh_token']) && $zohoIntegration) {
-            throw new \Exception('Zoho refresh token não configurado para o usuário.');
+            //throw new \Exception('Zoho refresh token não configurado para o usuário.');
+            logger()->error('Zoho refresh token não configurado para o usuário.');
         }
     }
 
