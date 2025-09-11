@@ -219,17 +219,11 @@
                                 </div>
                                 <div class="flex space-x-2">
                                     <x-mary-button
-                                        label="Autorizar Zoho One"
-                                        class="btn-primary btn-sm"
-                                        wire:click="initiateZohoAuth({{ $index }})"
-                                        icon="o-link"
-                                        :disabled="!$form->zoho_integrations[$index]['client_id'] || !$form->zoho_integrations[$index]['client_secret']" />
-                                    <x-mary-button
                                         label="Processar Código"
                                         class="btn-secondary btn-sm"
                                         wire:click="processZohoCode({{ $index }})"
-                                        icon="o-check"
-                                        :disabled="!$form->zoho_integrations[$index]['client_id'] || !$form->zoho_integrations[$index]['client_secret'] || !$form->zoho_integrations[$index]['code']" />
+                                        icon="o-check" 
+                                    />
                                 </div>
                                 @if (count($form->zoho_integrations) > 1)
                                     <x-mary-button

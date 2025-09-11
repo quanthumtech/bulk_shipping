@@ -47,20 +47,6 @@ class UserConfigIndex extends Component
         }
     }
 
-    public function initiateZohoAuth($index)
-    {
-        $zohoIntegration = $this->form->zoho_integrations[$index] ?? null;
-        if (!$zohoIntegration || empty($zohoIntegration['client_id']) || empty($zohoIntegration['client_secret'])) {
-            $this->error('Client ID e Client Secret são obrigatórios.', position: 'toast-top');
-            return;
-        }
-
-        $clientId = $zohoIntegration['client_id'];
-        $redirectUri = route('users.config', ['userId' => $this->userId, 'zoho_index' => $index]);
-        $authUrl = "https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id={$clientId}&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL,ZohoCRM.users.ALL,ZohoCRM.users.READ&redirect_uri=" . urlencode($redirectUri) . "&access_type=offline";
-        return redirect()->away($authUrl);
-    }
-
     public function handleZohoCallback()
     {
         try {
@@ -81,12 +67,15 @@ class UserConfigIndex extends Component
             
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$this->zoho_integration_index]['refresh_token'] = $tokenData['refresh_token'];
-                $this->form->zoho_integrations[$this->zoho_integration_index]['code'] = ''; // Clear the code
+                $this->form->zoho_integrations[$this->zoho_integration_index]['code'] = '';
+
                 $this->success('Integração com Zoho CRM configurada com sucesso!', position: 'toast-top');
             } else {
                 $this->error('Erro ao obter refresh token do Zoho CRM.', position: 'toast-top');
             }
         } catch (\Exception $e) {
+            report($e);
+
             $this->error('Erro ao processar integração com Zoho CRM: ' . $e->getMessage(), position: 'toast-top');
         }
     }
@@ -111,12 +100,14 @@ class UserConfigIndex extends Component
             
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$index]['refresh_token'] = $tokenData['refresh_token'];
-                $this->form->zoho_integrations[$index]['code'] = ''; // Clear the code
+                $this->form->zoho_integrations[$index]['code'] = '';
                 $this->success('Código processado com sucesso! Refresh token obtido.', position: 'toast-top');
             } else {
                 $this->error('Erro ao obter refresh token do Zoho CRM.', position: 'toast-top');
             }
         } catch (\Exception $e) {
+            report($e);
+
             $this->error('Erro ao processar o código Zoho: ' . $e->getMessage(), position: 'toast-top');
         }
     }
@@ -135,6 +126,7 @@ class UserConfigIndex extends Component
             return redirect()->route('users.index');
         } catch (\Exception $e) {
             report($e);
+
             $this->error('Erro ao salvar o usuário: ' . $e->getMessage(), position: 'toast-top');
             logger()->error('Erro ao salvar o usuário: ' . $e->getMessage());
         }

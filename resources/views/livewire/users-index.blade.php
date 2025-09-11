@@ -5,19 +5,29 @@
         </x-slot:middle>
         <x-slot:actions>
             <x-mary-button icon="o-funnel" />
-            <x-mary-button label="API Versão" @click="$wire.showVersionModal()"/>
-            <x-mary-button icon="o-plus" class="btn-primary" @click="window.location.href = '{{ route('users.config') }}'" />
+            @if (auth()->user()->type_user === \App\Enums\UserType::SuperAdmin->value)
+                <x-mary-button label="API Versão" @click="$wire.showVersionModal()"/>
+                <x-mary-button icon="o-plus" class="btn-primary" @click="window.location.href = '{{ route('users.config') }}'" />
+            @endif
         </x-slot:actions>
     </x-mary-header>
 
     @if (auth()->user()->type_user === \App\Enums\UserType::User->value)
-        <x-mary-alert
-            title="Entenda as Responsabilidades desse Modulo."
-            icon="o-light-bulb"
-            description="Clique aqui para entender s responabilidades desse modulo."
-            class="bg-warning/10 text-warning border-warning/20 mb-4"
-            dismissible
-        />
+        <x-mary-alert 
+            title="Saiba mais!" 
+            description="Clique para entender as responsabilidades desse modulo." 
+            icon="m-cursor-arrow-rays" 
+            class="bg-info/10 text-info border-info/20 mb-4"
+        >
+            <x-slot:actions>
+                <x-mary-button
+                    label="Documentações"
+                    link="{{ route('documentacao.index') }}"
+                    icon="o-document-text"
+                    class="btn-primary btn-sm"
+                />
+            </x-slot:actions>
+        </x-mary-alert>
     @endif
 
     {{-- INFO: table --}}
