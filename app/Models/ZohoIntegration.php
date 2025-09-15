@@ -9,6 +9,8 @@ class ZohoIntegration extends Model
 {
     use HasFactory;
 
+    protected $table = 'zoho_integrations';
+
     protected $fillable = [
         'user_id',
         'client_id',

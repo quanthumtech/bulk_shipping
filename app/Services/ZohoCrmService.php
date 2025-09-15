@@ -3,131 +3,146 @@
 /**
  * ZohoCrmService.php
  *
- * Documentação:
- * zoho.com/creator/help/api/v2/generate-token.html
- *
- * Cliar o Cliente ID e o Client Secret:
- * https://api-console.zoho.com/
- *
- * Url para obter o access token:
- * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL,ZohoCRM.users.ALL,ZohoCRM.users.READ&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
- *
- * Exemplo de retorno:
- * https://bulkship.plataformamundo.com.br/login?code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL&state=state
- *
- * Esse código é o que você vai usar para obter o access token:
- * 1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731
- *
- * Url para obter o refresh token:
- * https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&code=1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731&client_id=1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP&redirect_uri=https://bulkship.plataformamundo.com.br/login&client_secret=1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
- *
- *
- * grant_type: authorization_code
- * code: 1000.ea6b9ca02142a2d1877011941ac175ac.4b545a198be5640ae5d45cade56e5731
- * client_id: 1000.52CEX5NO0PL8FFZRD60P11GZK4E1NP
- * redirect_uri: https://bulkship.plataformamundo.com.br/login
- * client_secret: 1e84265ee0e4d47ecae8eff48b32edbf24bfa86e0b
- * 
- * Novas credenciais:
- * 
- * "access_token": "1000.5429c1804064453b97dbfd142b8f5a81.555e10d14306709fe97db158ef3fac01",
- * "refresh_token": "1000.bd1c35d7c4002ff862213a178a1caeea.b3f5b1a01c4161b1cf30abc739aa6332",
- * "scope": "ZohoCRM.settings.ALL ZohoCRM.modules.ALL ZohoCRM.users.ALL ZohoCRM.users.READ",
- * "api_domain": "https://www.zohoapis.com",
- * "token_type": "Bearer",
- * "expires_in": 3600
- *
  * Serviço para interagir com a API do Zoho CRM.
  *
- * $accessToken = $this->getAccessToken(); Serviço para obter o access token do Zoho CRM.
- * Assim usado nas funções que envolve requisições a API do Zoho CRM e Outros serviços do Zoho.
+ * Documentação:
+ * - Gerar token: https://www.zoho.com/creator/help/api/v2/generate-token.html
+ * - API Console para Client ID e Client Secret: https://api-console.zoho.com/
  *
+ * Exemplo de URL para obter o código de autorização:
+ * https://accounts.zoho.com/oauth/v2/auth?response_type=code&client_id=1000.KF4FKZ401A1WZFJDKTSW08IL02QA6C&scope=ZohoCRM.settings.ALL,ZohoCRM.modules.ALL,ZohoCRM.users.ALL,ZohoCRM.users.READ&redirect_uri=https://bulkship.plataformamundo.com.br/login&access_type=offline
+ *
+ * Exemplo de URL para obter o refresh token:
+ * https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&code=<authorization_code>&client_id=1000.KF4FKZ401A1WZFJDKTSW08IL02QA6C&redirect_uri=https://bulkship.plataformamundo.com.br/login&client_secret=780abb844b0bfe2a751a14dcd3238fc8194210f67e
+ *
+ * Credenciais do banco de dados:
+ * - client_id: 1000.KF4FKZ401A1WZFJDKTSW08IL02QA6C
+ * - client_secret: 780abb844b0bfe2a751a14dcd3238fc8194210f67e
+ * - refresh_token: 1000.80a781be97d62661b292b6056ab71569.240e7a177547e1a5bf5bc4f1db40b3a2
  */
 
 namespace App\Services;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use App\Models\ZohoIntegration;
+use Illuminate\Support\Facades\Log;
 
 class ZohoCrmService
 {
     protected $client;
     protected $userConfig;
+    protected $zohoConfig;
 
     public function __construct(ZohoIntegration $zohoIntegration = null)
     {
         $this->client = new Client();
+        $this->zohoConfig = $zohoIntegration;
 
-        $this->userConfig   = $zohoIntegration ? [
+        Log::info('ZohoIntegration model: ' . json_encode($zohoIntegration?->toArray() ?? []));
+
+        $region = config('services.zoho.region', 'com');
+        $tokenUrl = "https://accounts.zoho.{$region}/oauth/v2/token";
+        $apiUrl = "https://www.zohoapis.{$region}/crm/v2";
+
+        $this->userConfig = $zohoIntegration && $zohoIntegration->exists ? [
             'client_id'     => $zohoIntegration->client_id,
             'client_secret' => $zohoIntegration->client_secret,
             'refresh_token' => $zohoIntegration->refresh_token,
-            'token_url'     => 'https://accounts.zoho.com/oauth/v2/token',
-            'api_url'       => 'https://www.zohoapis.com/crm/v2',
-            'redirect_uri'  => route('users.config', ['userId' => $zohoIntegration->user_id]),
+            'token_url'     => $tokenUrl,
+            'api_url'       => $apiUrl,
+            'redirect_uri'  => config('services.zoho.redirect_uri', 'https://bulkship.plataformamundo.com.br/login'),
         ] : config('services.zoho');
 
-        if (empty($this->userConfig['refresh_token']) && $zohoIntegration) {
-            //throw new \Exception('Zoho refresh token não configurado para o usuário.');
-            logger()->error('Zoho refresh token não configurado para o usuário.');
+        if (empty($this->userConfig['client_id']) || empty($this->userConfig['client_secret'])) {
+            Log::error('Zoho client_id or client_secret not configured.');
+            throw new \Exception('Zoho client_id or client_secret not configured.');
+        }
+
+        if (empty($this->userConfig['refresh_token']) && $zohoIntegration?->exists) {
+            Log::error('Zoho refresh token not configured for user: ' . ($zohoIntegration->user_id ?? 'unknown'));
+            throw new \Exception('Zoho refresh token not configured for user.');
         }
     }
 
+    /**
+     * Obtain an access token from Zoho CRM, using cache if available.
+     *
+     * @return string
+     * @throws \Exception
+     */
     public function getAccessToken()
     {
         $cacheKey = 'zoho_access_token_' . md5($this->userConfig['client_id'] . $this->userConfig['refresh_token']);
-        $token    = Cache::get($cacheKey);
+        $token = Cache::get($cacheKey);
 
         if ($token) {
+            Log::info('Access Token retrieved from cache for client_id: ' . $this->userConfig['client_id']);
             return $token;
-
-            logger()->info('Access Token recuperado do cache para client_id: ' . $this->userConfig['client_id']);
         }
 
-        try {
-            $response = $this->client->post($this->userConfig['token_url'], [
-                'form_params' => [
-                    'grant_type'    => 'refresh_token',
-                    'client_id'     => $this->userConfig['client_id'],
-                    'client_secret' => $this->userConfig['client_secret'],
-                    'refresh_token' => $this->userConfig['refresh_token'],
-                ],
-            ]);
+        $attempts = 0;
+        $maxAttempts = 3;
 
-            $responseData = json_decode($response->getBody(), true);
+        while ($attempts < $maxAttempts) {
+            try {
+                $response = $this->client->post($this->userConfig['token_url'], [
+                    'form_params' => [
+                        'grant_type'    => 'refresh_token',
+                        'client_id'     => $this->userConfig['client_id'],
+                        'client_secret' => $this->userConfig['client_secret'],
+                        'refresh_token' => $this->userConfig['refresh_token'],
+                    ],
+                ]);
 
-            if (isset($responseData['access_token'])) {
-                $token = $responseData['access_token'];
-                $expiresIn = $responseData['expires_in'] ?? 3600;
-                Cache::put($cacheKey, $token, $expiresIn - 60);
-    
-                logger()->info('Novo Access Token obtido para client_id: ' . $this->userConfig['client_id']);
+                $responseData = json_decode($response->getBody(), true);
 
-                return $token;
-            } else {
-                logger()->error('Erro ao obter access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
-                throw new \Exception('Erro ao obter access token: ' . ($responseData['error'] ?? 'Resposta inválida'));
+                if (isset($responseData['access_token'])) {
+                    $token = $responseData['access_token'];
+                    $expiresIn = $responseData['expires_in'] ?? 3600;
+                    Cache::put($cacheKey, $token, $expiresIn - 60);
+
+                    // Update access_token and token_expires_at in the database
+                    if ($this->zohoConfig) {
+                        $this->zohoConfig->update([
+                            'access_token' => $token,
+                            'token_expires_at' => now()->addSeconds($expiresIn),
+                        ]);
+                    }
+
+                    Log::info('New Access Token obtained for client_id: ' . $this->userConfig['client_id']);
+                    return $token;
+                } else {
+                    Log::error('Error obtaining access token: ' . ($responseData['error'] ?? 'Invalid response'));
+                    throw new \Exception('Error obtaining access token: ' . ($responseData['error'] ?? 'Invalid response'));
+                }
+            } catch (\GuzzleHttp\Exception\ClientException $e) {
+                if ($e->getResponse()->getStatusCode() === 429) {
+                    $attempts++;
+                    $delay = pow(2, $attempts) * 10; // Exponential backoff: 10s, 20s, 40s
+                    Log::warning("Rate limit reached when obtaining access token. Attempt {$attempts}/{$maxAttempts}. Waiting {$delay} seconds...");
+                    sleep($delay);
+                } else {
+                    Log::error('Client exception when obtaining access token: ' . $e->getMessage());
+                    throw $e;
+                }
+            } catch (\Exception $e) {
+                report($e);
+                Log::error('Exception when obtaining access token: ' . $e->getMessage());
+                throw $e;
             }
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            if ($e->getResponse()->getStatusCode() === 400 && strpos($e->getMessage(), 'You have made too many requests') !== false) {
-                
-                logger()->warning('Limite de taxa atingido ao obter access token. Aguardando retry...');
-                sleep(10);
-                return $this->getAccessToken();
-            }
-
-            logger()->error('Exceção ao obter access token: ' . $e->getMessage());
-            throw $e;
-        } catch (\Exception $e) {
-            report($e);
-
-            logger()->error('Exceção ao obter access token: ' . $e->getMessage());
-            throw $e;
         }
+
+        throw new \Exception('Failed to obtain access token after ' . $maxAttempts . ' attempts due to rate limiting.');
     }
 
+    /**
+     * Exchange an authorization code for access and refresh tokens.
+     *
+     * @param string $code Authorization code from Zoho
+     * @return array
+     * @throws \Exception
+     */
     public function exchangeCodeForTokens($code)
     {
         try {
@@ -141,19 +156,30 @@ class ZohoCrmService
                 ],
             ]);
 
-            return json_decode($response->getBody(), true);
+            $responseData = json_decode($response->getBody(), true);
+
+            // Update ZohoIntegration with new tokens
+            if ($this->zohoConfig && isset($responseData['refresh_token'])) {
+                $this->zohoConfig->update([
+                    'access_token' => $responseData['access_token'],
+                    'refresh_token' => $responseData['refresh_token'],
+                    'token_expires_at' => now()->addSeconds($responseData['expires_in']),
+                ]);
+            }
+
+            return $responseData;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error('Erro ao trocar código por tokens: ' . $e->getMessage());
+            Log::error('Error exchanging code for tokens: ' . $e->getMessage());
             throw $e;
         }
     }
 
     /**
-     * Obtem os estágios do módulo Potentials do Zoho CRM.
+     * Get stages from the Potentials module in Zoho CRM.
      *
-     * @return void
+     * @return array
+     * @throws \Exception
      */
     public function getStages()
     {
@@ -177,21 +203,20 @@ class ZohoCrmService
                 }
             }
 
-            logger()->warning('Campo Stage não encontrado na resposta da API.');
+            Log::warning('Stage field not found in API response.');
             return [];
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error('Erro ao buscar estágios do Zoho CRM: ' . $e->getMessage());
+            Log::error('Error fetching stages from Zoho CRM: ' . $e->getMessage());
             throw $e;
         }
     }
 
-   /**
-     * Obtém o e-mail do usuário pelo ID do proprietário no Zoho CRM.
+    /**
+     * Get the user's email by owner ID in Zoho CRM.
      *
-     * @param string $ownerId ID do proprietário do negócio
-     * @return string|null E-mail do usuário ou null se não encontrado
+     * @param string $ownerId ID of the deal owner
+     * @return array|null Email and name of the user or null if not found
      */
     public function getUserEmailById($ownerId)
     {
@@ -213,26 +238,31 @@ class ZohoCrmService
                     'name' => $user['full_name'] ?? null
                 ];
 
-                logger()->info("Informações encontradas para o usuário ID {$ownerId}: " . json_encode($userInfo));
+                Log::info("User information found for ID {$ownerId}: " . json_encode($userInfo));
                 return $userInfo;
             } else {
-                logger()->warning("Informações não encontradas para o usuário ID {$ownerId}. Resposta: " . json_encode($userData));
+                Log::warning("User information not found for ID {$ownerId}. Response: " . json_encode($userData));
                 return null;
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             $errorBody = $e->getResponse()->getBody()->getContents();
-          
-            logger()->error("Erro ao buscar informações do usuário ID {$ownerId}: Status {$statusCode}, Mensagem: {$errorBody}");
+
+            Log::error("Error fetching user information for ID {$ownerId}: Status {$statusCode}, Message: {$errorBody}");
             return null;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error("Exceção ao buscar informações do usuário ID {$ownerId}: {$e->getMessage()}");
+            Log::error("Exception fetching user information for ID {$ownerId}: {$e->getMessage()}");
             return null;
         }
     }
 
+    /**
+     * Check if a lead exists in Zoho CRM.
+     *
+     * @param string $leadId ID of the lead (id_card)
+     * @return bool
+     */
     public function checkLeadExists($leadId)
     {
         $accessToken = $this->getAccessToken();
@@ -243,32 +273,30 @@ class ZohoCrmService
                 ],
             ]);
 
-            logger()->info("Lead encontrado: ID {$leadId}");
+            Log::info("Lead found: ID {$leadId}");
             return true;
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             report($e);
-
-            logger()->error("Erro ao verificar lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            Log::error("Error checking lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
             return false;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error("Exceção ao verificar lead ID {$leadId}: " . $e->getMessage());
+            Log::error("Exception checking lead ID {$leadId}: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Atualiza o campo Status_WhatsApp de um lead no Zoho CRM.
+     * Update the Status_WhatsApp field of a lead in Zoho CRM.
      *
-     * @param string $leadId ID do lead no Zoho CRM (id_card)
-     * @param string $status Novo valor para o campo Status_WhatsApp
-     * @return bool Sucesso ou falha na atualização
+     * @param string $leadId ID of the lead in Zoho CRM (id_card)
+     * @param string $status New value for the Status_WhatsApp field
+     * @return bool Success or failure of the update
      */
     public function updateLeadStatusWhatsApp($leadId, $status)
     {
         if (!$this->checkLeadExists($leadId)) {
-            logger()->error("Lead ID {$leadId} não encontrado no Zoho CRM. Atualização abortada.");
+            Log::error("Lead ID {$leadId} not found in Zoho CRM. Update aborted.");
             return false;
         }
 
@@ -288,32 +316,30 @@ class ZohoCrmService
                 ],
             ]);
 
-            logger()->info("Campo Status_WhatsApp atualizado para '{$status}' no lead ID {$leadId}");
+            Log::info("Status_WhatsApp field updated to '{$status}' for lead ID {$leadId}");
             return true;
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             report($e);
-
-            logger()->error("Erro ao atualizar Status_WhatsApp para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            Log::error("Error updating Status_WhatsApp for lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
             return false;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error("Exceção ao atualizar Status_WhatsApp para lead ID {$leadId}: " . $e->getMessage());
+            Log::error("Exception updating Status_WhatsApp for lead ID {$leadId}: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Obtém o valor de um campo específico de um lead no Zoho CRM.
+     * Get the value of a specific field from a lead in Zoho CRM.
      *
-     * @param string $leadId ID do lead no Zoho CRM
-     * @param string $field Nome do campo a recuperar
-     * @return string|null Valor do campo ou null se não encontrado
+     * @param string $leadId ID of the lead in Zoho CRM
+     * @param string $field Name of the field to retrieve
+     * @return string|null Field value or null if not found
      */
     public function getLeadField($leadId, $field)
     {
         if (!$this->checkLeadExists($leadId)) {
-            logger()->error("Lead ID {$leadId} não encontrado no Zoho CRM.");
+            Log::error("Lead ID {$leadId} not found in Zoho CRM.");
             return null;
         }
 
@@ -328,29 +354,30 @@ class ZohoCrmService
             $leadData = json_decode($response->getBody(), true);
             $fieldValue = $leadData['data'][0][$field] ?? null;
 
-            logger()->info("Campo {$field} recuperado para lead ID {$leadId}: " . ($fieldValue ?? 'Nulo'));
+            Log::info("Field {$field} retrieved for lead ID {$leadId}: " . ($fieldValue ?? 'Null'));
             return $fieldValue;
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             report($e);
-
-            logger()->error("Erro ao recuperar campo {$field} para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            Log::error("Error retrieving field {$field} for lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
             return null;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error("Exceção ao recuperar campo {$field} para lead ID {$leadId}: " . $e->getMessage());
+            Log::error("Exception retrieving field {$field} for lead ID {$leadId}: " . $e->getMessage());
             return null;
         }
     }
 
     /**
-     * Registrar hisotrico de mensagens no Zoho CRM.
-     * Campo Historic_WhatsApp
+     * Register message history in the Historic_WhatsApp field in Zoho CRM.
+     *
+     * @param string $leadId ID of the lead in Zoho CRM
+     * @param string $message Message to append to the history
+     * @return bool Success or failure of the update
      */
     public function registerHistory($leadId, $message)
     {
         if (!$this->checkLeadExists($leadId)) {
-            logger()->error("Lead ID {$leadId} não encontrado no Zoho CRM. Atualização abortada.");
+            Log::error("Lead ID {$leadId} not found in Zoho CRM. History update aborted.");
             return false;
         }
 
@@ -358,7 +385,7 @@ class ZohoCrmService
         try {
             $currentHistory = $this->getLeadField($leadId, 'Historic_WhatsApp') ?? '';
 
-            $timestamp = date('Y-m-d H:i:s');
+            $timestamp = now()->format('Y-m-d H:i:s');
             $newHistory = $currentHistory
                 ? $currentHistory . "\n[{$timestamp}] " . $message
                 : "[{$timestamp}] " . $message;
@@ -377,17 +404,15 @@ class ZohoCrmService
                 ],
             ]);
 
-            logger()->info("Histórico atualizado para lead ID {$leadId}");
+            Log::info("History updated for lead ID {$leadId}");
             return true;
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             report($e);
-
-            logger()->error("Erro ao atualizar histórico para lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
+            Log::error("Error updating history for lead ID {$leadId}: " . $e->getResponse()->getBody()->getContents());
             return false;
         } catch (\Exception $e) {
             report($e);
-
-            logger()->error("Exceção ao atualizar histórico para lead ID {$leadId}: " . $e->getMessage());
+            Log::error("Exception updating history for lead ID {$leadId}: " . $e->getMessage());
             return false;
         }
     }

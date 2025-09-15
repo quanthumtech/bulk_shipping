@@ -64,6 +64,8 @@ class UserConfigIndex extends Component
             ]));
 
             $tokenData = $zohoService->exchangeCodeForTokens($this->zoho_code);
+
+            logger()->info('Rertorno Token: ', $tokenData);
             
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$this->zoho_integration_index]['refresh_token'] = $tokenData['refresh_token'];
@@ -97,6 +99,8 @@ class UserConfigIndex extends Component
             ]));
 
             $tokenData = $zohoService->exchangeCodeForTokens($zohoIntegration['code']);
+
+            logger()->info('Rertorno Token: ', $tokenData);
             
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$index]['refresh_token'] = $tokenData['refresh_token'];
