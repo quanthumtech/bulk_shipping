@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BulkShip</title>
-    <link rel="icon" type="image/x-icon" href="https://plataformamundo.com.br/assets/images/favicon.ico">
+    <!--<link rel="icon" type="image/x-icon" href="https://plataformamundo.com.br/assets/images/favicon.ico">-->
+
+    <link rel="icon" type="image/x-icon" href="{{ asset('img/BULKSHIP-v2.png') }}">
+
+    {{-- EasyMDE --}}
 
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
@@ -76,7 +80,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/doc-systems.js'])
 </head>
-<body class="min-h-screen font-sans antialiased">
+<body class="min-h-screen font-sans">
     {{-- The navbar with `sticky` and `full-width` --}}
     <x-mary-nav sticky full-width>
 
@@ -87,7 +91,7 @@
             </label>
 
             {{-- Brand Logo --}}
-            <img src="{{ asset('img/BULKSHIP.png') }}" alt="Plataforma Mundo Logo" class="h-7 w-auto">
+            <img src="{{ asset('img/BULKSHIP-v3.png') }}" alt="Plataforma Mundo Logo" class="h-11 w-auto">
         </x-slot:brand>
 
         {{-- Right side actions --}}
@@ -143,6 +147,7 @@
                 <x-mary-menu-sub title="Gerenciar mensagens" icon="o-envelope">
                     <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
+                    <x-mary-menu-item title="Chat" icon="m-chat-bubble-oval-left" link="/chat" />
                 </x-mary-menu-sub>
                 <x-mary-menu-sub title="Cadência" icon="o-clock">
                     <x-mary-menu-item title="Gerenciar cadência" icon="o-document-chart-bar" link="/cadencias" />

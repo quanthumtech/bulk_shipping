@@ -6,6 +6,7 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\CadenciaCreateEdit;
 use App\Livewire\CadenciaIndex;
+use App\Livewire\ChatIndex;
 use App\Livewire\DocSystemsIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
@@ -155,5 +156,9 @@ Route::get('/integrations', IntegrationsIndex::class)
 Route::get('/documentacao', DocSystemsIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('documentacao.index');
+
+Route::get('/chat', ChatIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('chat.index');
 
 require __DIR__.'/auth.php';
