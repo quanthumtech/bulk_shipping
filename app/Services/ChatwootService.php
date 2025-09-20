@@ -716,4 +716,103 @@ class ChatwootService
     }
 
 
+    /**
+     * Obtém a lista de chats de uma instância Evolution.
+     *
+     * @param string $apiPost URL completa do endpoint sendText
+     * @param string $apikey Chave API
+     * @return array Lista de chats
+     */
+    public function getChats($apiPost, $apikey)
+    {
+        try {
+            $needle = 'sendText';
+            if (strpos($apiPost, $needle) === false) {
+                Log::error('Formato de API Post inválido.');
+                return [];
+            }
+
+            $baseUrl = substr($apiPost, 0, strpos($apiPost, $needle) + strlen($needle));
+            $session = ltrim(substr($apiPost, strpos($apiPost, $needle) + strlen($needle)), '/');
+
+            $chatBase = str_replace('message/sendText', 'chat/findChats', $baseUrl);
+
+            $endpoint = rtrim($chatBase, '/') . '/' . $session;
+
+            $versionBaseUrl = substr($baseUrl, 0, strpos($baseUrl, 'sendText'));
+            $activeVersion = Versions::where('url_evolution', $versionBaseUrl)->value('type') ?? '2';
+
+            $headers = ['apikey' => $apikey];
+
+            if ($activeVersion == '1') {
+                $response = Http::withHeaders($headers)->get($endpoint);
+            } else {
+                $response = Http::withHeaders($headers)->post($endpoint, []);
+            }
+
+            if (!$response->successful()) {
+                Log::error('Erro ao buscar chats: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
+            }
+
+            return $response->json() ?? [];
+        } catch (\Exception $e) {
+            Log::error('Erro ao recuperar chats: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtém as mensagens de um chat específico na instância Evolution.
+     *
+     * @param string $apiPost URL completa do endpoint sendText
+     * @param string $apikey Chave API
+     * @param string $phone Número de telefone sem @c.us
+     * @return array Lista de mensagens
+     */
+    public function getMessages($apiPost, $apikey, $phone)
+    {
+        try {
+            $needle = 'sendText';
+            if (strpos($apiPost, $needle) === false) {
+                Log::error('Formato de API Post inválido.');
+                return [];
+            }
+
+            $baseUrl = substr($apiPost, 0, strpos($apiPost, $needle) + strlen($needle));
+            $session = ltrim(substr($apiPost, strpos($apiPost, $needle) + strlen($needle)), '/');
+
+            $chatBase = str_replace('message/sendText', 'chat/findMessages', $baseUrl);
+
+            $endpoint = rtrim($chatBase, '/') . '/' . $session;
+
+            $versionBaseUrl = substr($baseUrl, 0, strpos($baseUrl, 'sendText'));
+            $activeVersion = Versions::where('url_evolution', $versionBaseUrl)->value('type') ?? '2';
+
+            $headers = ['apikey' => $apikey, 'Content-Type' => 'application/json'];
+
+            $body = [
+                'where' => [
+                    'key' => [
+                        'remoteJid' => $phone . '@c.us'
+                    ]
+                ]
+            ];
+
+            // Para v1, pode ser diferente, mas assumindo similar
+            $response = Http::withHeaders($headers)->post($endpoint, $body);
+
+            if (!$response->successful()) {
+                Log::error('Erro ao buscar mensagens: Status ' . $response->status() . ' - Resposta: ' . $response->body());
+                return [];
+            }
+
+            return $response->json() ?? [];
+        } catch (\Exception $e) {
+            Log::error('Erro ao recuperar mensagens: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+
 }
