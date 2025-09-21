@@ -96,7 +96,7 @@ class SendIndex extends Component
             // Garante que as tags estão sincronizadas antes do envio
             $this->updatedTags($this->tags);
 
-            Log::info('Iniciando envio:', [
+            logger()->info('Iniciando envio:', [
                 'phone_numbers' => $this->form->phone_number ?? [],
                 'emails' => $this->tags,
                 'evolution_id' => $this->form->evolution_id,
@@ -162,7 +162,7 @@ class SendIndex extends Component
                     'mail.from.name' => $emailIntegration->from_name,
                 ]);
 
-                Log::info('Configuração SMTP:', [
+                logger()->info('Configuração SMTP:', [
                     'host' => $emailIntegration->host,
                     'port' => $emailIntegration->port,
                     'encryption' => $encryption,
@@ -174,7 +174,7 @@ class SendIndex extends Component
                 foreach ($this->tags as $index => $email) {
                     if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                         try {
-                            Log::info('Tentando enviar email para: ' . $email);
+                            logger()->info('Tentando enviar email para: ' . $email);
 
                             Mail::mailer('dynamic')->to($email)->send(new class($this->form->menssage_content) extends \Illuminate\Mail\Mailable {
                                 public $content;
@@ -229,7 +229,7 @@ class SendIndex extends Component
             $this->success('Envio cadastrado com sucesso!', position: 'toast-top');
             $this->sendModal = false;
         } catch (\Exception $e) {
-            Log::error('Erro ao salvar as mensagens: ' . $e->getMessage(), [
+            logger()->error('Erro ao salvar as mensagens: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'tags' => $this->tags,
                 'form_emails' => $this->form->emails,

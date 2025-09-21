@@ -87,7 +87,7 @@
 
             <hr>
 
-            <x-mary-select label="Selecione a Caixa" wire:model="form.evolution_id" :options="$caixasEvolution" required />
+            <x-mary-select label="Selecione a Caixa" wire:model="form.evolution_id" :options="$caixasEvolution" />
 
             {{--
                 <x-mary-select label="Cadência (Opcional)" wire:model="form.cadencias" :options="$cadencias" />
