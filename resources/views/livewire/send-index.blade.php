@@ -66,7 +66,7 @@
                 placeholder="Clique no 'X' antes de buscar..." debounce="300ms" min-chars="2" searchable
                 no-result-text="Nenhum contato encontrado." search-function="searchContatosf" />
 
-            <x-mary-tags label="E-mails" wire:model="tags" icon="o-envelope" hint="Pressione a tecla enter" clearable />
+            <x-mary-tags label="E-mails" wire:model="tags" icon="o-envelope" hint="Pressione a tecla enter" clearable multiple />
 
             <x-mary-select label="Selecione a Conta SMTP" wire:model="form.email_integration_id" :options="$contasSmtp" />
 

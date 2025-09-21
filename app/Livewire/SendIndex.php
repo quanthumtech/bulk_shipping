@@ -67,22 +67,25 @@ class SendIndex extends Component
 
     public function updatedTags($value)
     {
-        // Sincroniza as tags com o form quando elas mudam
-        Log::info('Tags atualizadas:', ['value' => $value, 'type' => gettype($value)]);
+        logger()->info('Tags atualizadas:', ['value' => $value, 'type' => gettype($value)]);
 
-        if (is_array($value)) {
-            $this->tags = $value;
-            $this->form->emails = $value;
-        } elseif (is_string($value)) {
-            // Se for string, converte para array
-            $this->tags = array_filter(explode(',', $value));
-            $this->form->emails = $this->tags;
-        } else {
-            $this->tags = (array) $value;
-            $this->form->emails = $this->tags;
+        if (!is_array($this->tags)) {
+            $this->tags = [];
         }
 
-        Log::info('Tags sincronizadas:', [
+        if (is_array($value)) {
+            $this->tags = array_unique(array_merge($this->tags, $value));
+        } elseif (is_string($value)) {
+            $newEmails = array_filter(explode(',', $value));
+            $this->tags = array_unique(array_merge($this->tags, $newEmails));
+        } else {
+            $newEmails = (array) $value;
+            $this->tags = array_unique(array_merge($this->tags, $newEmails));
+        }
+
+        $this->form->emails = $this->tags;
+
+        logger()->info('Tags sincronizadas:', [
             'tags' => $this->tags,
             'form_emails' => $this->form->emails
         ]);
