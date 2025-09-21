@@ -12,6 +12,7 @@ class Send extends Model
     protected $fillable = [
         'contact_name',
         'phone_number',
+        'emails',
         'message_content',
         'sent_at',
         'file',
@@ -25,6 +26,10 @@ class Send extends Model
         'message_interval',
         'cadencias',
         'evolution_id',
+    ];
+
+    protected $casts = [
+        'emails' => 'array',
     ];
 
     /**
@@ -45,5 +50,10 @@ class Send extends Model
     public function evolution()
     {
         return $this->belongsTo(Evolution::class);
+    }
+
+    public function emailIntegration()
+    {
+        return $this->belongsTo(EmailIntegration::class);
     }
 }

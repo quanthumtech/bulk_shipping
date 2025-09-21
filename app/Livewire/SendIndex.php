@@ -8,10 +8,12 @@ use App\Models\Evolution;
 use App\Models\GroupSend;
 use App\Models\Send;
 use App\Models\User;
+use App\Models\EmailIntegration;
 use App\Services\ChatwootService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 use Mary\Traits\Toast;
 use Livewire\WithFileUploads;
@@ -40,6 +42,8 @@ class SendIndex extends Component
 
     public int $perPage = 3;
 
+    public array $tags = []; // Array para armazenar os emails selecionados
+
     public function mount(ChatwootService $chatwootService, $groupId)
     {
         $this->chatwootService = $chatwootService;
@@ -56,7 +60,32 @@ class SendIndex extends Component
         $this->editMode = false;
         $this->sendModal = true;
         $this->form->group_id = $this->groupId;
+        $this->form->emails = []; // Limpa os emails
+        $this->tags = []; // Limpa as tags
         $this->title = 'Enviar Mensagem';
+    }
+
+    public function updatedTags($value)
+    {
+        // Sincroniza as tags com o form quando elas mudam
+        Log::info('Tags atualizadas:', ['value' => $value, 'type' => gettype($value)]);
+
+        if (is_array($value)) {
+            $this->tags = $value;
+            $this->form->emails = $value;
+        } elseif (is_string($value)) {
+            // Se for string, converte para array
+            $this->tags = array_filter(explode(',', $value));
+            $this->form->emails = $this->tags;
+        } else {
+            $this->tags = (array) $value;
+            $this->form->emails = $this->tags;
+        }
+
+        Log::info('Tags sincronizadas:', [
+            'tags' => $this->tags,
+            'form_emails' => $this->form->emails
+        ]);
     }
 
     public function save(ChatwootService $chatwootService)
@@ -64,46 +93,149 @@ class SendIndex extends Component
         try {
             $this->chatwootService = $chatwootService;
 
-            // Busca a caixa Evolution selecionada
-            $evolution = Evolution::find($this->form->evolution_id);
-            if (!$evolution) {
-                $this->error('Caixa Evolution inválida.', position: 'toast-top');
-                return;
-            }
+            // Garante que as tags estão sincronizadas antes do envio
+            $this->updatedTags($this->tags);
 
-            // Collect contact names and send messages
-            foreach ($this->form->phone_number as $index => $phoneNumber) {
-                $contact = collect($this->contatos)->firstWhere('id', $phoneNumber);
-                $contactName = $contact['name'] ?? 'Sem Nome';
-                $this->form->contact_name = $contactName;
+            Log::info('Iniciando envio:', [
+                'phone_numbers' => $this->form->phone_number ?? [],
+                'emails' => $this->tags,
+                'evolution_id' => $this->form->evolution_id,
+                'email_integration_id' => $this->form->email_integration_id
+            ]);
 
-                Log::info('Enviando mensagem para: ' . $contactName . ' - ' . $phoneNumber);
+            // Envio de mensagens WhatsApp (se houver números de telefone)
+            if (!empty($this->form->phone_number)) {
+                $evolution = Evolution::find($this->form->evolution_id);
+                if (!$evolution) {
+                    $this->error('Caixa Evolution inválida.', position: 'toast-top');
+                    return;
+                }
 
-                // Dados da Caixa
-                Log::info('Caixa Evolution: ' . $evolution->api_post);
-                Log::info('API Key: ' . $evolution->apikey);
+                foreach ($this->form->phone_number as $index => $phoneNumber) {
+                    $contact = collect($this->contatos)->firstWhere('id', $phoneNumber);
+                    $contactName = $contact['name'] ?? 'Sem Nome';
+                    $this->form->contact_name = $contactName;
 
-                // Envia a mensagem usando a api_post e apikey da caixa escolhida
-                $this->chatwootService->sendMessage(
-                    $phoneNumber,
-                    $this->form->menssage_content,
-                    $evolution->api_post,
-                    $evolution->apikey,
-                    $contactName,
-                    null,
-                );
+                    Log::info('Enviando mensagem WhatsApp para: ' . $contactName . ' - ' . $phoneNumber);
 
-                if ($index < count($this->form->phone_number) - 1) {
-                    sleep(2);
+                    $this->chatwootService->sendMessage(
+                        $phoneNumber,
+                        $this->form->menssage_content,
+                        $evolution->api_post,
+                        $evolution->apikey,
+                        $contactName,
+                        null,
+                    );
+
+                    if ($index < count($this->form->phone_number) - 1) {
+                        sleep(2);
+                    }
                 }
             }
+
+            // Envio de emails (se houver emails selecionados)
+            if (!empty($this->tags)) {
+                $emailIntegration = EmailIntegration::find($this->form->email_integration_id);
+                if (!$emailIntegration) {
+                    $this->error('Conta SMTP inválida.', position: 'toast-top');
+                    return;
+                }
+
+                // Configura o mailer dinamicamente com as credenciais da integração SMTP
+                $encryption = $emailIntegration->encryption ?? 'tls'; // Default para TLS
+
+                config([
+                    'mail.mailers.dynamic.transport' => 'smtp',
+                    'mail.mailers.dynamic.host' => $emailIntegration->host,
+                    'mail.mailers.dynamic.port' => (int) $emailIntegration->port,
+                    'mail.mailers.dynamic.encryption' => $encryption,
+                    'mail.mailers.dynamic.username' => $emailIntegration->username,
+                    'mail.mailers.dynamic.password' => $emailIntegration->password,
+                    'mail.mailers.dynamic.stream' => [
+                        'ssl' => [
+                            'allow_self_signed' => true,
+                            'verify_peer' => false,
+                            'verify_peer_name' => false,
+                        ],
+                    ],
+                    'mail.from.address' => $emailIntegration->from_email,
+                    'mail.from.name' => $emailIntegration->from_name,
+                ]);
+
+                Log::info('Configuração SMTP:', [
+                    'host' => $emailIntegration->host,
+                    'port' => $emailIntegration->port,
+                    'encryption' => $encryption,
+                    'username' => $emailIntegration->username,
+                    'from_email' => $emailIntegration->from_email,
+                ]);
+
+                // Envio de emails para cada email selecionado
+                foreach ($this->tags as $index => $email) {
+                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        try {
+                            Log::info('Tentando enviar email para: ' . $email);
+
+                            Mail::mailer('dynamic')->to($email)->send(new class($this->form->menssage_content) extends \Illuminate\Mail\Mailable {
+                                public $content;
+
+                                public function __construct($content)
+                                {
+                                    $this->content = $content;
+                                }
+
+                                public function envelope()
+                                {
+                                    return new \Illuminate\Mail\Mailables\Envelope(
+                                        subject: 'Mensagem do ' . config('app.name'),
+                                    );
+                                }
+
+                                public function content()
+                                {
+                                    return new \Illuminate\Mail\Mailables\Content(
+                                        view: 'emails.message',
+                                        with: ['messageContent' => $this->content],
+                                    );
+                                }
+
+                                public function attachments()
+                                {
+                                    return [];
+                                }
+                            });
+
+                            Log::info('Email enviado com sucesso para: ' . $email);
+
+                            if ($index < count($this->tags) - 1) {
+                                sleep(1); // Pequeno delay entre emails
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Erro ao enviar email para ' . $email . ': ' . $e->getMessage());
+                            $this->warning('Falha ao enviar email para ' . $email . '. Verifique os logs.', position: 'toast-top');
+                        }
+                    } else {
+                        Log::warning('Email inválido ignorado: ' . $email);
+                    }
+                }
+            } else {
+                Log::info('Nenhum email selecionado para envio');
+            }
+
+            // Salva os emails no form antes de persistir
+            $this->form->emails = $this->tags;
 
             $this->form->store();
             $this->success('Envio cadastrado com sucesso!', position: 'toast-top');
             $this->sendModal = false;
-
         } catch (\Exception $e) {
-            $this->error('Erro ao salvar as mensagens: ' . $e->getMessage(), position: 'toast-top');
+            Log::error('Erro ao salvar as mensagens: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'tags' => $this->tags,
+                'form_emails' => $this->form->emails,
+                'phone_numbers' => $this->form->phone_number ?? [],
+            ]);
+            $this->error('Erro ao processar o envio: ' . $e->getMessage(), position: 'toast-top');
         }
     }
 
@@ -230,6 +362,19 @@ class SendIndex extends Component
                     })
             );
 
+        $contasSmtp = collect([['id' => '', 'name' => 'Selecione uma Conta SMTP...']])
+            ->concat(
+                EmailIntegration::where('user_id', $userId)
+                    ->where('active', true)
+                    ->get()
+                    ->map(function ($emailIntegration) {
+                        return [
+                            'id' => $emailIntegration->id,
+                            'name' => $emailIntegration->from_email . ' (' . $emailIntegration->host . ')',
+                        ];
+                    })
+            );
+
         return view('livewire.send-index', [
             'headers' => $headers,
             'group_table' => $group_table,
@@ -238,6 +383,8 @@ class SendIndex extends Component
             'cadencias' => $cadencias,
             'filteredContacts' => $filteredContacts->toArray(),
             'caixasEvolution' => $caixasEvolution,
+            'contasSmtp' => $contasSmtp,
+            'tags' => $this->tags, // Passa as tags para a view para debug
         ]);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire;
 
 use App\Livewire\Forms\UsersForm;
@@ -66,7 +67,7 @@ class UserConfigIndex extends Component
             $tokenData = $zohoService->exchangeCodeForTokens($this->zoho_code);
 
             logger()->info('Rertorno Token: ', $tokenData);
-            
+
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$this->zoho_integration_index]['refresh_token'] = $tokenData['refresh_token'];
                 $this->form->zoho_integrations[$this->zoho_integration_index]['code'] = '';
@@ -101,7 +102,7 @@ class UserConfigIndex extends Component
             $tokenData = $zohoService->exchangeCodeForTokens($zohoIntegration['code']);
 
             logger()->info('Rertorno Token: ', $tokenData);
-            
+
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$index]['refresh_token'] = $tokenData['refresh_token'];
                 $this->form->zoho_integrations[$index]['code'] = '';
@@ -156,6 +157,16 @@ class UserConfigIndex extends Component
         $this->form->removeZohoIntegration($index);
     }
 
+    public function addEmailIntegration()
+    {
+        $this->form->addEmailIntegration();
+    }
+
+    public function removeEmailIntegration($index)
+    {
+        $this->form->removeEmailIntegration($index);
+    }
+
     public function getVersionsProperty()
     {
         return Versions::all()->map(function ($version) {
@@ -184,15 +195,15 @@ class UserConfigIndex extends Component
 
         $agents = $this->editMode && $this->userId
             ? ChatwootsAgents::where('user_id', $this->userId)
-                ->paginate($this->perPage)
-                ->through(function ($agent) {
-                    return [
-                        'id' => $agent->agent_id,
-                        'name' => $agent->name,
-                        'email' => $agent->email ?? 'N/A',
-                        'role' => $agent->role,
-                    ];
-                })
+            ->paginate($this->perPage)
+            ->through(function ($agent) {
+                return [
+                    'id' => $agent->agent_id,
+                    'name' => $agent->name,
+                    'email' => $agent->email ?? 'N/A',
+                    'role' => $agent->role,
+                ];
+            })
             : [];
 
         return view('livewire.user-config-index', [

@@ -67,4 +67,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(ZohoIntegration::class);
     }
+
+    public function emailIntegrations()
+    {
+        return $this->hasMany(EmailIntegration::class);
+    }
 }
