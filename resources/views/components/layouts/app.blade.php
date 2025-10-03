@@ -144,13 +144,13 @@
             {{-- Activates the menu item when a route matches the `link` property --}}
             <x-mary-menu activate-by-route>
                 <x-mary-menu-item title="Home" icon="o-home" link="/statistic" />
-                <x-mary-menu-sub title="Gerenciar mensagens" icon="o-envelope">
-                    <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
+                <x-mary-menu-sub title="Mensagens" icon="o-envelope">
                     <x-mary-menu-item title="Lista de Contatos" icon="o-user-circle" link="/contatos" />
+                    <x-mary-menu-item title="Grupos" icon="o-rectangle-group" link="/group-send" />
                     <x-mary-menu-item title="Chat" icon="m-chat-bubble-oval-left" link="/chat" />
                 </x-mary-menu-sub>
-                <x-mary-menu-sub title="Cadência" icon="o-clock">
-                    <x-mary-menu-item title="Gerenciar cadência" icon="o-document-chart-bar" link="/cadencias" />
+                <x-mary-menu-sub title="Eventos" icon="o-clock">
+                    <x-mary-menu-item title="Gerenciar eventos" icon="o-document-chart-bar" link="/cadencias" />
                 </x-mary-menu-sub>
 
                 <x-mary-menu-item title="SyncFlow" icon="s-square-3-stack-3d" link="/sync-flow" />

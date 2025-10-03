@@ -89,10 +89,11 @@ class ListContatosIndex extends Component
             $this->form->store();
             $this->success('Contato cadastrado com sucesso!', position: 'toast-top');
 
-            // Fechar o modal
             $this->contactModal = false;
 
         } catch (\Exception $e) {
+            report($e);
+            logger()->error('Erro ao salvar o grupo: ' . $e->getMessage());
             $this->error('Erro ao salvar o grupo: ' . $e->getMessage(), position: 'toast-top');
         }
     }

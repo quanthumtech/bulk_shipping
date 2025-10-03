@@ -2,76 +2,245 @@
 
 namespace App\Livewire;
 
+use App\Enums\UserType;
+use App\Models\CadenceMessage;
+use App\Models\Cadencias;
 use App\Models\GroupSend;
+use App\Models\ListContatos;
 use App\Models\Send;
-use App\Services\ChatwootService;
+use App\Models\SyncFlowLeads;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class StatisticIndex extends Component
 {
-    public $contatos;
+    public $selectedUserId;
+    public $startDate;
+    public $endDate;
+    public $selectedStatus;
+    public $users;
+    public $leadStatuses = ['Atribuído', 'Em Progresso', 'Finalizado'];
+    public $leadsAtivos;
+    public $gruposAtivos;
+    public $contatosTotais;
+    public $cadenciasAtivas;
+    public $atribuidos;
+    public $semCadencia;
+    public $emProgresso;
+    public $finalizados;
 
-    // Dados dos gráficos
-    public array $contatosChart = [];
-    public array $mensagensChart = [];
+    public array $leadsChart = [];
+    public array $frequenciaChart = [];
+    public array $falhaChart = [];
 
-    protected $chatwootService;
-
-    public function mount(ChatwootService $chatwootService)
+    public function mount()
     {
-        $this->chatwootService = $chatwootService;
-        $this->contatos = $this->chatwootService->getContatos();
+        $this->selectedUserId = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value ? null : Auth::id();
+        $this->users = User::where('active', true)->get(['id', 'name']);
+        $this->startDate = Carbon::now()->subDays(30)->format('Y-m-d');
+        $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->selectedStatus = null;
+        $this->loadData();
+    }
 
-        $qtd_grupos = GroupSend::where('active', 1)->count();
-        $grupos_ativos = GroupSend::where('active', 1)->get();
-        $total_contatos_por_grupos = $grupos_ativos->reduce(function ($carry, $grupo) {
-            $contatos = json_decode($grupo->phone_number, true);
-            return $carry + (is_array($contatos) ? count($contatos) : 0);
-        }, 0);
+    public array $show = [
+        'open_filtro' => false
+    ];
 
-        $media_contatos_por_grupo = $qtd_grupos > 0
-            ? $total_contatos_por_grupos / $qtd_grupos
-            : 0;
+    public function toggleCollapse($key)
+    {
+        if (array_key_exists($key, $this->show)) {
+            $this->show[$key] = !$this->show[$key];
+        }
+    }
 
-        $contatosPorDia = GroupSend::selectRaw('DATE(created_at) as date, COUNT(*) as count')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->mapWithKeys(fn($item) => [$item->date => $item->count])
-            ->toArray();
+    public function updatedSelectedUserId()
+    {
+        $this->loadData();
+    }
 
-        $frequenciaMensagens = Send::selectRaw('DATE(created_at) as date, COUNT(*) as count')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->mapWithKeys(fn($item) => [$item->date => $item->count])
-            ->toArray();
+    public function updatedStartDate()
+    {
+        $this->loadData();
+    }
 
-        $this->contatosChart = [
-            'type' => 'doughnut',
+    public function updatedEndDate()
+    {
+        $this->loadData();
+    }
+
+    public function updatedSelectedStatus()
+    {
+        $this->loadData();
+    }
+
+    private function loadData()
+    {
+        $userId = $this->selectedUserId;
+        $startDate = $this->startDate;
+        $endDate = $this->endDate;
+        $status = $this->selectedStatus;
+
+        $dateRange = Carbon::parse($startDate)->startOfDay()->toDateTimeString() . ' TO ' . Carbon::parse($endDate)->endOfDay()->toDateTimeString();
+
+        $leadsQuery = SyncFlowLeads::query()->whereBetween('created_at', [$startDate, $endDate]);
+        if ($userId) {
+            $leadsQuery->whereHas('cadencia', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        }
+        if ($status) {
+            $leadsQuery->where('situacao_contato', $status);
+        }
+
+        $this->leadsAtivos = $leadsQuery->clone()
+            ->whereIn('situacao_contato', ['Atribuído', 'Em Progresso'])
+            ->count();
+
+        $this->atribuidos = $leadsQuery->clone()
+            ->where('situacao_contato', '=', 'Atribuído')
+            ->count();
+
+        $semCadenciaQuery = SyncFlowLeads::query()->whereBetween('created_at', [$startDate, $endDate])->whereNull('cadencia_id');
+        
+        if ($status) {
+            $semCadenciaQuery->where('situacao_contato', $status);
+        }
+        $this->semCadencia = $semCadenciaQuery->count();
+
+        $this->emProgresso = $leadsQuery->clone()
+            ->whereNotNull('cadencia_id')
+            ->whereRaw('JSON_LENGTH(COALESCE(completed_cadences, "[]")) = 0')
+            ->count();
+
+        $this->finalizados = $leadsQuery->clone()
+            ->whereRaw('JSON_LENGTH(COALESCE(completed_cadences, "[]")) > 0')
+            ->count();
+
+        $gruposQuery = GroupSend::where('active', 1)->whereBetween('created_at', [$startDate, $endDate]);
+        if ($userId) {
+            $gruposQuery->where('user_id', $userId);
+        }
+        $this->gruposAtivos = $gruposQuery->count();
+
+        $contatosQuery = ListContatos::whereBetween('created_at', [$startDate, $endDate]);
+        $this->contatosTotais = $contatosQuery->count();
+
+        $cadenciasQuery = Cadencias::where('active', true)->whereBetween('created_at', [$startDate, $endDate]);
+        if ($userId) {
+            $cadenciasQuery->where('user_id', $userId);
+        }
+        $this->cadenciasAtivas = $cadenciasQuery->count();
+
+        $this->leadsChart = [
+            'type' => 'bar',
             'data' => [
-                'labels' => array_keys($contatosPorDia),
+                'labels' => ['Atribuídos', 'Sem Cadência', 'Em Progresso', 'Finalizados'],
                 'datasets' => [
                     [
-                        'label' => 'Contatos',
-                        'data' => array_values($contatosPorDia),
+                        'label' => 'Leads',
+                        'data' => [$this->atribuidos, $this->semCadencia, $this->emProgresso, $this->finalizados],
+                        'backgroundColor' => ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                        'borderColor' => ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                        'borderWidth' => 1,
+                    ]
+                ],
+            ],
+            'options' => [
+                'responsive' => true,
+                'maintainAspectRatio' => false,
+                'scales' => [
+                    'y' => [
+                        'beginAtZero' => true,
+                    ],
+                ],
+            ],
+        ];
+
+        $frequenciaQuery = CadenceMessage::whereNotNull('enviado_em')
+            ->whereBetween('enviado_em', [$startDate, $endDate]);
+        if ($userId) {
+            $frequenciaQuery->whereHas('syncFlowLead.cadencia', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        }
+        $frequenciaData = $frequenciaQuery
+            ->selectRaw('DATE(enviado_em) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->date => $item->count])
+            ->toArray();
+
+        $this->frequenciaChart = [
+            'type' => 'line',
+            'data' => [
+                'labels' => array_keys($frequenciaData),
+                'datasets' => [
+                    [
+                        'label' => 'Mensagens Enviadas',
+                        'data' => array_values($frequenciaData),
                         'borderColor' => '#4A90E2',
-                        'backgroundColor' => 'rgba(74, 144, 226, 0.2)',
+                        'backgroundColor' => 'rgba(74, 144, 226, 0.1)',
+                        'tension' => 0.1,
+                        'fill' => true,
+                    ]
+                ],
+            ],
+            'options' => [
+                'responsive' => true,
+                'maintainAspectRatio' => false,
+                'scales' => [
+                    'y' => [
+                        'beginAtZero' => true,
+                    ],
+                    'x' => [
+                        'title' => [
+                            'display' => true,
+                            'text' => 'Data'
+                        ]
                     ]
                 ],
             ],
         ];
 
-        $this->mensagensChart = [
-            'type' => 'polarArea',
+        $sendQuery = Send::whereNotNull('sent_at')->whereBetween('sent_at', [$startDate, $endDate]);
+        if ($userId) {
+            $sendQuery->where('user_id', $userId);
+        }
+
+        $emailTotal = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->count();
+        $emailFailed = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->where('status', 'failed')->count();
+        $emailRate = $emailTotal > 0 ? round(($emailFailed / $emailTotal) * 100, 2) : 0;
+
+        $whatsappTotal = $sendQuery->clone()->whereNotNull('phone_number')->count();
+        $whatsappFailed = $sendQuery->clone()->whereNotNull('phone_number')->where('status', 'failed')->count();
+        $whatsappRate = $whatsappTotal > 0 ? round(($whatsappFailed / $whatsappTotal) * 100, 2) : 0;
+
+        $this->falhaChart = [
+            'type' => 'bar',
             'data' => [
-                'labels' => array_keys($frequenciaMensagens),
+                'labels' => ['Email', 'WhatsApp'],
                 'datasets' => [
                     [
-                        'label' => 'Mensagens',
-                        'data' => array_values($frequenciaMensagens),
-                        'backgroundColor' => '#65C3C8',
+                        'label' => 'Taxa de Falha (%)',
+                        'data' => [$emailRate, $whatsappRate],
+                        'backgroundColor' => ['#FF6384', '#36A2EB'],
+                        'borderColor' => ['#FF6384', '#36A2EB'],
+                        'borderWidth' => 1,
                     ]
+                ],
+            ],
+            'options' => [
+                'responsive' => true,
+                'maintainAspectRatio' => false,
+                'scales' => [
+                    'y' => [
+                        'beginAtZero' => true,
+                        'max' => 100,
+                    ],
                 ],
             ],
         ];
@@ -81,28 +250,17 @@ class StatisticIndex extends Component
 
     public function render()
     {
-        $qtd_contatos = count($this->contatos);
-        $qtd_msgs = Send::where('active', 1)->count();
+        $isAdmin = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value;
 
         return view('livewire.statistic-index', [
-            'contatos'       => $qtd_contatos,
-            'menssages'      => $qtd_msgs,
-            'grupos'         => GroupSend::where('active', 1)->count(),
-            'media_contatos' => $this->mediaContatosPorGrupo(),
-            'contatosChart'  => $this->contatosChart,
-            'mensagensChart' => $this->mensagensChart,
+            'leadsAtivos' => $this->leadsAtivos,
+            'gruposAtivos' => $this->gruposAtivos,
+            'contatosTotais' => $this->contatosTotais,
+            'cadenciasAtivas' => $this->cadenciasAtivas,
+            'leadsChart' => $this->leadsChart,
+            'frequenciaChart' => $this->frequenciaChart,
+            'falhaChart' => $this->falhaChart,
+            'isAdmin' => $isAdmin,
         ]);
-    }
-
-    private function mediaContatosPorGrupo()
-    {
-        $qtd_grupos = GroupSend::where('active', 1)->count();
-        $grupos_ativos = GroupSend::where('active', 1)->get();
-        $total_contatos_por_grupos = $grupos_ativos->reduce(function ($carry, $grupo) {
-            $contatos = json_decode($grupo->phone_number, true);
-            return $carry + (is_array($contatos) ? count($contatos) : 0);
-        }, 0);
-
-        return $qtd_grupos > 0 ? $total_contatos_por_grupos / $qtd_grupos : 0;
     }
 }

@@ -12,6 +12,14 @@ class ListContatos extends Model
         'contact_name',
         'phone_number',
         'chatwoot_id',
+        'id_lead',
+        'contact_email',
+        'contact_number_empresa',
+        'situacao_contato',
     ];
 
+    public function lead()
+    {
+        return $this->belongsTo(SyncFlowLeads::class, 'id_lead');
+    }
 }

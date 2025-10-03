@@ -49,18 +49,36 @@
         separator
         with-close-button
         close-on-escape
-        class="w-11/12 lg:w-1/2"
+        class="w-11/12 lg:w-1/3"
         right
     >
         <x-mary-form wire:submit="save">
-            <x-mary-input label="Nome do contato" wire:model="form.contact_name" />
+            <x-mary-input label="Nome do contato" wire:model="form.contact_name" required />
             <x-mary-input
                 label="Telefone"
                 wire:model="form.phone_number"
                 x-mask="(99) 99999-9999"
                 hint="Insira apenas número de WhatsApp"
                 placeholder="(00) 00000-0000"
+                required
             />
+
+            <x-mary-input
+                label="Email"
+                wire:model="form.contact_email"
+                type="email"
+                placeholder="exemplo@dominio.com"
+            />
+
+            <x-mary-input
+                label="Telefone da Empresa"
+                wire:model="form.contact_number_empresa"
+                x-mask="(99) 99999-9999"
+                placeholder="(00) 00000-0000"
+            />
+
+            <x-mary-input label="Situação do Contato" wire:model="form.situacao_contato" placeholder="Ex: ativo" />
+            <x-mary-checkbox label="Gerar lead para esse contato" wire:model="form.create_as_lead" />
 
             <x-slot:actions>
                 <x-mary-button label="Cancel" @click="$wire.contactModal = false" />
