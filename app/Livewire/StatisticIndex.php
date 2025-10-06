@@ -31,9 +31,13 @@ class StatisticIndex extends Component
     public $emProgresso;
     public $finalizados;
 
+    // Adicionado: rates para os progress radials
+    public $emailRate = 0;
+    public $whatsappRate = 0;
+
     public array $leadsChart = [];
     public array $frequenciaChart = [];
-    public array $falhaChart = [];
+    // Removido: falhaChart (não precisa mais)
 
     public function mount()
     {
@@ -42,6 +46,11 @@ class StatisticIndex extends Component
         $this->startDate = Carbon::now()->subDays(30)->format('Y-m-d');
         $this->endDate = Carbon::now()->format('Y-m-d');
         $this->selectedStatus = null;
+
+        // Adicionado: abre o collapse por padrão para admins
+        $isAdmin = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value;
+        $this->show['open_filtro'] = $isAdmin;
+
         $this->loadData();
     }
 
@@ -206,6 +215,7 @@ class StatisticIndex extends Component
             ],
         ];
 
+        // Mantido: query para sends, mas agora setando as rates públicas
         $sendQuery = Send::whereNotNull('sent_at')->whereBetween('sent_at', [$startDate, $endDate]);
         if ($userId) {
             $sendQuery->where('user_id', $userId);
@@ -213,37 +223,13 @@ class StatisticIndex extends Component
 
         $emailTotal = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->count();
         $emailFailed = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->where('status', 'failed')->count();
-        $emailRate = $emailTotal > 0 ? round(($emailFailed / $emailTotal) * 100, 2) : 0;
+        $this->emailRate = $emailTotal > 0 ? round(($emailFailed / $emailTotal) * 100, 2) : 0;
 
         $whatsappTotal = $sendQuery->clone()->whereNotNull('phone_number')->count();
         $whatsappFailed = $sendQuery->clone()->whereNotNull('phone_number')->where('status', 'failed')->count();
-        $whatsappRate = $whatsappTotal > 0 ? round(($whatsappFailed / $whatsappTotal) * 100, 2) : 0;
+        $this->whatsappRate = $whatsappTotal > 0 ? round(($whatsappFailed / $whatsappTotal) * 100, 2) : 0;
 
-        $this->falhaChart = [
-            'type' => 'bar',
-            'data' => [
-                'labels' => ['Email', 'WhatsApp'],
-                'datasets' => [
-                    [
-                        'label' => 'Taxa de Falha (%)',
-                        'data' => [$emailRate, $whatsappRate],
-                        'backgroundColor' => ['#FF6384', '#36A2EB'],
-                        'borderColor' => ['#FF6384', '#36A2EB'],
-                        'borderWidth' => 1,
-                    ]
-                ],
-            ],
-            'options' => [
-                'responsive' => true,
-                'maintainAspectRatio' => false,
-                'scales' => [
-                    'y' => [
-                        'beginAtZero' => true,
-                        'max' => 100,
-                    ],
-                ],
-            ],
-        ];
+        // Removido: falhaChart
 
         $this->dispatch('chartDataUpdated');
     }
@@ -259,7 +245,10 @@ class StatisticIndex extends Component
             'cadenciasAtivas' => $this->cadenciasAtivas,
             'leadsChart' => $this->leadsChart,
             'frequenciaChart' => $this->frequenciaChart,
-            'falhaChart' => $this->falhaChart,
+            // Removido: falhaChart
+            // Adicionado: rates para o view
+            'emailRate' => $this->emailRate,
+            'whatsappRate' => $this->whatsappRate,
             'isAdmin' => $isAdmin,
         ]);
     }

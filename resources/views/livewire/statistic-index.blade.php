@@ -98,12 +98,21 @@
             <x-mary-chart wire:model="frequenciaChart" class="w-full h-72" />
         </div>
 
-        {{-- Gráfico de Taxa de Falha --}}
+        {{-- Gráfico de Taxa de Falha -- MUDANÇA: Agora com progress radials --}}
         <div class="bg-base-100 p-4 rounded-lg shadow-lg w-full">
             <h3 class="text-lg font-semibold mb-4 text-center text-base-content">
                 Taxa de Falha de Envio (por canal)
             </h3>
-            <x-mary-chart wire:model="falhaChart" class="w-full h-72" />
+            <div class="grid grid-cols-2 gap-6 justify-items-center">
+                <div class="text-center">
+                    <x-progress-radial :value="$emailRate" unit="%" class="text-warning" style="--size: 8rem; --thickness: 8px;" />
+                    <p class="mt-2 font-medium">Email<br>{{ $emailRate }}%</p>
+                </div>
+                <div class="text-center">
+                    <x-progress-radial :value="$whatsappRate" unit="%" class="text-primary" style="--size: 8rem; --thickness: 8px;" />
+                    <p class="mt-2 font-medium">WhatsApp<br>{{ $whatsappRate }}%</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
