@@ -56,13 +56,18 @@ class StatisticIndex extends Component
 
     public function mount()
     {
-        $this->selectedUserId = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value ? null : Auth::id();
+        // Sempre carrega dados do usuário atual inicialmente
+        $this->selectedUserId = Auth::id(); // Default: dados do usuário logado
         $this->users = User::where('active', true)->get(['id', 'name']);
-        $this->startDate = Carbon::now()->subDays(30)->format('Y-m-d');
+        $this->startDate = Carbon::now()->subYear()->format('Y-m-d'); // Um ano atrás
         $this->endDate = Carbon::now()->format('Y-m-d');
         $this->selectedStatus = null;
 
+        // Para admins, permite filtrar por outros, mas inicia com o próprio
         $isAdmin = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value;
+        if ($isAdmin) {
+            $this->selectedUserId = null; // Admins iniciam sem filtro (todos), mas podem selecionar
+        }
         $this->show['open_filtro'] = $isAdmin;
 
         $this->loadData();
@@ -77,6 +82,12 @@ class StatisticIndex extends Component
         if (array_key_exists($key, $this->show)) {
             $this->show[$key] = !$this->show[$key];
         }
+    }
+
+    // NOVO: Método para botão de filtro (chama loadData explicitamente)
+    public function applyFilters()
+    {
+        $this->loadData();
     }
 
     public function updatedSelectedUserId()
@@ -168,6 +179,7 @@ class StatisticIndex extends Component
         $this->gruposAtivos = $gruposQuery->count();
 
         $contatosQuery = ListContatos::whereBetween('created_at', [$startDate, $endDate]);
+        // REMOVIDO: Filtro por userId/lead.cadencia - agora só últimos da lista, sem relação com leads
         $this->contatosTotais = $contatosQuery->count();
 
         $cadenciasQuery = Cadencias::where('active', true)->whereBetween('created_at', [$startDate, $endDate]);
@@ -278,14 +290,9 @@ class StatisticIndex extends Component
             return $lead;
         });
 
-        // Últimos 3 Contatos
-        $contatosQuery = ListContatos::whereBetween('created_at', [$startDate, $endDate]);
-        if ($userId) {
-            $contatosQuery->whereHas('lead.cadencia', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            });
-        }
-        $this->ultimosContatos = $contatosQuery->latest()->limit(3)->get()->map(function ($contato) {
+        // Últimos 3 Contatos (simples: últimos da lista, sem filtro de user/lead.cadencia)
+        $contatosQuery = ListContatos::whereBetween('created_at', [$startDate, $endDate])->latest()->limit(3);
+        $this->ultimosContatos = $contatosQuery->get()->map(function ($contato) {
             $contato->sync_info = $contato->chatwoot_id ? 'Sync Chatwoot (ID: ' . $contato->chatwoot_id . ')' : 'Sem Sync';
             $contato->formatted_created_at = Carbon::parse($contato->created_at)->format('d/m/Y');
             return $contato;

@@ -42,6 +42,9 @@
                         </select>
                     </div>
                 </div>
+                <div class="flex justify-end mt-4">
+                    <x-mary-button wire:click="applyFilters" label="Filtrar" class="btn-primary" />
+                </div>
             </x-slot:content>
         </x-mary-collapse>
     </div>
