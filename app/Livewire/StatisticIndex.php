@@ -10,8 +10,10 @@ use App\Models\ListContatos;
 use App\Models\Send;
 use App\Models\SyncFlowLeads;
 use App\Models\User;
+use App\Services\ChatwootService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class StatisticIndex extends Component
@@ -31,13 +33,26 @@ class StatisticIndex extends Component
     public $emProgresso;
     public $finalizados;
 
-    // Adicionado: rates para os progress radials
+    // Rates para falha e sucesso
     public $emailRate = 0;
     public $whatsappRate = 0;
+    public $emailSuccessRate = 100;
+    public $whatsappSuccessRate = 100;
+
+    // Para cards e tabela
+    public $ultimosLeads;
+    public $ultimosContatos;
+    public $cadencias;
+    public array $headersCadencias = [
+        ['key' => 'id', 'label' => '#', 'class' => 'bg-green-500/20 w-1 text-black'],
+        ['key' => 'name', 'label' => 'Nome'],
+        ['key' => 'leads_count', 'label' => 'Leads Atribuídos'],
+        ['key' => 'active_name', 'label' => 'Status'],
+        ['key' => 'formatted_created_at', 'label' => 'Criado'],
+    ];
 
     public array $leadsChart = [];
     public array $frequenciaChart = [];
-    // Removido: falhaChart (não precisa mais)
 
     public function mount()
     {
@@ -47,7 +62,6 @@ class StatisticIndex extends Component
         $this->endDate = Carbon::now()->format('Y-m-d');
         $this->selectedStatus = null;
 
-        // Adicionado: abre o collapse por padrão para admins
         $isAdmin = Auth::user()->type_user === UserType::Admin->value || Auth::user()->type_user === UserType::SuperAdmin->value;
         $this->show['open_filtro'] = $isAdmin;
 
@@ -85,14 +99,33 @@ class StatisticIndex extends Component
         $this->loadData();
     }
 
+    public function syncContatosDashboard()
+    {
+        $chatwootService = app(ChatwootService::class);
+
+        try {
+            $totalSync = $chatwootService->syncContatos();
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => "Sincronização concluída! {$totalSync} contatos processados.",
+                'position' => 'toast-top'
+            ]);
+            $this->loadData();
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Erro na sincronização: ' . $e->getMessage(),
+                'position' => 'toast-top'
+            ]);
+        }
+    }
+
     private function loadData()
     {
         $userId = $this->selectedUserId;
         $startDate = $this->startDate;
         $endDate = $this->endDate;
         $status = $this->selectedStatus;
-
-        $dateRange = Carbon::parse($startDate)->startOfDay()->toDateTimeString() . ' TO ' . Carbon::parse($endDate)->endOfDay()->toDateTimeString();
 
         $leadsQuery = SyncFlowLeads::query()->whereBetween('created_at', [$startDate, $endDate]);
         if ($userId) {
@@ -215,7 +248,6 @@ class StatisticIndex extends Component
             ],
         ];
 
-        // Mantido: query para sends, mas agora setando as rates públicas
         $sendQuery = Send::whereNotNull('sent_at')->whereBetween('sent_at', [$startDate, $endDate]);
         if ($userId) {
             $sendQuery->where('user_id', $userId);
@@ -224,12 +256,59 @@ class StatisticIndex extends Component
         $emailTotal = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->count();
         $emailFailed = $sendQuery->clone()->whereJsonLength('emails', '>', 0)->where('status', 'failed')->count();
         $this->emailRate = $emailTotal > 0 ? round(($emailFailed / $emailTotal) * 100, 2) : 0;
+        $this->emailSuccessRate = 100 - $this->emailRate;
 
         $whatsappTotal = $sendQuery->clone()->whereNotNull('phone_number')->count();
         $whatsappFailed = $sendQuery->clone()->whereNotNull('phone_number')->where('status', 'failed')->count();
         $this->whatsappRate = $whatsappTotal > 0 ? round(($whatsappFailed / $whatsappTotal) * 100, 2) : 0;
+        $this->whatsappSuccessRate = 100 - $this->whatsappRate;
 
-        // Removido: falhaChart
+        // Últimos 3 Leads
+        $leadsQuery = SyncFlowLeads::query()->whereBetween('created_at', [$startDate, $endDate]);
+        if ($userId) {
+            $leadsQuery->whereHas('cadencia', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        }
+        if ($status) {
+            $leadsQuery->where('situacao_contato', $status);
+        }
+        $this->ultimosLeads = $leadsQuery->latest()->limit(3)->get()->map(function ($lead) {
+            $lead->formatted_created_at = Carbon::parse($lead->created_at)->format('d/m/Y');
+            return $lead;
+        });
+
+        // Últimos 3 Contatos
+        $contatosQuery = ListContatos::whereBetween('created_at', [$startDate, $endDate]);
+        if ($userId) {
+            $contatosQuery->whereHas('lead.cadencia', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        }
+        $this->ultimosContatos = $contatosQuery->latest()->limit(3)->get()->map(function ($contato) {
+            $contato->sync_info = $contato->chatwoot_id ? 'Sync Chatwoot (ID: ' . $contato->chatwoot_id . ')' : 'Sem Sync';
+            $contato->formatted_created_at = Carbon::parse($contato->created_at)->format('d/m/Y');
+            return $contato;
+        });
+
+        // Cadências com count leads
+        $cadenciasQuery = Cadencias::where('active', true)->whereBetween('created_at', [$startDate, $endDate]);
+        $bindings = [true, $startDate, $endDate];
+
+        if ($userId) {
+            $cadenciasQuery->where('user_id', $userId);
+            $bindings[] = $userId;
+        }
+
+        $this->cadencias = $cadenciasQuery->select('cadencias.*', DB::raw('(SELECT COUNT(*) FROM sync_flow_leads WHERE cadencia_id = cadencias.id AND created_at BETWEEN ? AND ?) as leads_count'))
+            ->setBindings(array_merge($bindings, [$startDate, $endDate]))
+            ->limit(10)
+            ->get()
+            ->map(function ($cadencia) {
+                $cadencia->formatted_created_at = Carbon::parse($cadencia->created_at)->format('d/m/Y');
+                $cadencia->active_name = $cadencia->active ? 'Ativo' : 'Inativo';
+                return $cadencia;
+            });
 
         $this->dispatch('chartDataUpdated');
     }
@@ -245,10 +324,14 @@ class StatisticIndex extends Component
             'cadenciasAtivas' => $this->cadenciasAtivas,
             'leadsChart' => $this->leadsChart,
             'frequenciaChart' => $this->frequenciaChart,
-            // Removido: falhaChart
-            // Adicionado: rates para o view
+            'emailSuccessRate' => $this->emailSuccessRate,
+            'whatsappSuccessRate' => $this->whatsappSuccessRate,
             'emailRate' => $this->emailRate,
             'whatsappRate' => $this->whatsappRate,
+            'ultimosLeads' => $this->ultimosLeads,
+            'ultimosContatos' => $this->ultimosContatos,
+            'cadencias' => $this->cadencias,
+            'headersCadencias' => $this->headersCadencias,
             'isAdmin' => $isAdmin,
         ]);
     }
