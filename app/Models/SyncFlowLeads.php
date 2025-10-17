@@ -16,6 +16,8 @@ class SyncFlowLeads extends Model
         'contact_email',
         'estagio',
         'cadencia_id',
+        'id_vendedor',
+        'origem',
         'chatwoot_accoumts',
         'situacao_contato',
         'email_vendedor',

@@ -40,6 +40,9 @@ class WebhookZohoController extends Controller
         $this->webhookLogService = $webhookLogService;
     }
 
+    /**
+     * Adiciona uma entrada ao buffer de logs.
+     */
     protected function addToLogBuffer(string $type, string $message, array $context = []): void
     {
         $this->logBuffer[] = [
@@ -49,6 +52,9 @@ class WebhookZohoController extends Controller
         ];
     }
 
+    /**
+     * Junta todas as entradas do buffer e cria um único log.
+     */
     protected function flushLogBuffer(?string $chatwootAccountId, ?int $userId, string $webhook_type): void
     {
         if (empty($this->logBuffer)) {
@@ -90,12 +96,15 @@ class WebhookZohoController extends Controller
                 'id_vendedor' => $request->id_vendedor,
                 'cadencia_id' => $request->cadencia_id,
                 'estagio' => $request->estagio,
+                'origem' => $request->origem,
                 'situacao_contato' => $request->situacao_contato,
                 'chatwoot_accoumts' => $chatwootAccountId,
             ],
         ]);
 
-        // Validação inicial do request
+        /**
+         * Verifica se o método é POST e se há conteúdo na requisição
+         */
         if (!$request->isMethod('post') || !$request->getContent()) {
             $this->addToLogBuffer('error', 'Nenhum dado recebido no webhook', [
                 'method' => $request->method(),
@@ -105,9 +114,14 @@ class WebhookZohoController extends Controller
             return response('No data received', 400);
         }
 
-        // Formatar número de contato
+        /**
+         * Formata o número de contato para o padrão E.164
+         */
         $contactNumber = $this->phoneNumberService->formatPhoneNumber($request->contact_number);
 
+        /**
+         * Se a formatação falhar, logar o erro e notificar o usuário
+         */
         if ($contactNumber === 'Não fornecido' && !empty($request->contact_number)) {
             $this->addToLogBuffer('warning', 'Falha ao formatar número do lead', [
                 'id_card' => $idCard,
@@ -137,7 +151,11 @@ class WebhookZohoController extends Controller
             }
         }
 
-        // Buscar informações do vendedor
+        /**
+         * Buscar informações do vendedor
+         * Padrão: "Não fornecido"
+         * Se id_vendedor for válido, buscar email e nome do vendedor
+         */
         $emailVendedor = 'Não fornecido';
         $nomeVendedor = 'Não fornecido';
         if ($request->id_vendedor && $request->id_vendedor !== 'Não fornecido') {
@@ -157,7 +175,11 @@ class WebhookZohoController extends Controller
             }
         }
 
-        // Buscar lead no SyncFlowLeads por id_card ou contact_number
+        /**
+         * Prioridade de busca:
+         * 1. Buscar por id_card se fornecido e válido
+         * 2. Se não encontrado, buscar por contact_number se fornecido e válido
+         */
         $syncEmp = null;
         if ($idCard !== 'Não fornecido') {
             $syncEmp = SyncFlowLeads::where('id_card', $idCard)->first();
@@ -181,12 +203,19 @@ class WebhookZohoController extends Controller
         $chatwootStatus = 'pending';
         $contactId = $syncEmp ? $syncEmp->contact_id : null;
 
-        // Processar contato no Chatwoot
+        /**
+         * Regras para processar contato no Chatwoot:
+         * - O número de contato deve ser válido (não "Não fornecido")
+         * - Deve haver uma conta do Chatwoot vinculada (chatwoot_accoumts)
+         * - Deve haver um usuário válido com token de acesso
+         */
         if ($contactNumber !== 'Não fornecido' && $chatwootAccountId && $user && $user->token_acess) {
             // Buscar contato no Chatwoot por contact_email e contact_number
             $contacts = [];
 
-            // Checar por email se fornecido e válido
+            /**
+             * Checar por email se fornecido e válido
+             */
             if (!empty($request->contact_email) && $request->contact_email !== 'Não fornecido') {
                 $emailContacts = $this->chatwootService->searchContatosApi($request->contact_email, $chatwootAccountId, $user->token_acess);
                 $this->addToLogBuffer('info', "Busca por email {$request->contact_email} no Chatwoot", [
@@ -205,7 +234,9 @@ class WebhookZohoController extends Controller
                 $contacts = array_merge($contacts, $emailContacts);
             }
 
-            // Checar por número se fornecido e válido
+            /**
+             * Checar por número se fornecido e válido
+             */
             if (!empty($contactNumber) && $contactNumber !== 'Não fornecido') {
                 $numberContacts = $this->chatwootService->searchContatosApi($contactNumber, $chatwootAccountId, $user->token_acess);
                 $this->addToLogBuffer('info', "Busca por contact_number {$contactNumber} no Chatwoot", [
@@ -221,7 +252,10 @@ class WebhookZohoController extends Controller
                         ];
                     }, $numberContacts),
                 ]);
-                // Evitar duplicidade de contatos
+
+                /**
+                 * Verificar se o contato já existe
+                 */
                 foreach ($numberContacts as $nc) {
                     $alreadyExists = false;
                     foreach ($contacts as $ec) {
@@ -249,7 +283,10 @@ class WebhookZohoController extends Controller
                     'contact_name' => $contact['name'] ?? 'N/A',
                 ]);
 
-                // Atualizar contato existente
+                /**
+                 * Atualizar contato existente no Chatwoot
+                 * Se a atualização falhar, manter o contato existente
+                 */
                 $contactData = $this->chatwootService->updateContact(
                     $chatwootAccountId,
                     $user->token_acess,
@@ -288,7 +325,12 @@ class WebhookZohoController extends Controller
                     'user_id' => $user->id,
                 ]);
             } else {
-                // Criar novo contato no Chatwoot
+            
+                /**
+                 * Criar novo contato no Chatwoot
+                 * Se a criação falhar por duplicidade, tentar recuperar o contato existente
+                 * e usar esse contato para o lead
+                 */
                 try {
                     $contactData = $this->chatwootService->createContact(
                         $chatwootAccountId,
@@ -357,7 +399,9 @@ class WebhookZohoController extends Controller
             $chatwootStatus = 'failed';
         }
 
-        // Salvar ou atualizar lead no SyncFlowLeads
+        /**
+         * Salvar ou atualizar lead no SyncFlowLeads
+         */
         if ($syncEmp) {
             $oldEstagio = $syncEmp->estagio;
             $syncEmp->contact_name = $request->contact_name ?? $syncEmp->contact_name;
@@ -371,23 +415,49 @@ class WebhookZohoController extends Controller
             $syncEmp->id_vendedor = $request->id_vendedor ?? $syncEmp->id_vendedor;
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
+            $syncEmp->origem = $request->origem;
             //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->updated_at = now();
 
+            /**
+             * Verifica a 'Origem' se é INBOUND ou OUTBOUND.
+             * Regras:
+             * - Se origem for OUTBOUND: não atribui cadência mesmo que cadencia_id esteja presente.
+             * - Se origem for INBOUND e cadencia_id presente: atribuir cadência.
+             * - Se não houver origem (somente cadencia_id): atribuir cadência.
+             */
+            $origemRaw = $request->origem ?? null;
+            $origem = is_string($origemRaw) ? strtoupper(trim($origemRaw)) : null;
+
             if ($request->cadencia_id) {
                 $cadencia = Cadencias::find($request->cadencia_id);
-                if ($cadencia) {
-                    $syncEmp->cadencia_id = $request->cadencia_id;
-                    $this->addToLogBuffer('info', "Cadência atribuída ao lead existente", [
-                        'lead_id' => $syncEmp->id,
-                        'cadencia_id' => $request->cadencia_id,
+                if (!$cadencia) {
+                    $this->addToLogBuffer('warning', "Cadência ID {$request->cadencia_id} não encontrada", [
                         'id_card' => $idCard,
                     ]);
                 } else {
-                    $this->addToLogBuffer('warning', "Cadência ID {$request->cadencia_id} não encontrada", [
-                        'id_card' => $idCard,
-                        'lead_id' => $syncEmp->id,
-                    ]);
+                    if (empty($origem) || $origem === 'INBOUND') {
+                        $syncEmp->cadencia_id = $request->cadencia_id;
+                        $this->addToLogBuffer('info', "Cadência atribuída ao novo lead", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    } elseif ($origem === 'OUTBOUND') {
+                        $this->addToLogBuffer('info', "Cadência não atribuída por ser OUTBOUND", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    } else {
+                        // Origem informada mas não é INBOUND/OUTBOUND -> permitir atribuição por segurança
+                        $syncEmp->cadencia_id = $request->cadencia_id;
+                        $this->addToLogBuffer('info', "Cadência atribuída ao novo lead (origem não padrão)", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    }
                 }
             }
 
@@ -424,24 +494,53 @@ class WebhookZohoController extends Controller
             $syncEmp->id_vendedor = $request->id_vendedor ?? 'Não fornecido';
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
+            $syncEmp->origem = $request->origem ?? 'Não fornecido';
             //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->completed_cadences = '0';
             $syncEmp->created_at = now();
 
+            /**
+             * Verifica a 'Origem' se é INBOUND ou OUTBOUND.
+             * Regras:
+             * - Se origem for OUTBOUND: não atribui cadência mesmo que cadencia_id esteja presente.
+             * - Se origem for INBOUND e cadencia_id presente: atribuir cadência.
+             * - Se não houver origem (somente cadencia_id): atribuir cadência.
+             */
+            $origemRaw = $request->origem ?? null;
+            $origem = is_string($origemRaw) ? strtoupper(trim($origemRaw)) : null;
+
             if ($request->cadencia_id) {
                 $cadencia = Cadencias::find($request->cadencia_id);
-                if ($cadencia) {
-                    $syncEmp->cadencia_id = $request->cadencia_id;
-                    $this->addToLogBuffer('info', "Cadência atribuída ao novo lead", [
-                        'cadencia_id' => $request->cadencia_id,
-                        'id_card' => $idCard,
-                    ]);
-                } else {
+                if (!$cadencia) {
                     $this->addToLogBuffer('warning', "Cadência ID {$request->cadencia_id} não encontrada", [
                         'id_card' => $idCard,
                     ]);
+                } else {
+                    if (empty($origem) || $origem === 'INBOUND') {
+                        $syncEmp->cadencia_id = $request->cadencia_id;
+                        $this->addToLogBuffer('info', "Cadência atribuída ao novo lead", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    } elseif ($origem === 'OUTBOUND') {
+                        $this->addToLogBuffer('info', "Cadência não atribuída por ser OUTBOUND", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    } else {
+                        // Origem informada mas não é INBOUND/OUTBOUND -> permitir atribuição por segurança
+                        $syncEmp->cadencia_id = $request->cadencia_id;
+                        $this->addToLogBuffer('info', "Cadência atribuída ao novo lead (origem não padrão)", [
+                            'cadencia_id' => $request->cadencia_id,
+                            'id_card' => $idCard,
+                            'origem' => $origemRaw,
+                        ]);
+                    }
                 }
             }
+
 
             try {
                 $syncEmp->save();
@@ -462,7 +561,9 @@ class WebhookZohoController extends Controller
                 ]);
             }
 
-            // Atualizar status no Zoho
+            /**
+             * Atualizar Status_WhatsApp para "Não respondido" ao criar novo lead
+             */
             try {
                 $leadExists = $this->zohoCrmService->checkLeadExists($idCard);
                 if ($leadExists) {
@@ -494,7 +595,12 @@ class WebhookZohoController extends Controller
             }
         }
 
-        // Atribuir agente à conversa no Chatwoot
+        /**
+         * Regras para atribuição de agente:
+         * - Deve haver um lead válido (syncEmp)
+         * - O número de contato deve ser válido (não "Não fornecido")
+         * - O lead deve ter uma cadência atribuída (cadencia_id)
+         */
         if ($syncEmp && $contactNumber !== 'Não fornecido' && $syncEmp->cadencia_id) {
             try {
                 $cadencia = Cadencias::find($syncEmp->cadencia_id);
