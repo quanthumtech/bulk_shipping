@@ -27,7 +27,12 @@ class User extends Authenticatable
         'type_user',
         'token_acess',
         'apikey',
-        'api_post'
+        'api_post',
+        'plan_id',
+        'plan_start_date',
+        'plan_end_date',
+        'used_cadence_flows',
+        'used_daily_leads',
     ];
 
     /**
@@ -71,5 +76,41 @@ class User extends Authenticatable
     public function emailIntegrations()
     {
         return $this->hasMany(EmailIntegration::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function canCreateCadence(): bool
+    {
+        if (!$this->plan) {
+            return false;
+        }
+        return $this->plan->allowsCadenceFlows($this->used_cadence_flows + 1);
+    }
+
+    public function canReceiveDailyLead(): bool
+    {
+        if (!$this->plan) {
+            return false;
+        }
+       
+        return $this->plan->allowsDailyLeads($this->used_daily_leads + 1);
+    }
+
+    public function incrementCadenceCount(): void
+    {
+        if ($this->plan && $this->canCreateCadence()) {
+            $this->increment('used_cadence_flows');
+        }
+    }
+
+    public function incrementDailyLeadCount(): void
+    {
+        if ($this->plan && $this->canReceiveDailyLead()) {
+            $this->increment('used_daily_leads');
+        }
     }
 }

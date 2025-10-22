@@ -49,6 +49,10 @@
                                 </x-slot:label>
                             </x-mary-toggle>
                         </div>
+                        <div class="space-y-2">
+                            <x-mary-select label="Plano do Usuário" :options="$plans" class="mb-4"
+                                wire:model="form.plan_id" />
+                        </div>
                     </div>
                 </x-mary-tab>
 

@@ -159,6 +159,7 @@
                     <x-mary-menu-sub title="Settings" icon="o-cog-6-tooth">
                         <x-mary-menu-item title="Usuários" icon="o-users" link="/users" />
                         <x-mary-menu-item title="Scripts" icon="o-code-bracket" link="/scrpits-index" />
+                        <x-mary-menu-item title="Gerenciar Planos" icon="s-document-currency-dollar" link="/gerenciar-planos" />
                     </x-mary-menu-sub>
                     
                     @if($user->type_user === '1' || $user->type_user === '2')

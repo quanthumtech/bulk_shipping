@@ -206,6 +206,14 @@ class UserConfigIndex extends Component
             })
             : [];
 
+        $plans = [
+            ['id' => '', 'name' => 'Selecione...'],
+            ['id' => 1, 'name' => 'Essencial'],
+            ['id' => 2, 'name' => 'Avançado'],
+            ['id' => 3, 'name' => 'Profissional'],
+            ['id' => 4, 'name' => 'Customizado'],
+        ];
+
         return view('livewire.user-config-index', [
             'options' => $options,
             'headers' => $headers,
@@ -213,6 +221,7 @@ class UserConfigIndex extends Component
             'agents' => $agents,
             'perPage' => $this->perPage,
             'versions' => $this->versions,
+            'plans' => $plans,
         ]);
     }
 }

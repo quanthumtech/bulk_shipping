@@ -10,6 +10,7 @@ use App\Livewire\ChatIndex;
 use App\Livewire\DocSystemsIndex;
 use App\Livewire\EtapasIndex;
 use App\Livewire\FaqIndex;
+use App\Livewire\GerenciarPlanosIndex;
 use App\Livewire\GroupSendIndex;
 use App\Livewire\IntegrationsIndex;
 use App\Livewire\LeadConversationHistory;
@@ -160,5 +161,10 @@ Route::get('/documentacao', DocSystemsIndex::class)
 Route::get('/chat', ChatIndex::class)
     ->middleware(['auth', 'verified'])
     ->name('chat.index');
+
+    // Gerenciar Planos
+Route::get('/gerenciar-planos', GerenciarPlanosIndex::class)
+    ->middleware(['auth', 'verified'])
+    ->name('planos.index');
 
 require __DIR__.'/auth.php';
