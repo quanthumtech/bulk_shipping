@@ -80,37 +80,48 @@ class User extends Authenticatable
 
     public function plan()
     {
-        return $this->belongsTo(Plan::class);
+        return $this->belongsTo(Plan::class, 'plan_id');
     }
 
-    public function canCreateCadence(): bool
+    public function canCreateCadence(): array
     {
         if (!$this->plan) {
-            return false;
+            return [false, 'Nenhum plano atribuído à sua conta.'];
         }
-        return $this->plan->allowsCadenceFlows($this->used_cadence_flows + 1);
+        if ($this->plan->max_cadence_flows > 0 && $this->used_cadence_flows >= $this->plan->max_cadence_flows) {
+            return [false, "Limite de {$this->plan->max_cadence_flows} cadências atingido no plano '{$this->plan->name}'."];
+        }
+        return [true, 'OK'];
     }
 
-    public function canReceiveDailyLead(): bool
+    public function canReceiveDailyLead(): array
     {
         if (!$this->plan) {
+            return [false, 'Nenhum plano atribuído à sua conta.'];
+        }
+        if ($this->plan->max_daily_leads > 0 && $this->used_daily_leads >= $this->plan->max_daily_leads) {
+            return [false, "Limite de {$this->plan->max_daily_leads} leads/dia atingido no plano '{$this->plan->name}'."];
+        }
+        return [true, 'OK'];
+    }
+
+    public function incrementCadenceCount(): bool
+    {
+        [$can, $msg] = $this->canCreateCadence();
+        if (!$can) {
             return false;
         }
-       
-        return $this->plan->allowsDailyLeads($this->used_daily_leads + 1);
+        $this->increment('used_cadence_flows');
+        return true;
     }
 
-    public function incrementCadenceCount(): void
+    public function incrementDailyLeadCount(): bool
     {
-        if ($this->plan && $this->canCreateCadence()) {
-            $this->increment('used_cadence_flows');
+        [$can, $msg] = $this->canReceiveDailyLead();
+        if (!$can) {
+            return false;
         }
-    }
-
-    public function incrementDailyLeadCount(): void
-    {
-        if ($this->plan && $this->canReceiveDailyLead()) {
-            $this->increment('used_daily_leads');
-        }
+        $this->increment('used_daily_leads');
+        return true;
     }
 }

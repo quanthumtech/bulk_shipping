@@ -192,6 +192,9 @@
     {{-- Spotlight --}}
     <x-mary-spotlight />
 
+    {{-- Componente Livewire para modal planos --}}
+    @livewire('plans.plans-modal-components')
+
     {{-- Custom Footer --}}
     <footer class="w-full py-4 bg-base-200 text-center text-sm text-base-content/70">
         <div>

@@ -2,8 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Enums\UserType;
 use App\Livewire\Forms\UsersForm;
 use App\Models\ChatwootsAgents;
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Versions;
 use App\Models\ZohoIntegration;
@@ -35,6 +37,7 @@ class UserConfigIndex extends Component
             $user = User::find($this->userId);
             if ($user) {
                 $this->form->setUsers($user);
+                $this->form->plan_id = $user->plan_id ?? '';
                 $this->editMode = true;
                 $this->title = 'Editar Usuário';
             } else {
@@ -66,7 +69,7 @@ class UserConfigIndex extends Component
 
             $tokenData = $zohoService->exchangeCodeForTokens($this->zoho_code);
 
-            logger()->info('Rertorno Token: ', $tokenData);
+            logger()->info('Retorno Token: ', $tokenData);
 
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$this->zoho_integration_index]['refresh_token'] = $tokenData['refresh_token'];
@@ -101,7 +104,7 @@ class UserConfigIndex extends Component
 
             $tokenData = $zohoService->exchangeCodeForTokens($zohoIntegration['code']);
 
-            logger()->info('Rertorno Token: ', $tokenData);
+            logger()->info('Retorno Token: ', $tokenData);
 
             if (isset($tokenData['refresh_token'])) {
                 $this->form->zoho_integrations[$index]['refresh_token'] = $tokenData['refresh_token'];
@@ -122,9 +125,11 @@ class UserConfigIndex extends Component
         try {
             if ($this->editMode) {
                 $this->form->update();
+
                 $this->success('Usuário atualizado com sucesso!', position: 'toast-top');
             } else {
                 $this->form->store();
+
                 $this->success('Usuário cadastrado com sucesso!', position: 'toast-top');
             }
 
@@ -177,6 +182,37 @@ class UserConfigIndex extends Component
         })->toArray();
     }
 
+    public function getPlansProperty()
+    {
+        return Plan::where('active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function ($plan) {
+                $priceDisplay = $plan->price ? number_format($plan->price, 2, ',', '.') : 'Sob Consulta';
+                return [
+                    'id' => $plan->id,
+                    'name' => "{$plan->name} (R$ {$priceDisplay})",
+                ];
+            })
+            ->prepend(['id' => '', 'name' => 'Selecione um Plano...'])
+            ->values()
+            ->toArray();
+    }
+
+    public function getUserTypesProperty()
+    {
+        return collect(UserType::cases())
+            ->map(function ($case) {
+                return [
+                    'id' => $case->value,
+                    'name' => ucfirst(str_replace('_', ' ', $case->name)),
+                ];
+            })
+            ->prepend(['id' => '', 'name' => 'Selecione...'])
+            ->values()
+            ->toArray();
+    }
+
     public function render()
     {
         $headers = [
@@ -184,13 +220,6 @@ class UserConfigIndex extends Component
             ['key' => 'name', 'label' => 'Nome', 'class' => 'text-left'],
             ['key' => 'email', 'label' => 'Email', 'class' => 'text-left'],
             ['key' => 'role', 'label' => 'Papel', 'class' => 'text-left'],
-        ];
-
-        $options = [
-            ['id' => '', 'name' => 'Selecione...'],
-            ['id' => 1, 'name' => 'SuperAdmin'],
-            ['id' => 2, 'name' => 'Admin'],
-            ['id' => 3, 'name' => 'User'],
         ];
 
         $agents = $this->editMode && $this->userId
@@ -206,22 +235,15 @@ class UserConfigIndex extends Component
             })
             : [];
 
-        $plans = [
-            ['id' => '', 'name' => 'Selecione...'],
-            ['id' => 1, 'name' => 'Essencial'],
-            ['id' => 2, 'name' => 'Avançado'],
-            ['id' => 3, 'name' => 'Profissional'],
-            ['id' => 4, 'name' => 'Customizado'],
-        ];
-
         return view('livewire.user-config-index', [
-            'options' => $options,
+            'userTypes' => $this->userTypes,
             'headers' => $headers,
             'title' => $this->title,
             'agents' => $agents,
             'perPage' => $this->perPage,
             'versions' => $this->versions,
-            'plans' => $plans,
+            'options' => $this->getUserTypesProperty(),
+            'plans' => $this->plans,
         ]);
     }
 }

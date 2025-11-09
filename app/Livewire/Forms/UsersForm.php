@@ -7,7 +7,8 @@ use App\Models\User;
 use App\Models\Versions;
 use App\Models\Evolution;
 use App\Models\ZohoIntegration;
-use App\Models\EmailIntegration; // Adicione esta importação
+use App\Models\EmailIntegration;
+use App\Models\Plan;
 use App\Services\ChatwootService;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Validate;
@@ -16,6 +17,7 @@ use Livewire\WithFileUploads;
 use Mary\Traits\WithMediaSync;
 use Illuminate\Support\Collection;
 use Mary\Traits\Toast;
+use Carbon\Carbon;
 
 class UsersForm extends Form
 {
@@ -32,13 +34,28 @@ class UsersForm extends Form
     #[Validate('string', 'required')]
     public $password;
 
+    #[Validate('nullable|integer|exists:plans,id')]
+    public $plan_id = null; // <- Mantenha plan_id (não plans_id)
+
+    #[Validate('nullable|date')]
+    public $plan_start_date;
+
+    #[Validate('nullable|date|after_or_equal:plan_start_date')]
+    public $plan_end_date;
+
+    #[Validate('nullable|integer|min:0')]
+    public $used_cadence_flows = 0;
+
+    #[Validate('nullable|integer|min:0')]
+    public $used_daily_leads = 0;
+
     public $chatwoot_accoumts;
     public $active;
     public $type_user;
     public $token_acess;
 
-    public array $evolutions = [['version_id' => '', 'apikey' => '', 'api_post' => '', 'active' => true]];
-    public array $zoho_integrations = [['client_id' => '', 'client_secret' => '', 'refresh_token' => '', 'code' => '', 'active' => true]];
+    public array $evolutions         = [['version_id' => '', 'apikey' => '', 'api_post' => '', 'active' => true]];
+    public array $zoho_integrations  = [['client_id' => '', 'client_secret' => '', 'refresh_token' => '', 'code' => '', 'active' => true]];
     public array $email_integrations = [['host' => '', 'port' => '', 'username' => '', 'password' => '', 'encryption' => '', 'from_email' => '', 'from_name' => '', 'active' => true]];
 
     public function getVersionsProperty()
@@ -53,14 +70,14 @@ class UsersForm extends Form
 
     public function setUsers(User $users)
     {
-        $this->users = $users;
-        $this->name = $users->name;
-        $this->email = $users->email;
-        $this->chatwoot_accoumts = $users->chatwoot_accoumts;
-        $this->active = (bool) $users->active;
-        $this->type_user = $users->type_user;
-        $this->token_acess = $users->token_acess;
-        $this->password = '';
+        $this->users                  = $users;
+        $this->name                   = $users->name;
+        $this->email                  = $users->email;
+        $this->chatwoot_accoumts      = $users->chatwoot_accoumts;
+        $this->active                 = (bool) $users->active;
+        $this->type_user              = $users->type_user;
+        $this->token_acess            = $users->token_acess;
+        $this->password               = '';
 
         $this->evolutions = $users->evolutions->map(function ($evolution) {
             $apiPost = $evolution->api_post;
@@ -69,36 +86,36 @@ class UsersForm extends Form
                 $apiPost = ltrim($apiPost, '/');
             }
             return [
-                'id' => $evolution->id,
+                'id'         => $evolution->id,
                 'version_id' => $evolution->version_id,
-                'apikey' => $evolution->apikey,
-                'api_post' => $apiPost,
-                'active' => (bool) $evolution->active,
+                'apikey'     => $evolution->apikey,
+                'api_post'   => $apiPost,
+                'active'     => (bool) $evolution->active,
             ];
         })->toArray();
 
         $this->zoho_integrations = $users->zohoIntegrations->map(function ($zoho) {
             return [
-                'id' => $zoho->id,
-                'client_id' => $zoho->client_id,
+                'id'            => $zoho->id,
+                'client_id'     => $zoho->client_id,
                 'client_secret' => $zoho->client_secret,
                 'refresh_token' => $zoho->refresh_token,
-                'code' => '',
-                'active' => true,
+                'code'          => '',
+                'active'        => true,
             ];
         })->toArray();
 
         $this->email_integrations = $users->emailIntegrations->map(function ($email) {
             return [
-                'id' => $email->id,
-                'host' => $email->host,
-                'port' => $email->port,
-                'username' => $email->username,
-                'password' => $email->password,
+                'id'         => $email->id,
+                'host'       => $email->host,
+                'port'       => $email->port,
+                'username'   => $email->username,
+                'password'   => $email->password,
                 'encryption' => $email->encryption,
                 'from_email' => $email->from_email,
-                'from_name' => $email->from_name,
-                'active' => (bool) $email->active,
+                'from_name'  => $email->from_name,
+                'active'     => (bool) $email->active,
             ];
         })->toArray();
 
@@ -121,6 +138,11 @@ class UsersForm extends Form
             'name' => 'required|string',
             'email' => 'required|string',
             'password' => 'required|string',
+            'plan_id' => 'nullable|integer|exists:plans,id',
+            'plan_start_date' => 'nullable|date',
+            'plan_end_date' => 'nullable|date|after_or_equal:plan_start_date',
+            'used_cadence_flows' => 'nullable|integer|min:0',
+            'used_daily_leads' => 'nullable|integer|min:0',
             'evolutions.*.version_id' => 'required|exists:versions,id',
             'evolutions.*.apikey' => 'required|string',
             'evolutions.*.api_post' => 'required|string',
@@ -137,6 +159,16 @@ class UsersForm extends Form
             'email_integrations.*.from_name' => 'required|string',
         ]);
 
+        $planStartDate = $this->plan_start_date ?: now()->toDateString();
+        $planEndDate = $this->plan_end_date;
+        if ($this->plan_id) {
+            $plan = Plan::find($this->plan_id);
+            if ($plan && !$planEndDate) {
+                $interval = $plan->billing_cycle === 'yearly' ? 365 : 30;
+                $planEndDate = Carbon::parse($planStartDate)->addDays($interval)->toDateString();
+            }
+        }
+
         $user = User::create([
             'name' => $this->name,
             'email' => $this->email,
@@ -145,6 +177,11 @@ class UsersForm extends Form
             'type_user' => $this->type_user,
             'token_acess' => $this->token_acess,
             'password' => Hash::make($this->password),
+            'plan_id' => $this->plan_id,
+            'plan_start_date' => $planStartDate,
+            'plan_end_date' => $planEndDate,
+            'used_cadence_flows' => $this->used_cadence_flows,
+            'used_daily_leads' => $this->used_daily_leads,
         ]);
 
         foreach ($this->evolutions as $evolution) {
@@ -183,7 +220,7 @@ class UsersForm extends Form
                     'host' => $email['host'],
                     'port' => $email['port'],
                     'username' => $email['username'],
-                    'password' => $email['password'], // Considere criptografar isso em produção
+                    'password' => $email['password'],
                     'encryption' => $email['encryption'],
                     'from_email' => $email['from_email'],
                     'from_name' => $email['from_name'],
@@ -208,6 +245,8 @@ class UsersForm extends Form
         }
 
         $this->reset();
+
+        return $user;
     }
 
     public function update()
@@ -216,6 +255,11 @@ class UsersForm extends Form
             'name' => 'required|string',
             'email' => 'required|string',
             'password' => 'nullable|string',
+            'plan_id' => 'nullable|exists:plans,id',
+            'plan_start_date' => 'nullable|date',
+            'plan_end_date' => 'nullable|date|after_or_equal:plan_start_date',
+            'used_cadence_flows' => 'nullable|integer|min:0',
+            'used_daily_leads' => 'nullable|integer|min:0',
             'evolutions.*.version_id' => 'required|exists:versions,id',
             'evolutions.*.apikey' => 'required|string',
             'evolutions.*.api_post' => 'required|string',
@@ -232,6 +276,16 @@ class UsersForm extends Form
             'email_integrations.*.from_name' => 'required|string',
         ]);
 
+        $planStartDate = $this->plan_start_date ?: Carbon::now()->toDateString();
+        $planEndDate = $this->plan_end_date;
+        if ($this->plan_id) {
+            $plan = Plan::find($this->plan_id);
+            if ($plan && !$planEndDate) {
+                $interval = $plan->billing_cycle === 'yearly' ? 365 : 30;
+                $planEndDate = Carbon::parse($planStartDate)->addDays($interval)->toDateString();
+            }
+        }
+
         $data = [
             'name' => $this->name,
             'email' => $this->email,
@@ -239,11 +293,18 @@ class UsersForm extends Form
             'active' => $this->active,
             'type_user' => $this->type_user,
             'token_acess' => $this->token_acess,
+            'plan_id' => (int) $this->plan_id, // Cast esperado
+            'plan_start_date' => $planStartDate,
+            'plan_end_date' => $planEndDate,
+            'used_cadence_flows' => (int) $this->used_cadence_flows,
+            'used_daily_leads' => (int) $this->used_daily_leads,
         ];
 
+        
         if (!empty($this->password)) {
             $data['password'] = Hash::make($this->password);
         }
+       // dd($data); // <- Remova esta linha após a depuração
 
         $this->users->update($data);
 
@@ -286,7 +347,7 @@ class UsersForm extends Form
                     'host' => $email['host'],
                     'port' => $email['port'],
                     'username' => $email['username'],
-                    'password' => $email['password'], // Considere criptografar isso em produção
+                    'password' => $email['password'],
                     'encryption' => $email['encryption'],
                     'from_email' => $email['from_email'],
                     'from_name' => $email['from_name'],
@@ -312,6 +373,8 @@ class UsersForm extends Form
         }
 
         $this->reset();
+
+        return $this->users;
     }
 
     public function addEvolution()

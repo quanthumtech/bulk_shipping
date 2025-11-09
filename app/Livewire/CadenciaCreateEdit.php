@@ -3,16 +3,18 @@
 namespace App\Livewire;
 
 use App\Livewire\Forms\CadenciaForm;
+use App\Livewire\Plans\PlansModalComponents;
 use App\Models\Evolution;
 use App\Services\ZohoCrmService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use App\Traits\PlanValidator;
 use Livewire\Component;
 use Mary\Traits\Toast;
 
 class CadenciaCreateEdit extends Component
 {
     use Toast;
+    use PlanValidator;
 
     public CadenciaForm $form;
 
@@ -72,6 +74,11 @@ class CadenciaCreateEdit extends Component
 
     public function save()
     {
+        if (!$this->validatePlanForAction('create_cadence')) {
+            $this->dispatch('open-plans-modal')->to(PlansModalComponents::class);
+            return;
+        }
+
         try {
             if ($this->editMode) {
                 $this->form->update();
