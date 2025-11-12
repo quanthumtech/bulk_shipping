@@ -12,6 +12,7 @@ class SyncFlowLeads extends Model
         'id_card',
         'contact_name',
         'contact_number',
+        'is_whatsapp',
         'contact_number_empresa',
         'contact_email',
         'estagio',

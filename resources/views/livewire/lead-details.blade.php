@@ -19,7 +19,23 @@
                             <tr><th>Cadastrado Em</th><td>{{ $lead->created_at->format('d/m/Y H:i:s') ?? 'Não informado' }}</td></tr>
                             <tr><th>Atualizado Em</th><td>{{ $lead->updated_at->format('d/m/Y H:i:s') ?? 'Não informado' }}</td></tr>
                             <tr><th>Nome</th><td>{{ $lead->contact_name ?? 'Não informado' }}</td></tr>
-                            <tr><th>Número de Contato</th><td>{{ $lead->contact_number ?? 'Não informado' }}</td></tr>
+                            <tr>
+                                <th>Número de Contato</th>
+                                <td>
+                                    {{ $lead->contact_number ?? 'Não informado' }}
+                                    @if($lead->is_whatsapp)
+                                        <x-mary-button class="btn-primary btn-xs ml-2" wire:click="openWhatsappModal" title="Número validado como WhatsApp">
+                                            <x-mary-icon name="o-check-circle" class="w-4 h-4" />
+                                            <span class="ml-1 text-xs">WhatsApp</span>
+                                        </x-mary-button>
+                                    @else
+                                        <x-mary-button class="btn-error btn-xs ml-2" wire:click="openWhatsappModal" title="Clique para testar/verificar WhatsApp">
+                                            <x-mary-icon name="o-x-circle" class="w-4 h-4 text-error" />
+                                            <span class="ml-1 text-xs text-error">Não WhatsApp</span>
+                                        </x-mary-button>
+                                    @endif
+                                </td>
+                            </tr>
                             <tr><th>Número da Empresa</th><td>{{ $lead->contact_number_empresa ?? 'Não informado' }}</td></tr>
                             <tr><th>Email</th><td>{{ $lead->contact_email ?? 'Não informado' }}</td></tr>
                             <tr><th>Estágio</th><td>{{ $lead->estagio ?? 'Não informado' }}</td></tr>
@@ -189,4 +205,44 @@
             <p class="text-gray-500">Nenhum log selecionado.</p>
         @endif
     </x-mary-drawer>
+
+    <!-- Novo Modal para Verificação WhatsApp -->
+    <x-mary-modal wire:model="showWhatsappModal" title="Verificação WhatsApp" box-class="max-w-md">
+        <div class="space-y-4">
+            <p class="text-sm text-gray-600">
+                O número do lead foi verificado usando a <a href="https://doc.evolution-api.com/v2/api-reference/chat-controller/check-is-whatsapp" target="_blank" class="text-blue-600 underline">API da Evolution</a>. 
+                Essa verificação confirma se o número está registrado no WhatsApp.
+            </p>
+
+            @if($testResult === null)
+                <div class="text-center text-gray-500 py-4">Digite um número para testar.</div>
+            @elseif($testResult === 'valid')
+                <div class="text-center text-green-600 py-4">
+                    <x-mary-icon name="o-check-circle" class="w-8 h-8 mx-auto mb-2" />
+                    <p>Número é WhatsApp válido!</p>
+                </div>
+            @elseif($testResult === 'invalid')
+                <div class="text-center text-red-600 py-4">
+                    <x-mary-icon name="o-x-circle" class="w-8 h-8 mx-auto mb-2" />
+                    <p>Número não é WhatsApp válido.</p>
+                </div>
+            @endif
+
+            <div class="space-y-2">
+                <x-mary-input 
+                    label="Número para Testar (ex: 5511999999999)" 
+                    type="tel" 
+                    placeholder="+5511999999999" 
+                    wire:model.live="testNumber" 
+                />
+                <x-mary-button 
+                    label="Testar Número" 
+                    class="btn-primary w-full" 
+                    wire:click="testWhatsappNumber" 
+                    spinner="testWhatsappNumber" 
+                    :disabled="empty($testNumber)"
+                />
+            </div>
+        </div>
+    </x-mary-modal>
 </div>

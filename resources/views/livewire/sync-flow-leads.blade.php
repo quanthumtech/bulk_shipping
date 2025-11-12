@@ -155,7 +155,7 @@
                         <x-mary-card
                             title="{{ Str::limit($sync->contact_name ?? 'Não definido', 30) }}"
                             class="shadow-lg {{ $isIncomplete ? 'bg-orange-100 border-2 border-orange-500' : 'bg-base-100' }}"
-                            subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }}"
+                            subtitle="Criado: {{ $sync->created_at->format('d/m/Y H:i:s') }} | Telefone: {{ $sync->contact_number ?? 'Não informado' }} | Email: {{ $sync->contact_email ?? 'Não informado' }} | Cadência: {{ $sync->cadencia?->name ?? 'Não definido' }} | ID: {{ $sync->id ?? 'N/A' }} | ID Card: {{ $sync->id_card ?? 'N/A' }} | Contact ID: {{ $sync->contact_id ?? 'N/A' }} {{ $sync->is_whatsapp ? '| WhatsApp Válido' : '| Não WhatsApp' }}"
                             separator
                         >
                             <x-mary-collapse :open="$show[$sync->id] ?? false" separator class="mb-4">
@@ -209,9 +209,6 @@
                             </x-mary-collapse>
                             <x-slot:menu>
                                 <x-mary-badge value="#{{ $sync->estagio ?? 'Não definido' }}" class="badge badge-primary" />
-                                @if ($isIncomplete)
-                                    <x-mary-badge value="#Faltam Dados" class="badge badge-warning font-bold" style="color: black !important;" />
-                                @endif
                             </x-slot:menu>
                             <div class="flex items-center gap-2">
                                 <x-mary-button label="Atribuir cadência" @click="$wire.cadence({{ $sync->id }})" class="btn-sm" />

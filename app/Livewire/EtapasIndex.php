@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire;
 
 use App\Livewire\Forms\EtapasForm;
@@ -24,6 +25,8 @@ class EtapasIndex extends Component
     public bool $etapaModal = false;
     public bool $editMode = false;
 
+    public int $step = 1;
+
     public function mount($cadenciaId)
     {
         $this->form->cadenciaId = $cadenciaId;
@@ -34,51 +37,87 @@ class EtapasIndex extends Component
         $this->form->reset();
         $this->etapaModal = true;
         $this->form->cadenciaId = $this->cadenciaId;
+        $this->form->imediat = false;
+        $this->form->active = true;
+        $this->step = 1;
         $this->title = 'Adicionar Etapa';
+        $this->editMode = false;
+    }
+
+    public function closeModal()
+    {
+        $this->etapaModal = false;
+        $this->step = 1;
+        $this->form->reset();
+    }
+
+    public function next()
+    {
+        if ($this->step === 1) {
+            $this->validate([
+                'form.titulo' => 'required|string|max:255',
+                'form.type_send' => 'required|in:email,sms,whatsapp',
+            ]);
+        } elseif ($this->step === 2) {
+            $this->validate([
+                'form.message_content' => 'required|string|max:2000',
+            ]);
+        }
+
+        if ($this->step < 3) {
+            $this->step++;
+        }
+    }
+
+    public function prev()
+    {
+        if ($this->step > 1) {
+            $this->step--;
+        }
     }
 
     public function save()
     {
+        if ($this->step !== 3) {
+            $this->error('Complete todos os passos antes de salvar.', position: 'toast-top');
+            return;
+        }
+
         try {
+            $checaRange = true;
+            if (!$this->form->imediat && $this->form->hora) {
+                $checaRange = $this->isHoraDentroDaCadencia($this->form->cadenciaId, $this->form->hora);
+            }
+            if (!$checaRange) {
+                $this->error('A hora informada não está dentro do intervalo da cadência.', position: 'toast-top');
+                return;
+            }
 
             if ($this->editMode) {
-
-                $checaRange = $this->isHoraDentroDaCadencia($this->form->cadenciaId, $this->form->hora);
-                if (!$checaRange) {
-                    $this->error('A hora informada não está dentro do intervalo da cadência.', position: 'toast-top');
-                    return;
-                }
-
                 $this->form->update();
                 $this->editMode = false;
-                $this->success('Etapa atualizado com sucesso!', position: 'toast-top');
+                $this->success('Etapa atualizada com sucesso!', position: 'toast-top');
             } else {
-                $checaRange = $this->isHoraDentroDaCadencia($this->form->cadenciaId, $this->form->hora);
-                if (!$checaRange) {
-                    $this->error('A hora informada não está dentro do intervalo da cadência.', position: 'toast-top');
-                    return;
-                }
-
                 $this->form->store();
-                $this->success('Etapa cadastrado com sucesso!', position: 'toast-top');
+                $this->success('Etapa cadastrada com sucesso!', position: 'toast-top');
             }
 
             $this->etapaModal = false;
-
+            $this->step = 1;
         } catch (\Exception $e) {
-            $this->error('Erro ao salvar o Etapa.' . $e->getMessage(), position: 'toast-top');
-
+            $this->error('Erro ao salvar a etapa: ' . $e->getMessage(), position: 'toast-top');
         }
     }
 
     public function edit($id)
     {
         $etapasEdit = Etapas::find($id);
-
         if ($etapasEdit) {
             $this->form->setEtapas($etapasEdit);
             $this->editMode = true;
             $this->etapaModal = true;
+            $this->title = 'Editar Etapa';
+            $this->step = 1;
         } else {
             $this->info('Etapa não encontrada.', position: 'toast-top');
         }
@@ -174,5 +213,4 @@ class EtapasIndex extends Component
 
         return $horaInformada->between($horarioInicio, $horarioFim);
     }
-
 }

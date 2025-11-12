@@ -115,9 +115,67 @@ class WebhookZohoController extends Controller
         }
 
         /**
+         * Verificação robusta de WhatsApp se usuário e Evolution existirem
+         */
+        $isWhatsappValid = false;
+        if ($user && $request->contact_number) {
+
+            logger()->info('Iniciando verificação WhatsApp via API', [
+                'contact_number' => $request->contact_number,
+                'user_id' => $user->id,
+            ]);
+
+            $evolution = Evolution::where('user_id', $userId)->where('active', 1)->first();
+            if ($evolution) {
+                $this->addToLogBuffer('info', 'Iniciando verificação WhatsApp via API', [
+                    'contact_number' => $request->contact_number,
+                    'evolution_id' => $evolution->id,
+                    'api_post' => $evolution->api_post,
+                ]);
+                $isWhatsappValid = $this->chatwootService->checkIsWhatsapp($request->contact_number, $evolution->api_post, $evolution->apikey);
+
+                if (!$isWhatsappValid) {
+                    $this->addToLogBuffer('warning', 'API retornou número não WhatsApp válido. Usando fallback (método antigo).', [
+                        'contact_number' => $request->contact_number,
+                        'evolution_id' => $evolution->id,
+                    ]);
+                    
+                    $fallbackNumber = $this->chatwootService->isWhatsappNumber($request->contact_number);
+                    if ($fallbackNumber === $request->contact_number) {
+                        $isWhatsappValid = true;
+                        $this->addToLogBuffer('info', 'Fallback confirmou número válido.', [
+                            'contact_number' => $request->contact_number,
+                        ]);
+                    } else {
+                        $this->addToLogBuffer('error', 'Fallback falhou: número inválido após verificação antiga.', [
+                            'contact_number' => $request->contact_number,
+                        ]);
+                        $isWhatsappValid = false;
+                    }
+                } else {
+                    $this->addToLogBuffer('info', 'API confirmou número WhatsApp válido.', [
+                        'contact_number' => $request->contact_number,
+                    ]);
+                }
+            } else {
+                $this->addToLogBuffer('warning', 'Nenhuma Evolution ativa encontrada para usuário. Pulando verificação WhatsApp.', [
+                    'user_id' => $userId,
+                ]);
+                $isWhatsappValid = true;
+            }
+        } else {
+            $this->addToLogBuffer('info', 'Verificação WhatsApp pulada: usuário ou número inválido.', [
+                'user_exists' => !empty($user),
+                'contact_number' => $request->contact_number,
+            ]);
+            $isWhatsappValid = false;
+        }
+
+         /**
          * Formata o número de contato para o padrão E.164
          */
         $contactNumber = $this->phoneNumberService->formatPhoneNumber($request->contact_number);
+        
 
         /**
          * Se a formatação falhar, logar o erro e notificar o usuário
@@ -416,6 +474,7 @@ class WebhookZohoController extends Controller
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
             $syncEmp->origem = $request->origem;
+            $syncEmp->is_whatsapp = $isWhatsappValid;
             //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->updated_at = now();
 
@@ -495,6 +554,7 @@ class WebhookZohoController extends Controller
             $syncEmp->chatwoot_status = $chatwootStatus;
             $syncEmp->contact_id = $contactId;
             $syncEmp->origem = $request->origem ?? 'Não fornecido';
+            $syncEmp->is_whatsapp = $isWhatsappValid;
             //$syncEmp->identifier = $contactNumber; // Sempre usar contact_number como identifier
             $syncEmp->completed_cadences = '0';
             $syncEmp->created_at = now();

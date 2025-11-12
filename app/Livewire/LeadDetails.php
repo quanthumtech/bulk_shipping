@@ -7,6 +7,7 @@ use App\Models\Cadencias;
 use App\Models\ChatwootConversation;
 use App\Models\WebhookLog;
 use App\Services\ChatwootService;
+use App\Models\Evolution;  // Novo: para buscar Evolution do user
 use Livewire\Component;
 use Mary\Traits\Toast;
 use Illuminate\Support\Facades\Log;
@@ -27,10 +28,69 @@ class LeadDetails extends Component
     public $showLogDrawer = false;
     public $activeTab = 'lead_info';
 
-    public function mount($leadId)
+    public $showWhatsappModal = false;
+    public $testNumber = '';
+    public $testResult = null;
+    public $evolution;
+
+    protected $chatwootService;
+
+    public function mount($leadId, ChatwootService $chatwootService)
     {
         $this->leadId = $leadId;
         $this->loadLeadData();
+        $this->chatwootService = $chatwootService;
+    }
+
+    public function openWhatsappModal()
+    {
+        $this->testNumber = '';
+        $this->testResult = null;
+        $this->showWhatsappModal = true;
+    }
+
+    public function closeWhatsappModal()
+    {
+        $this->showWhatsappModal = false;
+        $this->testNumber = '';
+        $this->testResult = null;
+    }
+
+    public function testWhatsappNumber()
+    {
+        $this->testResult = null;
+
+        if (empty($this->testNumber)) {
+            $this->error('Digite um número para testar.', position: 'toast-top');
+            return;
+        }
+
+        try {
+            $chatwootService = app(ChatwootService::class);
+
+            if (!$this->evolution) {
+                $this->evolution = Evolution::where('user_id', Auth::id())->where('active', 1)->first();
+                if (!$this->evolution) {
+                    $this->error('Nenhuma caixa Evolution ativa encontrada. Configure uma para testar.', position: 'toast-top');
+                    return;
+                }
+            }
+
+            $isValid = $chatwootService->checkIsWhatsapp($this->testNumber, $this->evolution->api_post, $this->evolution->apikey);
+            $this->testResult = $isValid ? 'valid' : 'invalid';
+
+            $status = $isValid ? 'válido' : 'inválido';
+            $this->success("Número {$this->testNumber} é WhatsApp: {$status}!", position: 'toast-top');
+            Log::info("Teste WhatsApp bem-sucedido", [
+                'test_number' => $this->testNumber,
+                'is_valid' => $isValid,
+                'user_id' => Auth::id(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro no teste WhatsApp: ' . $e->getMessage());
+            $this->error('Erro ao testar número: ' . $e->getMessage(), position: 'toast-top');
+            $this->testResult = 'error';
+        }
     }
 
     public function openLogModal(int $id)
@@ -56,7 +116,7 @@ class LeadDetails extends Component
             if (!$this->lead) {
                 Log::error('Lead não encontrado ou conta Chatwoot não configurada.', [
                     'lead_id' => $this->leadId,
-                    'user_id' => Auth::user()->id ?? null,
+                    'user_id' => Auth::id() ?? null,
                 ]);
                 $this->error('Lead não encontrado ou conta Chatwoot não configurada.', position: 'toast-top');
                 return;

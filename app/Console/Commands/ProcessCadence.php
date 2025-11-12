@@ -16,7 +16,6 @@ class ProcessCadence extends Command
 {
     protected $signature = 'cadence:process';
     protected $description = 'Processa os envios de mensagens de cadência conforme as etapas';
-    protected $chatwootServices;
 
     protected $systemLogService;
     protected $chatwootService;
@@ -41,7 +40,7 @@ class ProcessCadence extends Command
             }
 
             $this->hasPendingCadences($now)
-                ->chunk(100, function ($leads) use ($now) {
+                ->chunk(50, function ($leads) use ($now) {  // Reduzido para 50 para melhor performance
                     foreach ($leads as $lead) {
                         Log::info("Processando lead {$lead->id} com cadência ID {$lead->cadencia_id}");
                         $this->systemLogService->info("Processando lead", [
@@ -99,7 +98,7 @@ class ProcessCadence extends Command
                             continue;
                         }
 
-                        $etapas = $lead->cadencia->etapas->where('active', true);
+                        $etapas = $lead->cadencia->etapas->where('active', true)->values();  // values() para índices numéricos
 
                         $this->systemLogService->info('Etapas ativas encontradas', [
                             'process' => 'ProcessCadencia',
@@ -126,25 +125,9 @@ class ProcessCadence extends Command
                             continue;
                         }
 
-                        $lastSentEtapa = CadenceMessage::where('sync_flow_leads_id', $lead->id)
-                            ->orderBy('etapa_id', 'desc')
-                            ->first();
+                        $currentEtapaIndex = $this->getCurrentEtapaIndex($lead, $etapas);
 
-                        if ($lastSentEtapa && $lastSentEtapa->etapa->cadencia_id !== $lead->cadencia_id) {
-                            Log::info("Cadência mudou para o lead {$lead->id}. Reiniciando etapas...");
-                            $this->systemLogService->info("Cadência mudou para o lead. Reiniciando etapas...", [
-                                'process' => 'ProcessCadencia',
-                                'lead_id' => $lead->id,
-                                'cadencia_id' => $lead->cadencia_id
-                            ]);
-                            $currentEtapaIndex = 0;
-                        } else {
-                            $currentEtapaIndex = $lastSentEtapa ? $etapas->search(function ($etapa) use ($lastSentEtapa) {
-                                return $etapa->id === $lastSentEtapa->etapa_id;
-                            }) + 1 : 0;
-                        }
-
-                        if (!isset($etapas[$currentEtapaIndex])) {
+                        if ($currentEtapaIndex >= $etapas->count()) {
                             Log::info("Todas as etapas da cadência {$lead->cadencia_id} foram concluídas para o lead {$lead->id}. Pulando...");
                             $this->systemLogService->info("Todas as etapas da cadência foram concluídas para o lead. Pulando...", [
                                 'process' => 'ProcessCadencia',
@@ -154,7 +137,7 @@ class ProcessCadence extends Command
                             continue;
                         }
 
-                        while (isset($etapas[$currentEtapaIndex])) {
+                        while ($currentEtapaIndex < $etapas->count()) {
                             $etapa = $etapas[$currentEtapaIndex];
 
                             if (!$etapa->active) {
@@ -179,12 +162,12 @@ class ProcessCadence extends Command
                                 continue;
                             }
 
-                            // Validação: pelo menos hora ou intervalo deve ser válido
-                            if (!$this->isValidTime($etapa->hora) && !$this->isValidTime($etapa->intervalo)) {
-                                Log::error("Etapa {$etapa->id} do lead {$lead->id} deve ter pelo menos hora ou intervalo definido. Pulando...");
+                            // Validação atualizada: pule se NÃO imediato e sem hora/intervalo
+                            if (!$etapa->imediat && !$this->isValidTime($etapa->hora) && !$this->isValidTime($etapa->intervalo)) {
+                                Log::error("Etapa {$etapa->id} do lead {$lead->id} (não imediata) deve ter pelo menos hora ou intervalo definido. Pulando...");
                                 Log::error("Detalhes: hora={$etapa->hora}, intervalo={$etapa->intervalo}, dias={$etapa->dias}");
 
-                                $this->systemLogService->error("Etapa deve ter pelo menos hora ou intervalo definido. Pulando...", [
+                                $this->systemLogService->error("Etapa (não imediata) deve ter pelo menos hora ou intervalo definido. Pulando...", [
                                     'process' => 'ProcessCadencia',
                                     'lead_id' => $lead->id,
                                     'etapa_id' => $etapa->id,
@@ -207,7 +190,8 @@ class ProcessCadence extends Command
                                 'process' => 'ProcessCadencia',
                                 'lead_id' => $lead->id,
                                 'etapa_id' => $etapa->id,
-                                'data_agendada' => $dataAgendada->toDateTimeString()
+                                'data_agendada' => $dataAgendada->toDateTimeString(),
+                                'imediat' => $etapa->imediat ? 'sim' : 'não'
                             ]);
 
                             if ($dataAgendada->isFuture()) {
@@ -226,7 +210,8 @@ class ProcessCadence extends Command
                                 $this->systemLogService->info("Processando etapa", [
                                     'process' => 'ProcessCadencia',
                                     'lead_id' => $lead->id,
-                                    'etapa_id' => $etapa->id
+                                    'etapa_id' => $etapa->id,
+                                    'imediat' => $etapa->imediat ? 'sim' : 'não'
                                 ]);
                                 $this->processarEtapa($lead, $etapa);
                                 $currentEtapaIndex++;
@@ -260,10 +245,38 @@ class ProcessCadence extends Command
             })
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
-                    ->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY) <= ?', [$now])
-                    ->where(function ($query) use ($now) {
-                        $query->whereNull('intervalo')
-                            ->orWhereRaw('DATE_ADD(DATE_ADD(created_at, INTERVAL COALESCE(dias, 0) DAY), INTERVAL TIME_TO_SEC(COALESCE(intervalo, "00:00:00")) SECOND) <= ?', [$now]);
+                    ->where(function ($subQuery) use ($now) {
+                        // Para não-imediato: usa subquery para base real (último enviado ou created_at)
+                        $subQuery->where(function ($innerQuery) use ($now) {
+                            $innerQuery->whereRaw(
+                                'DATE_ADD(
+                                    COALESCE(
+                                        (SELECT MAX(enviado_em) FROM cadence_messages WHERE etapa_id = etapas.id AND sync_flow_leads_id = sync_flow_leads.id),
+                                        etapas.created_at
+                                    ), 
+                                    INTERVAL COALESCE(etapas.dias, 0) DAY
+                                ) <= ?', 
+                                [$now]
+                            )
+                            ->where(function ($q) use ($now) {
+                                $q->whereNull('etapas.intervalo')
+                                  ->orWhereRaw(
+                                      'DATE_ADD(
+                                          DATE_ADD(
+                                              COALESCE(
+                                                  (SELECT MAX(enviado_em) FROM cadence_messages WHERE etapa_id = etapas.id AND sync_flow_leads_id = sync_flow_leads.id),
+                                                  etapas.created_at
+                                              ), 
+                                              INTERVAL COALESCE(etapas.dias, 0) DAY
+                                          ), 
+                                          INTERVAL TIME_TO_SEC(COALESCE(etapas.intervalo, "00:00:00")) SECOND
+                                      ) <= ?', 
+                                      [$now]
+                                  );
+                            });
+                        })
+                        // OU para imediato: capturar se imediat=true (check sent/range no loop)
+                        ->orWhere('imediat', true);
                     });
             })
             ->with(['cadencia.etapas' => function ($query) {
@@ -276,6 +289,35 @@ class ProcessCadence extends Command
         ]);
 
         return $query;
+    }
+
+    protected function getCurrentEtapaIndex($lead, $etapas)
+    {
+        // Refatorado para robustez: busca último enviado na cadência atual
+        $lastSentEtapaId = CadenceMessage::where('sync_flow_leads_id', $lead->id)
+            ->join('etapas', 'cadence_messages.etapa_id', '=', 'etapas.id')
+            ->where('etapas.cadencia_id', $lead->cadencia_id)
+            ->orderBy('etapas.id', 'desc')
+            ->value('etapas.id');
+
+        if (!$lastSentEtapaId) {
+            return 0;
+        }
+
+        foreach ($etapas as $index => $etapa) {
+            if ($etapa->id === $lastSentEtapaId) {
+                return $index + 1;
+            }
+        }
+
+        // Se mudou cadência ou inválido, reinicia
+        Log::info("Reiniciando índice de etapas para lead {$lead->id} (mudança detectada).");
+        $this->systemLogService->info("Reiniciando etapas por mudança de cadência", [
+            'process' => 'ProcessCadencia',
+            'lead_id' => $lead->id,
+            'cadencia_id' => $lead->cadencia_id
+        ]);
+        return 0;
     }
 
     protected function isValidTime($time)
@@ -309,20 +351,60 @@ class ProcessCadence extends Command
             'base_date' => $baseDate->toDateTimeString(),
             'dias' => $dias,
             'intervalo' => $etapa->intervalo,
-            'hora' => $etapa->hora
+            'hora' => $etapa->hora,
+            'imediat' => $etapa->imediat
         ]);
 
         $dataAgendada = $baseDate->copy()->addDays($dias);
 
-        if ($etapa->imediat && $etapa->id === $lead->cadencia->etapas->first()->id) {
-            $this->systemLogService->info("Etapa é imediata, usando hora definida ou atual", [
+        if ($etapa->imediat) {
+            // Lógica generalizada para imediato (qualquer etapa): agora ajustado ao range
+            $this->systemLogService->info("Etapa imediata: usando horário atual ajustado ao range da cadência", [
                 'process' => 'ProcessCadencia',
                 'lead_id' => $lead->id,
                 'etapa_id' => $etapa->id,
-                'hora' => $etapa->hora
+                'hora_range_inicio' => $lead->cadencia->hora_inicio,
+                'hora_range_fim' => $lead->cadencia->hora_fim
             ]);
-            $dataAgendada->setTimeFromTimeString($etapa->hora ?: $baseDate->toTimeString());
+            
+            $horaInicio = Carbon::createFromFormat('H:i:s', $lead->cadencia->hora_inicio);
+            $horaFim = Carbon::createFromFormat('H:i:s', $lead->cadencia->hora_fim);
+            
+            $hojeInicio = $now->copy()->setTimeFromTimeString($lead->cadencia->hora_inicio);
+            $hojeFim = $now->copy()->setTimeFromTimeString($lead->cadencia->hora_fim);
+            
+            if ($now->between($hojeInicio, $hojeFim)) {
+                $dataAgendada = $now->copy();  // Agora se no range
+            } else {
+                // Próximo válido: amanhã no início se após fim, ou hoje no início se antes
+                if ($now->greaterThan($hojeFim)) {
+                    $dataAgendada = $now->copy()->addDay()->setTimeFromTimeString($lead->cadencia->hora_inicio);
+                } else {
+                    $dataAgendada = $hojeInicio;
+                }
+            }
+            
+            // Hora específica override se setada
+            if ($this->isValidTime($etapa->hora)) {
+                $dataAgendada->setTimeFromTimeString($etapa->hora);
+            }
+            
+            // Intervalo independente: aplica como delay extra (ex: buffer ou retry em falhas)
+            if ($this->isValidTime($etapa->intervalo)) {
+                $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
+                $dataAgendada->addHours($intervalo->hour)
+                             ->addMinutes($intervalo->minute)
+                             ->addSeconds($intervalo->second);
+                $this->systemLogService->info("Intervalo aplicado em imediato (delay extra)", [
+                    'process' => 'ProcessCadencia',
+                    'lead_id' => $lead->id,
+                    'etapa_id' => $etapa->id,
+                    'intervalo' => $etapa->intervalo,
+                    'nova_data' => $dataAgendada->toDateTimeString()
+                ]);
+            }
         } else {
+            // Lógica original para não-imediato
             if ($this->isValidTime($etapa->intervalo)) {
                 try {
                     $intervalo = Carbon::createFromFormat('H:i:s', $etapa->intervalo);
@@ -358,10 +440,10 @@ class ProcessCadence extends Command
             }
         }
 
-        // Ajustar para a próxima data válida respeitando days_of_week e excluded_dates
+        // Ajustar para a próxima data válida respeitando days_of_week e excluded_dates (lógica original)
         $cadencia = $lead->cadencia;
         $loopCount = 0;
-        $maxLoops = 365; // Limite para evitar loops infinitos, e.g., 1 ano
+        $maxLoops = 365;
 
         while (!$this->isValidDate($dataAgendada, $cadencia)) {
             if ($loopCount >= $maxLoops) {
@@ -378,7 +460,7 @@ class ProcessCadence extends Command
             $dataAgendada->addDay();
             if ($this->isValidTime($etapa->hora)) {
                 $dataAgendada->setTimeFromTimeString($etapa->hora);
-            } // Se não houver hora específica, mantém o horário atual ao adicionar dia
+            }
 
             $loopCount++;
         }
@@ -454,7 +536,8 @@ class ProcessCadence extends Command
                 'process' => 'ProcessCadencia',
                 'lead_id' => $lead->id,
                 'etapa_id' => $etapa->id,
-                'contact_name' => $lead->contact_name
+                'contact_name' => $lead->contact_name,
+                'imediat' => $etapa->imediat ? 'sim' : 'não'
             ]);
 
             $numeroWhatsapp = $this->isWhatsappNumber($lead->contact_number);
@@ -468,6 +551,7 @@ class ProcessCadence extends Command
 
             $maxAttempts = 3;
             $attempt = 1;
+            $backoff = 5;  // Backoff exponencial para retries
 
             while ($attempt <= $maxAttempts) {
                 try {
@@ -489,12 +573,14 @@ class ProcessCadence extends Command
                         'contact_name' => $lead->contact_name
                     ]);
 
-                    $this->systemLogService->info("Aguardando 5 segundos antes do próximo envio...", [
+                    // Pause ajustado para imediato (menor para não floodar)
+                    $pause = $etapa->imediat ? 2 : 5;
+                    $this->systemLogService->info("Aguardando {$pause} segundos antes do próximo envio...", [
                         'process' => 'ProcessCadencia',
                         'lead_id' => $lead->id,
                         'etapa_id' => $etapa->id
                     ]);
-                    sleep(5);
+                    sleep($pause);
 
                     return;
                 } catch (\Exception $e) {
@@ -504,7 +590,8 @@ class ProcessCadence extends Command
                         'etapa_id' => $etapa->id,
                         'contact_name' => $lead->contact_name,
                         'attempt' => $attempt,
-                        'exception' => $e->getMessage()
+                        'exception' => $e->getMessage(),
+                        'imediat' => $etapa->imediat ? 'sim' : 'não'
                     ]);
                     if ($attempt === $maxAttempts) {
                         $this->systemLogService->error("Falha definitiva ao enviar mensagem para lead", [
@@ -515,7 +602,7 @@ class ProcessCadence extends Command
                         ]);
                         return;
                     }
-                    sleep(5);
+                    sleep($backoff * $attempt);  // 5s, 10s, 15s
                     $attempt++;
                 }
             }
@@ -527,7 +614,6 @@ class ProcessCadence extends Command
             ]);
         }
     }
-
 
     protected function isWhatsappNumber($number)
     {

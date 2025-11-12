@@ -33,79 +33,95 @@ class EtapasForm extends Form
 
     public $cadenciaId;
 
-    public $imediat;
+    public $imediat = false;
 
-    public $active;
+    public $active = true;
 
-    protected $rules = [
-        'titulo' => 'required|string|max:255',
-        //'tempo' => 'required|integer|min:1|max:30',
-        //'unidade_tempo' => 'required|in:dias,horas,minutos',
-        'type_send' => 'required|in:email,sms,whatsapp',
-        'message_content' => 'required|string',
-        'dias' => 'nullable|integer|min:0|max:30',
-        'hora' => 'nullable',
-        'intervalo' => 'nullable',
+    public function rules()
+    {
+        $rules = [
+            'titulo'          => 'required|string|max:255',
+            'type_send'       => 'required|in:email,sms,whatsapp',
+            'message_content' => 'required|string|max:2000',
+            'imediat'         => 'boolean',
+            'active'          => 'boolean',
+            'dias'            => 'nullable|integer|min:0|max:30',
+            'hora'            => 'nullable',
+            'intervalo'       => 'nullable',
+        ];
 
-    ];
+        return $rules;
+    }
 
     public function setEtapas(Etapas $etapas)
     {
-        $this->etapas             = $etapas;
-        $this->titulo             = $etapas->titulo;
-        //$this->tempo              = $etapas->tempo;
-        //$this->unidade_tempo      = $etapas->unidade_tempo;
-        $this->type_send          = $etapas->type_send;
-        $this->message_content    = $etapas->message_content;
-        $this->cadenciaId         = $etapas->cadencia_id;
-        $this->dias               = $etapas->dias;
-        $this->hora               = $etapas->hora;
-        $this->intervalo          = $etapas->intervalo;
-        $this->imediat            = (bool) $etapas->imediat;
-        $this->active             = (bool) $etapas->active;
-
+        $this->etapas = $etapas;
+        $this->titulo = $etapas->titulo;
+        $this->tempo = $etapas->tempo ?? '1';
+        $this->unidade_tempo = $etapas->unidade_tempo ?? 'dias';
+        $this->type_send = $etapas->type_send;
+        $this->message_content = $etapas->message_content;
+        $this->cadenciaId = $etapas->cadencia_id;
+        $this->dias = $etapas->dias;
+        $this->hora = $etapas->hora;
+        $this->intervalo = $etapas->intervalo;
+        $this->imediat = (bool) $etapas->imediat;
+        $this->active = (bool) $etapas->active;
     }
 
     public function store()
     {
+        // Se imediato, força null nos campos de agendamento
+        if ($this->imediat) {
+            $this->dias = null;
+            $this->hora = null;
+            $this->intervalo = null;
+        }
+
         $this->validate();
 
         $data = [
-            'titulo'          => $this->titulo,
-            'tempo'           => $this->tempo, //dias
-            'unidade_tempo'   => $this->unidade_tempo, //horas
-            'type_send'       => $this->type_send,
+            'titulo' => $this->titulo,
+            'tempo' => $this->tempo,
+            'unidade_tempo' => $this->unidade_tempo,
+            'type_send' => $this->type_send,
             'message_content' => $this->message_content,
-            'cadencia_id'     => $this->cadenciaId,
-            'dias'            => $this->dias,
-            'hora'            => $this->hora,
-            'intervalo'       => $this->intervalo,
-            'imediat'         => $this->imediat,
-            'active'          => $this->active,
+            'cadencia_id' => $this->cadenciaId,
+            'dias' => $this->dias,
+            'hora' => $this->hora,
+            'intervalo' => $this->intervalo,
+            'imediat' => $this->imediat,
+            'active' => $this->active,
         ];
 
-       Etapas::create($data);
+        Etapas::create($data);
 
         $this->reset();
-
     }
 
     public function update()
     {
+        // Mesma lógica para update
+        if ($this->imediat) {
+            $this->dias = null;
+            $this->hora = null;
+            $this->intervalo = null;
+        }
+
         $this->validate();
 
         $data = [
-            'titulo'          => $this->titulo,
-            'tempo'           => $this->tempo,
-            'unidade_tempo'   => $this->unidade_tempo,
-            'type_send'       => $this->type_send,
+            'titulo' => $this->titulo,
+            'tempo' => $this->tempo,
+            'unidade_tempo' => $this->unidade_tempo,
+            'type_send' => $this->type_send,
             'message_content' => $this->message_content,
-            'cadencia_id'     => $this->cadenciaId,
-            'dias'            => $this->dias,
-            'hora'            => $this->hora,
-            'intervalo'       => $this->intervalo,
-            'imediat'         => $this->imediat,
-            'active'          => $this->active,
+            'cadencia_id' => $this->cadenciaId,
+            'dias' => $this->dias,
+            'hora' => $this->hora,
+            'intervalo' => $this->intervalo,
+            'imediat' => $this->imediat,
+            'active' => $this->active,
         ];
 
         $this->etapas->update($data);

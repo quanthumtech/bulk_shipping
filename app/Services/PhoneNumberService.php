@@ -44,7 +44,8 @@ class PhoneNumberService
             91, 92, 93, 94, 95, 96, 97, 98, 99
         ];
 
-        if ($length < 10 || $length > 11) {
+        // Aceita 10-13 dígitos após clean (fixed=10, mobile=11, with 55=12-13)
+        if ($length < 10 || $length > 13) {
             Log::warning("Número inválido, comprimento incorreto: {$number} (limpo: {$cleanNumber}, {$length} dígitos)");
             return 'Não fornecido';
         }
@@ -55,7 +56,13 @@ class PhoneNumberService
             return 'Não fornecido';
         }
 
-        $formattedNumber = '+55' . $cleanNumber;
+        // Se já tem 55 (length 12-13), usa como is; else adiciona
+        if (substr($cleanNumber, 0, 2) === '55' && $length >= 12) {
+            $formattedNumber = '+' . $cleanNumber;
+        } else {
+            $formattedNumber = '+55' . $cleanNumber;
+        }
+
         Log::info("Número formatado com sucesso: {$number} -> {$formattedNumber}");
         return $formattedNumber;
     }

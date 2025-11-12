@@ -715,5 +715,70 @@ class ChatwootService
         }
     }
 
+    /**
+     * Verifica se um número é WhatsApp válido usando Evolution API v2.
+     *
+     * @param string $phoneNumber - Número internacional (ex.: 5511999999999).
+     * @param string $apiPost - URL da API (ex.: https://.../sendText/Instance).
+     * @param string|null $apikey - Chave API.
+     * @return bool - True se existe, false caso contrário. Assume true em erro para não bloquear.
+     */
+    public function checkIsWhatsapp($phoneNumber, $apiPost, $apikey = null)
+    {
+        $phoneNumber = (string) $phoneNumber;
+        if (empty($phoneNumber) || $phoneNumber === 'Não fornecido') {
+            Log::warning("Número inválido ou vazio para verificação WhatsApp: {$phoneNumber}");
+            return false;
+        }
+
+        if (!$apiPost || !$apikey) {
+            Log::warning("API Post ou Key ausentes para verificação WhatsApp. Usando fallback.");
+            return $this->isWhatsappNumber($phoneNumber);
+        }
+
+        $needle = '/message/sendText/';
+        if (strpos($apiPost, $needle) === false) {
+            Log::warning("Formato inválido de apiPost (esperado /message/sendText/): {$apiPost}. Usando fallback.");
+            return $this->isWhatsappNumber($phoneNumber);
+        }
+
+        $parts = explode($needle, $apiPost, 2);
+        $baseUrl = rtrim($parts[0], '/') . '/';  // https://evolution.plataformamundo.com.br/
+        $instance = trim($parts[1]);  // instance123
+
+        $endpoint = $baseUrl . "chat/whatsappNumbers/{$instance}";
+
+        Log::info("Verificando WhatsApp via API: endpoint={$endpoint}, number={$phoneNumber}, instance={$instance}");
+
+        try {
+            $response = Http::withHeaders([
+                'apikey' => $apikey,
+                'Content-Type' => 'application/json'
+            ])->post($endpoint, [
+                'numbers' => [$phoneNumber]
+            ]);
+
+            if (!$response->successful()) {
+                Log::warning("API WhatsApp retornou erro: " . $response->status() . " - " . $response->body() . ". Usando fallback.");
+                return $this->isWhatsappNumber($phoneNumber);
+            }
+
+            $data = $response->json();
+            Log::info("Resposta verificação WhatsApp: " . json_encode($data));
+
+            if (is_array($data) && !empty($data) && isset($data[0]['exists'])) {
+                $exists = (bool) $data[0]['exists'];
+                Log::info("Número {$phoneNumber} é WhatsApp válido via API: " . ($exists ? 'sim' : 'não'));
+                return $exists;
+            }
+
+            Log::warning("Resposta API inválida: " . json_encode($data) . ". Usando fallback.");
+            return $this->isWhatsappNumber($phoneNumber);
+        } catch (\Exception $e) {
+            Log::error("Exceção na verificação WhatsApp: " . $e->getMessage() . ". Usando fallback.");
+            return $this->isWhatsappNumber($phoneNumber);
+        }
+    }
+
 
 }
