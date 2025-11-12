@@ -30,8 +30,8 @@
                                         </x-mary-button>
                                     @else
                                         <x-mary-button class="btn-error btn-xs ml-2" wire:click="openWhatsappModal" title="Clique para testar/verificar WhatsApp">
-                                            <x-mary-icon name="o-x-circle" class="w-4 h-4 text-error" />
-                                            <span class="ml-1 text-xs text-error">Não WhatsApp</span>
+                                            <x-mary-icon name="o-x-circle" class="w-4 h-4" />
+                                            <span class="ml-1 text-xs">Não WhatsApp</span>
                                         </x-mary-button>
                                     @endif
                                 </td>
