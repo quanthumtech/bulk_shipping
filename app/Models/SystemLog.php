@@ -8,7 +8,7 @@ class SystemLog extends Model
 {
    protected $table = 'system_logs';
 
-    protected $fillable = ['type', 'message', 'context', 'created_at', 'archived'];
+    protected $fillable = ['type', 'message', 'context', 'created_at', 'archived', 'archived_at'];
 
     public $timestamps = false;
 
@@ -19,6 +19,7 @@ class SystemLog extends Model
 
     protected $dates = [
         'created_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     /**

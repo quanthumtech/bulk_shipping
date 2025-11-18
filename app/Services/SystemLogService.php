@@ -24,10 +24,31 @@ class SystemLogService
         $this->log('error', $message, $context);
     }
 
+    /**
+     * Deleta logs arquivados com mais de 5 dias (baseado em archived_at).
+     */
+    protected function cleanupOldArchived()
+    {
+        try {
+            SystemLog::where('archived', true)
+                ->whereNotNull('archived_at')
+                ->where('archived_at', '<', now()->subDays(env('LOGS_MAX_ARCHIVED_DAYS')))
+                ->delete();
+        } catch (\Exception $e) {
+            Log::error("Falha no cleanup de logs arquivados antigos: {$e->getMessage()}", [
+                'exception' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                ],
+            ]);
+        }
+    }
+
     protected function log(string $type, string $message, array $context)
     {
         try {
-            // Check active log count and archive oldest if needed
+            $this->cleanupOldArchived();
+
             $activeLogCount = SystemLog::where('archived', false)->count();
             if ($activeLogCount >= $this->maxActiveLogs) {
                 $logsToArchive = SystemLog::where('archived', false)
@@ -36,7 +57,10 @@ class SystemLogService
                     ->get();
 
                 foreach ($logsToArchive as $log) {
-                    $log->update(['archived' => true]);
+                    $log->update([
+                        'archived' => true,
+                        'archived_at' => now()
+                    ]);
                 }
             }
 
@@ -46,6 +70,7 @@ class SystemLogService
                 'context' => !empty($context) ? $context : null,
                 'created_at' => now(),
                 'archived' => false,
+                'archived_at' => null,
             ]);
         } catch (\Exception $e) {
             Log::error("Failed to save system log: {$e->getMessage()}", [
