@@ -85,7 +85,7 @@
         {{-- Special `actions` slot --}}
         @scope('actions', $users)
             <div class="flex space-x-2">
-                @if (auth()->user()->type_user === \App\Enums\UserType::SuperAdmin->value)
+                @if (auth()->user()->type_user === \App\Enums\UserType::SuperAdmin->value || auth()->user()->type_user === \App\Enums\UserType::Developer->value)
                     <x-mary-button
                         icon="o-trash"
                         wire:click="delete({{ $users->id }})"
