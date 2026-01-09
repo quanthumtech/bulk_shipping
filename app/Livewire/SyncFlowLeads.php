@@ -8,6 +8,8 @@ use App\Models\SyncFlowLeads as ModelsSyncFlowLeads;
 use App\Models\SystemNotification;
 use App\Models\User;
 use App\Enums\UserType;
+use App\Livewire\Plans\PlansModalComponents;
+use App\Traits\PlanValidator;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 
 class SyncFlowLeads extends Component
 {
-    use WithPagination, Toast;
+    use WithPagination, Toast, PlanValidator;
 
     public SyncFlowLeadsForm $form;
     public $cadenciaId;
@@ -68,6 +70,19 @@ class SyncFlowLeads extends Component
             // O usuário escolherá via dropdown
         } else {
             $this->selectedAccount = $user->chatwoot_accoumts ?? null;
+        }
+
+        $user = auth()->user();
+        if (!$user->plan || !$user->plan->active) {
+            $this->error('Nenhum plano ativo atribuído à sua conta. Contate o suporte.', position: 'toast-top');
+            $this->dispatch('open-plans-modal')->to(PlansModalComponents::class);
+            return;
+        }
+
+        if (!$user->canReceiveDailyLead()) {
+            $this->error('Limite diário de leads excedido. Considere fazer upgrade do plano.', position: 'toast-top');
+            $this->dispatch('open-plans-modal')->to(PlansModalComponents::class);
+            return;
         }
     }
 
@@ -196,6 +211,11 @@ class SyncFlowLeads extends Component
 
     public function save()
     {
+        if (!$this->validatePlanForAction('receive_lead')) {
+            $this->dispatch('open-plans-modal')->to(\App\Livewire\Plans\PlansModalComponents::class);
+            return;
+        }
+
         try {
             if ($this->editMode) {
                 $this->form->update();
