@@ -235,13 +235,13 @@ class ProcessCadence extends Command
         }
     }
 
-    protected function hasPendingCadences(Carbon $now)
+   protected function hasPendingCadences(Carbon $now)
     {
         $query = SyncFlowLeads::whereNotNull('cadencia_id')
             ->where('situacao_contato', '!=', 'Contato Efetivo')
-            ->where(function ($query) {
-                $query->whereNull('completed_cadences')
-                    ->orWhereRaw('JSON_CONTAINS(completed_cadences, JSON_QUOTE(cadencia_id)) = 0');
+            ->where(function ($subQuery) {
+                $subQuery->whereNull('completed_cadences')
+                        ->orWhereRaw('JSON_CONTAINS(completed_cadences, JSON_QUOTE(CAST(cadencia_id AS CHAR))) = 0');
             })
             ->whereHas('cadencia', function ($query) {
                 $query->where('active', true);
@@ -249,7 +249,6 @@ class ProcessCadence extends Command
             ->whereHas('cadencia.etapas', function ($query) use ($now) {
                 $query->where('active', true)
                     ->where(function ($subQuery) use ($now) {
-                        // Para não-imediato: usa subquery para base real (último enviado ou created_at)
                         $subQuery->where(function ($innerQuery) use ($now) {
                             $innerQuery->whereRaw(
                                 'DATE_ADD(
@@ -259,26 +258,25 @@ class ProcessCadence extends Command
                                     ), 
                                     INTERVAL COALESCE(etapas.dias, 0) DAY
                                 ) <= ?', 
-                                [$now]
+                                [$now->toDateTimeString()]
                             )
                             ->where(function ($q) use ($now) {
                                 $q->whereNull('etapas.intervalo')
-                                  ->orWhereRaw(
-                                      'DATE_ADD(
-                                          DATE_ADD(
-                                              COALESCE(
-                                                  (SELECT MAX(enviado_em) FROM cadence_messages WHERE etapa_id = etapas.id AND sync_flow_leads_id = sync_flow_leads.id),
-                                                  etapas.created_at
-                                              ), 
-                                              INTERVAL COALESCE(etapas.dias, 0) DAY
-                                          ), 
-                                          INTERVAL TIME_TO_SEC(COALESCE(etapas.intervalo, "00:00:00")) SECOND
-                                      ) <= ?', 
-                                      [$now]
-                                  );
+                                ->orWhereRaw(
+                                    'DATE_ADD(
+                                        DATE_ADD(
+                                            COALESCE(
+                                                (SELECT MAX(enviado_em) FROM cadence_messages WHERE etapa_id = etapas.id AND sync_flow_leads_id = sync_flow_leads.id),
+                                                etapas.created_at
+                                            ), 
+                                            INTERVAL COALESCE(etapas.dias, 0) DAY
+                                        ), 
+                                        INTERVAL TIME_TO_SEC(COALESCE(etapas.intervalo, "00:00:00")) SECOND
+                                    ) <= ?', 
+                                    [$now->toDateTimeString()]
+                                );
                             });
                         })
-                        // OU para imediato: capturar se imediat=true (check sent/range no loop)
                         ->orWhere('imediat', true);
                     });
             })
@@ -286,10 +284,13 @@ class ProcessCadence extends Command
                 $query->where('active', true)->orderBy('id');
             }]);
 
-        $this->systemLogService->info('Verificando cadências pendentes', [
-            'process' => 'ProcessCadencia',
+        $pendingCount = $query->count();
+        Log::info("Leads pendentes encontrados: {$pendingCount}", [
+            'sql' => $query->toSql(),
+            'bindings' => $query->getBindings(),
             'timestamp' => $now->toDateTimeString()
         ]);
+        $this->systemLogService->info("Leads pendentes: {$pendingCount}", ['process' => 'ProcessCadencia']);
 
         return $query;
     }
