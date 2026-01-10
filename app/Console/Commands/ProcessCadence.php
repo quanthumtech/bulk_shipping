@@ -239,7 +239,10 @@ class ProcessCadence extends Command
     {
         $query = SyncFlowLeads::whereNotNull('cadencia_id')
             ->where('situacao_contato', '!=', 'Contato Efetivo')
-            ->whereRaw('JSON_CONTAINS(completed_cadences, ?) = 0', [json_encode('cadencia_id')])
+            ->where(function ($query) {
+                $query->whereNull('completed_cadences')
+                    ->orWhereRaw('JSON_CONTAINS(completed_cadences, JSON_QUOTE(cadencia_id)) = 0');
+            })
             ->whereHas('cadencia', function ($query) {
                 $query->where('active', true);
             })
